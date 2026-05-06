@@ -16,16 +16,16 @@ export default function SignInPage() {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-[2.5rem] p-10 border border-slate-100 shadow-2xl shadow-slate-200/50 text-center">
-                <div className="w-16 h-16 bg-[#1877F2]/10 rounded-2xl flex items-center justify-center text-[#1877F2] mx-auto mb-6">
-                    <MessageSquare className="w-8 h-8" />
+                <div className="w-16 h-16 bg-[#25D366]/10 rounded-2xl flex items-center justify-center text-[#25D366] mx-auto mb-6">
+                    <MessageSquare className="w-8 h-8 fill-[#25D366]" />
                 </div>
                 
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Welcome to ReplyKaro</h1>
-                <p className="text-slate-500 font-medium mb-8">Connect your Meta account to start automating your WhatsApp Business.</p>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">ReplyKaro WhatsApp</h1>
+                <p className="text-slate-500 font-medium mb-8">Connect your official WhatsApp Business account to start automating.</p>
 
                 <Button 
                     onClick={handleFacebookLogin}
-                    className="w-full h-14 bg-[#1877F2] text-white hover:bg-[#155EC0] rounded-2xl font-bold text-lg shadow-lg shadow-[#1877F2]/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
+                    className="w-full h-14 bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl font-bold text-lg shadow-lg shadow-[#25D366]/20 flex items-center justify-center gap-3 transition-all active:scale-[0.98]"
                 >
                     Continue with Facebook
                     <ArrowRight className="w-5 h-5" />

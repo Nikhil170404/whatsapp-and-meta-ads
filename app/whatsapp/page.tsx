@@ -47,7 +47,7 @@ export default function WhatsAppLandingPage() {
           </h1>
           
           <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
-            India's #1 platform for WhatsApp Business automation. Auto-replies, broadcasts, and Meta Ads integration that actually converts.
+            India's #1 platform for WhatsApp Business automation. Auto-replies, broadcasts, and shared inbox flows that actually convert.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
@@ -117,7 +117,7 @@ export default function WhatsAppLandingPage() {
         <div className="container mx-auto px-4">
           <div className="text-center mb-24">
             <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter mb-6">Everything you need<br />to <span className="text-[#25D366]">dominate</span> WhatsApp.</h2>
-            <p className="text-slate-500 font-medium max-w-2xl mx-auto">From direct keyword triggers to automated Meta Ad funneling, we've built the ultimate WhatsApp toolkit for growth.</p>
+            <p className="text-slate-500 font-medium max-w-2xl mx-auto">From direct keyword triggers to automated shared inbox management, we've built the ultimate WhatsApp toolkit for growth.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -129,10 +129,10 @@ export default function WhatsAppLandingPage() {
                 color: "#25D366"
               },
               {
-                title: "Meta Ads Sync",
-                desc: "Connect your Click-to-WhatsApp ads directly to automated flows that qualify leads before you even wake up.",
-                icon: Target,
-                color: "#1877F2"
+                title: "Shared Inbox",
+                desc: "Manage all your WhatsApp conversations in a single, fast interface that works for your whole team.",
+                icon: Users,
+                color: "#25D366"
               },
               {
                 title: "Template Broadcasts",
