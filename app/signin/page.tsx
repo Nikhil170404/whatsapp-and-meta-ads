@@ -55,10 +55,10 @@ export default function SignInPage() {
                 setError("Login cancelled or not authorized.");
             }
         }, {
-            // Using the same config as the connect page for consistency
             config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
             response_type: 'code',
-            override_default_response_type: true
+            override_default_response_type: true,
+            redirect_uri: `${window.location.origin}/signin`
         });
     };
 

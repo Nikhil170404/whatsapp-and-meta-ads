@@ -10,17 +10,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing authorization code" }, { status: 400 });
     }
 
+    const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
+
+    if (!appId || !appSecret) {
+      return NextResponse.json({ error: "Server config error: Missing Facebook App ID or Secret" }, { status: 500 });
+    }
+
     // 1. Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${env.NEXT_PUBLIC_FACEBOOK_APP_ID}&client_secret=${env.FACEBOOK_APP_SECRET}&code=${code}&redirect_uri=${encodeURIComponent(`${env.APP_URL}/wa`)}`;
+    // For JS SDK flows, Meta often expects the redirect_uri to be the origin of the login
+    const redirectUri = `${appUrl.replace(/\/$/, '')}/signin`;
+    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
     if (!tokenRes.ok) {
-      console.error("Token Exchange Error:", tokenData);
+      console.error("Meta Login Token Exchange Error:", tokenData);
       return NextResponse.json({ 
-        error: "Failed to exchange token with Meta.", 
-        details: tokenData.error?.message || "Unknown error" 
+        error: "Facebook rejected the login exchange.", 
+        details: tokenData.error?.message || "Invalid OAuth code or redirect_uri mismatch."
       }, { status: 500 });
     }
 
@@ -31,13 +41,12 @@ export async function POST(req: Request) {
     const meData = await meRes.json();
 
     if (!meData.id) {
-      return NextResponse.json({ error: "Failed to fetch user profile from Meta." }, { status: 500 });
+      return NextResponse.json({ error: "Failed to fetch user profile from Facebook." }, { status: 500 });
     }
 
     const supabase = getSupabaseAdmin();
 
     // 3. Upsert User in the 'users' table
-    // Using 'as any' to bypass the rigid type check that is failing during build
     const { data: user, error: dbError } = await (supabase.from("users") as any)
       .upsert({
         facebook_user_id: meData.id,
@@ -47,7 +56,7 @@ export async function POST(req: Request) {
         email: meData.email || null,
         profile_picture_url: meData.picture?.data?.url || null,
         plan_type: 'free'
-      })
+      }, { onConflict: "facebook_user_id" })
       .select("*")
       .single();
 
