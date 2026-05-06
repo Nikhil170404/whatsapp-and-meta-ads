@@ -106,7 +106,7 @@ export async function sendQuotaReachedEmail(email: string) {
                         <li>No automation responses are being sent at the moment.</li>
                     </ul>
                     <p><strong>Good news:</strong> Once you upgrade, all the pending DMs currently in your queue will be <strong>automatically sent</strong>, so you won't lose any leads!</p>
-                    <p><a href="https://replykaro.com/dashboard/billing" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;">Upgrade Now</a></p>
+                    <p><a href="https://replykaro.in/dashboard/billing" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: #fff; text-decoration: none; border-radius: 5px; font-weight: bold;">Upgrade Now</a></p>
                     <br/>
                     <p>Best,<br/>The ReplyKaro Team</p>
                 </div>

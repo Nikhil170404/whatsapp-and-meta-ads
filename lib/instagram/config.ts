@@ -20,7 +20,7 @@ export function getInstagramRedirectUri(requestUrl?: string): string {
   // Fallback to NEXT_PUBLIC_APP_URL for server-side processing
   const baseUrl = requestUrl
     ? new URL(requestUrl).origin
-    : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.replykaro.com');
+    : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.replykaro.in');
 
   return `${baseUrl}/api/auth/instagram/callback`;
 }

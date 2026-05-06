@@ -42,7 +42,7 @@ function checkFanMilestoneAndGetMessage(
     if (justUnlocked.length === 0) return "";
 
     // Build the reward page URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.com";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
     const rewardPageUrl = `${baseUrl}/rewards/${creatorId}/${fanIgId}`;
 
     // Build congrats message with all unlocked rewards
@@ -1031,7 +1031,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                 return;
             }
 
-            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.com";
+            const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
             const fanPortalUrl = automation.fan_mode ? `${appUrl}/rewards/${user.id}/${senderIgsid}` : undefined;
 
             let finalMessage = getUniqueMessage(automation.final_message || "{Here is|Here's} the {link|info} you requested! {✨|🚀|✅}", messaging.sender?.username, true);
@@ -1208,7 +1208,7 @@ export async function handleMessageEvent(instagramUserId: string, messaging: any
                     return;
                 }
 
-                const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.com";
+                const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
                 const fanPortalUrl = automation.fan_mode ? `${appUrl}/rewards/${user.id}/${senderIgsid}` : undefined;
 
                 let finalMessage = getUniqueMessage(automation.final_message || automation.reply_message, messaging.sender?.username, true);

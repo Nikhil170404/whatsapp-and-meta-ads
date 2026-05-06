@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 
         // Generate a tracking confirmation code
         const confirmation_code = `del-${userId}-${Date.now()}`;
-        const status_url = `https://www.replykaro.com/deletion-status?id=${confirmation_code}`;
+        const status_url = `https://www.replykaro.in/deletion-status?id=${confirmation_code}`;
 
         return NextResponse.json({
             url: status_url,

@@ -995,7 +995,7 @@ ManyChat is still a good choice if:
 
 ## How to Switch from ManyChat to ReplyKaro in 5 Minutes
 
-1. **Go to replykaro.com** → Click "Get Started Free"
+1. **Go to replykaro.in** → Click "Get Started Free"
 2. **Connect your Instagram** via official Meta login (30 seconds)
 3. **Create your first automation**: Pick a post → set a keyword → write your DM
 4. **Run both tools** simultaneously during the transition (they won't conflict)
@@ -1241,7 +1241,7 @@ No credit card. No expiry. No "free trial" tricks.
 
 ## How to Start Free with ReplyKaro in 60 Seconds
 
-1. **Visit replykaro.com** → Click "Get Started Free"
+1. **Visit replykaro.in** → Click "Get Started Free"
 2. **Sign in with Instagram** via official Meta login (no password shared)
 3. **Pick a Post or Reel** → Set your keyword trigger (e.g., "LINK", "INFO", "PRICE")
 4. **Write your DM message** → Save and activate
@@ -1294,7 +1294,7 @@ ReplyKaro's free plan uses the official Meta Graph API — the same API Instagra
 A: Yes — ReplyKaro offers a genuine Free Forever plan for Instagram AutoDM, no credit card required. Most other tools only offer free trials (7–14 days). ReplyKaro's free plan has no expiry.
 
 **Q: What's the best free comment-to-DM tool for Instagram?**
-A: ReplyKaro is the best free comment-to-DM tool. The free plan includes comment-to-DM keyword triggers for Reels and Posts. Set it up in 60 seconds at replykaro.com.
+A: ReplyKaro is the best free comment-to-DM tool. The free plan includes comment-to-DM keyword triggers for Reels and Posts. Set it up in 60 seconds at replykaro.in.
 
 **Q: Can I get free Instagram AutoDM without getting banned?**
 A: Yes, if you use an official Meta API tool. ReplyKaro's free plan uses the official Meta Graph API, which is the only safe method for Instagram automation. Never use tools that require your Instagram password — those are third-party scrapers that can get your account banned.
@@ -1372,7 +1372,7 @@ Pay via Stripe, PayPal, or any US debit/credit card. No INR conversion needed.
 
 ## How to Start in 60 Seconds (US-friendly)
 
-1. Go to **replykaro.com** and click "Get Started Free"
+1. Go to **replykaro.in** and click "Get Started Free"
 2. Sign in with Instagram via Meta's official OAuth
 3. Pick a Reel → set keyword → write your DM message
 4. Activate → you're live

@@ -16,7 +16,7 @@ const inter = Inter({
 import { JsonLd } from "@/components/JsonLd";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.replykaro.com"),
+  metadataBase: new URL("https://www.replykaro.in"),
   applicationName: "ReplyKaro",
   title: {
     default: "ReplyKaro — #1 WhatsApp Business & Meta Ads Automation Tool",
@@ -26,11 +26,11 @@ export const metadata: Metadata = {
     "ReplyKaro — India's #1 WhatsApp automation tool. Automate keyword replies, broadcast templates, and Meta Ad comment-to-WhatsApp flows. Scale your business from ₹99/mo ($3/mo).",
   alternates: {
     languages: {
-      "en-IN": "https://www.replykaro.com",
-      "en": "https://www.replykaro.com",
-      "x-default": "https://www.replykaro.com",
+      "en-IN": "https://www.replykaro.in",
+      "en": "https://www.replykaro.in",
+      "x-default": "https://www.replykaro.in",
     },
-    canonical: "https://www.replykaro.com",
+    canonical: "https://www.replykaro.in",
   },
   icons: {
     icon: "/favicon.png",
@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://www.replykaro.com",
+    url: "https://www.replykaro.in",
     siteName: "ReplyKaro",
     title: "ReplyKaro™ — #1 WhatsApp Business & Meta Ads Automation Tool",
     description: "Automate your WhatsApp Business conversations and Meta Ad replies instantly. Scale your business with the cheapest automation tool in India.",

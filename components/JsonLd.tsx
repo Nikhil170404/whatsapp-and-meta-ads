@@ -3,16 +3,16 @@ import React from 'react';
 export function JsonLd() {
   const websiteSchema = {
     "@type": "WebSite",
-    "@id": "https://www.replykaro.com/#website",
+    "@id": "https://www.replykaro.in/#website",
     "name": "ReplyKaro",
-    "alternateName": ["Reply Karo", "Replykaro.com", "replykaro"],
-    "url": "https://www.replykaro.com",
-    "publisher": { "@id": "https://www.replykaro.com/#organization" },
+    "alternateName": ["Reply Karo", "Replykaro.in", "replykaro"],
+    "url": "https://www.replykaro.in",
+    "publisher": { "@id": "https://www.replykaro.in/#organization" },
     "potentialAction": {
       "@type": "SearchAction",
       "target": {
         "@type": "EntryPoint",
-        "urlTemplate": "https://www.replykaro.com/search?q={search_term_string}"
+        "urlTemplate": "https://www.replykaro.in/search?q={search_term_string}"
       },
       "query-input": "required name=search_term_string"
     }
@@ -20,12 +20,12 @@ export function JsonLd() {
 
   const organizationSchema = {
     "@type": "Organization",
-    "@id": "https://www.replykaro.com/#organization",
+    "@id": "https://www.replykaro.in/#organization",
     "name": "ReplyKaro",
-    "url": "https://www.replykaro.com",
+    "url": "https://www.replykaro.in",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://www.replykaro.com/logo.png",
+      "url": "https://www.replykaro.in/logo.png",
       "width": 512,
       "height": 512
     },
@@ -36,8 +36,8 @@ export function JsonLd() {
     "contactPoint": {
       "@type": "ContactPoint",
       "contactType": "customer support",
-      "url": "https://www.replykaro.com/contact",
-      "email": "hello@replykaro.com"
+      "url": "https://www.replykaro.in/contact",
+      "email": "hello@replykaro.in"
     },
     "address": {
       "@type": "PostalAddress",
@@ -62,11 +62,11 @@ export function JsonLd() {
 
   const softwareSchema = {
     "@type": "SoftwareApplication",
-    "@id": "https://www.replykaro.com/#software",
+    "@id": "https://www.replykaro.in/#software",
     "name": "ReplyKaro",
     "operatingSystem": "Web, Cloud",
     "applicationCategory": "MarketingApplication",
-    "author": { "@id": "https://www.replykaro.com/#organization" },
+    "author": { "@id": "https://www.replykaro.in/#organization" },
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "4.9",
@@ -89,13 +89,13 @@ export function JsonLd() {
         { "@type": "Offer", "price": "9", "priceCurrency": "USD", "name": "Pro Plan (Global)", "availability": "https://schema.org/InStock" }
       ]
     },
-    "brand": { "@id": "https://www.replykaro.com/#organization" },
+    "brand": { "@id": "https://www.replykaro.in/#organization" },
     "description": "ReplyKaro is the #1 Instagram AutoDM and comment-to-DM automation platform in 2026. It provides the cheapest comment-to-DM triggers, story reply automation, fan loyalty rewards, and keyword automation for creators in India and worldwide. Starting at ₹99/mo ($3/mo globally)."
   };
 
   const faqSchema = {
     "@type": "FAQPage",
-    "@id": "https://www.replykaro.com/#faq",
+    "@id": "https://www.replykaro.in/#faq",
     "mainEntity": [
       {
         "@type": "Question",
@@ -342,27 +342,27 @@ export function JsonLd() {
 
   const siteNavigationSchema = {
     "@type": "SiteNavigationElement",
-    "@id": "https://www.replykaro.com/#navigation",
+    "@id": "https://www.replykaro.in/#navigation",
     "name": "Main Navigation",
     "hasPart": [
-      { "@type": "WebPage", "name": "Pricing", "url": "https://www.replykaro.com/pricing" },
-      { "@type": "WebPage", "name": "Comment-to-DM Automation", "url": "https://www.replykaro.com/features/comment-to-dm" },
-      { "@type": "WebPage", "name": "Instagram DM Automation", "url": "https://www.replykaro.com/features/autodm" },
-      { "@type": "WebPage", "name": "Story Automation", "url": "https://www.replykaro.com/features/story-automation" },
-      { "@type": "WebPage", "name": "Fan Loyalty Mode", "url": "https://www.replykaro.com/features/fan-mode" },
-      { "@type": "WebPage", "name": "Sign In", "url": "https://www.replykaro.com/signin" },
-      { "@type": "WebPage", "name": "Blog", "url": "https://www.replykaro.com/blog" },
-      { "@type": "WebPage", "name": "Alternatives", "url": "https://www.replykaro.com/alternatives" },
-      { "@type": "WebPage", "name": "Free Instagram Tools", "url": "https://www.replykaro.com/tools" }
+      { "@type": "WebPage", "name": "Pricing", "url": "https://www.replykaro.in/pricing" },
+      { "@type": "WebPage", "name": "Comment-to-DM Automation", "url": "https://www.replykaro.in/features/comment-to-dm" },
+      { "@type": "WebPage", "name": "Instagram DM Automation", "url": "https://www.replykaro.in/features/autodm" },
+      { "@type": "WebPage", "name": "Story Automation", "url": "https://www.replykaro.in/features/story-automation" },
+      { "@type": "WebPage", "name": "Fan Loyalty Mode", "url": "https://www.replykaro.in/features/fan-mode" },
+      { "@type": "WebPage", "name": "Sign In", "url": "https://www.replykaro.in/signin" },
+      { "@type": "WebPage", "name": "Blog", "url": "https://www.replykaro.in/blog" },
+      { "@type": "WebPage", "name": "Alternatives", "url": "https://www.replykaro.in/alternatives" },
+      { "@type": "WebPage", "name": "Free Instagram Tools", "url": "https://www.replykaro.in/tools" }
     ]
   };
 
   const localBusinessSchema = {
     "@type": "LocalBusiness",
-    "@id": "https://www.replykaro.com/#localbusiness",
+    "@id": "https://www.replykaro.in/#localbusiness",
     "name": "ReplyKaro",
-    "image": "https://www.replykaro.com/logo.png",
-    "url": "https://www.replykaro.com",
+    "image": "https://www.replykaro.in/logo.png",
+    "url": "https://www.replykaro.in",
     "telephone": "+91-9987568422",
     "address": {
       "@type": "PostalAddress",
@@ -404,11 +404,11 @@ export function JsonLd() {
       localBusinessSchema,
       {
         "@type": "BreadcrumbList",
-        "@id": "https://www.replykaro.com/#breadcrumb",
+        "@id": "https://www.replykaro.in/#breadcrumb",
         "itemListElement": [
-          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.replykaro.com" },
-          { "@type": "ListItem", "position": 2, "name": "Pricing", "item": "https://www.replykaro.com/pricing" },
-          { "@type": "ListItem", "position": 3, "name": "Blog", "item": "https://www.replykaro.com/blog" }
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.replykaro.in" },
+          { "@type": "ListItem", "position": 2, "name": "Pricing", "item": "https://www.replykaro.in/pricing" },
+          { "@type": "ListItem", "position": 3, "name": "Blog", "item": "https://www.replykaro.in/blog" }
         ]
       }
     ]
