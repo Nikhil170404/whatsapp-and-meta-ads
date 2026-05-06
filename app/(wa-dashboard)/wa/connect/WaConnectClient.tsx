@@ -1,49 +1,116 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, AlertCircle, Phone, Key, ShieldCheck, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, AlertCircle, Phone, ShieldCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Add Facebook SDK types to global window
+declare global {
+  interface Window {
+    fbAsyncInit: () => void;
+    FB: any;
+  }
+}
+
 export function WaConnectClient({ initialConnection }: { initialConnection: any }) {
-  const [phoneNumberId, setPhoneNumberId] = useState(initialConnection?.phone_number_id || "");
-  const [wabaId, setWabaId] = useState(initialConnection?.waba_id || "");
-  const [accessToken, setAccessToken] = useState(initialConnection?.access_token || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // Store the IDs received from the Embedded Signup popup
+  const wabaIdRef = useRef<string | null>(null);
+  const phoneIdRef = useRef<string | null>(null);
 
-  const handleConnect = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    // Load Facebook SDK
+    if (document.getElementById('facebook-jssdk')) return;
+    
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId            : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
+        autoLogAppEvents : true,
+        xfbml            : true,
+        version          : 'v21.0'
+      });
+    };
+
+    const js = document.createElement('script');
+    js.id = 'facebook-jssdk';
+    js.src = 'https://connect.facebook.net/en_US/sdk.js';
+    js.async = true;
+    js.defer = true;
+    js.crossOrigin = "anonymous";
+    document.body.appendChild(js);
+
+    // Setup listener for Embedded Signup session info
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          console.log("Embedded Signup Event:", data);
+          if (data.event === 'FINISH' && data.data) {
+             // Store the shared IDs
+             if (data.data.waba_id) wabaIdRef.current = data.data.waba_id;
+             if (data.data.phone_number_id) phoneIdRef.current = data.data.phone_number_id;
+          }
+        }
+      } catch (err) {
+        // Ignore parsing errors for other non-json messages
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const launchWhatsAppSignup = () => {
     setIsLoading(true);
     setError(null);
-    setSuccess(null);
 
+    // Launch Facebook login
+    window.FB.login((response: any) => {
+      if (response.authResponse) {
+        const code = response.authResponse.code;
+        // Send code to backend for token exchange, along with the IDs from the popup
+        exchangeCodeForToken(code, wabaIdRef.current, phoneIdRef.current);
+      } else {
+        setIsLoading(false);
+        setError("User cancelled login or did not fully authorize.");
+      }
+    }, {
+      config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
+      response_type: 'code',
+      override_default_response_type: true,
+      extras: { "sessionInfoVersion": "3", "version": "v4" }
+    });
+  };
+
+  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null) => {
     try {
       const res = await fetch("/api/whatsapp/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumberId, wabaId, accessToken }),
+        body: JSON.stringify({ code, wabaId, phoneNumberId }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to connect");
+        throw new Error(data.error || "Failed to exchange token and connect account.");
       }
 
       setSuccess("Successfully connected to WhatsApp Business API!");
       setTimeout(() => {
         window.location.reload();
-      }, 1500);
+      }, 2000);
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setIsLoading(false);
     }
   };
 
   const handleDisconnect = async () => {
-    // API logic to delete connection
     if (confirm("Are you sure you want to disconnect? Automations will stop working.")) {
       setIsLoading(true);
       await fetch("/api/whatsapp/connect", { method: "DELETE" });
@@ -74,7 +141,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Display Phone Number</p>
             <p className="font-bold text-slate-900 text-lg flex items-center gap-2">
               <Phone className="w-4 h-4 text-[#25D366]" />
-              {initialConnection.phone_number}
+              {initialConnection.phone_number || "Verified Number"}
             </p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
@@ -100,92 +167,48 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
 
   return (
     <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm">
-      <div className="mb-8">
-        <h2 className="text-xl font-black text-slate-900">Manual Setup</h2>
-        <p className="text-slate-500 text-sm mt-1">Get these details from your <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="text-[#25D366] hover:underline">Meta App Dashboard</a> &rarr; WhatsApp &rarr; API Setup.</p>
+      <div className="mb-8 text-center">
+        <h2 className="text-2xl font-black text-slate-900 mb-3">WhatsApp Embedded Signup</h2>
+        <p className="text-slate-500 font-medium max-w-md mx-auto">
+          Connect your WhatsApp Business Account in just 1 click. You will be prompted to log into Facebook, create or select a WhatsApp Business Account, and verify your phone number.
+        </p>
       </div>
 
-      <form onSubmit={handleConnect} className="space-y-6">
-        <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number ID</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Phone className="h-5 w-5 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              required
-              value={phoneNumberId}
-              onChange={(e) => setPhoneNumberId(e.target.value)}
-              className="block w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#25D366] focus:border-[#25D366] transition-all"
-              placeholder="e.g. 109960479657119"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">WhatsApp Business Account ID (WABA)</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <ShieldCheck className="h-5 w-5 text-slate-400" />
-            </div>
-            <input
-              type="text"
-              required
-              value={wabaId}
-              onChange={(e) => setWabaId(e.target.value)}
-              className="block w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#25D366] focus:border-[#25D366] transition-all"
-              placeholder="e.g. 211547778929846"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2">Permanent Access Token</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Key className="h-5 w-5 text-slate-400" />
-            </div>
-            <input
-              type="password"
-              required
-              value={accessToken}
-              onChange={(e) => setAccessToken(e.target.value)}
-              className="block w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#25D366] focus:border-[#25D366] transition-all"
-              placeholder="EAA..."
-            />
-          </div>
-          <p className="text-xs text-slate-500 mt-2">Generate a System User token in Business Settings with `whatsapp_business_messaging` and `whatsapp_business_management` permissions.</p>
-        </div>
-
+      <div className="max-w-xs mx-auto space-y-6">
         {error && (
           <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold flex items-center gap-2">
-            <AlertCircle className="w-5 h-5" />
-            {error}
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <p>{error}</p>
           </div>
         )}
 
         {success && (
           <div className="p-4 rounded-xl bg-green-50 text-green-700 text-sm font-bold flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5" />
-            {success}
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <p>{success}</p>
           </div>
         )}
 
         <button
-          type="submit"
+          onClick={launchWhatsAppSignup}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-2 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#25D366]/20"
+          className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166FE5] text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#1877F2]/20"
         >
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
-              Verify & Connect
+              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.469h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.469h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Login with Facebook
             </>
           )}
         </button>
-      </form>
+        <p className="text-xs text-center text-slate-400 font-medium">
+          Make sure you have a verified Meta Business Portfolio.
+        </p>
+      </div>
     </div>
   );
 }
