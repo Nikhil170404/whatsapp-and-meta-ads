@@ -80,14 +80,12 @@ export async function deleteCached(key: string): Promise<void> {
 // User-specific cache helpers
 export interface CachedUser {
     id: string;
-    instagram_access_token: string;
-    instagram_user_id: string;
-    instagram_username?: string;
+    fb_access_token: string;
+    facebook_user_id: string;
+    display_name?: string;
     plan_type: string;
-    plan_expires_at?: string; // P1 Audit Fix: Required for strict expiry check
+    plan_expires_at?: string;
     created_at: string;
-    fan_rewards?: Array<{ points: number; title: string; link: string }>;
-    fan_mode_enabled?: boolean;
 }
 
 export const getCachedUser = (id: string) => getCached<CachedUser>(`user:${id}`);
