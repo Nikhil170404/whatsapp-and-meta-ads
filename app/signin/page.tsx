@@ -42,14 +42,17 @@ export default function SignInPage() {
     }, []);
 
     const handleFacebookLogin = () => {
-        setIsLoading(true);
-        setError(null);
+        if (!window.FB) return;
 
-        // We use the JS SDK Login instead of a hardcoded URL to prevent "Invalid Scopes" and "Redirect URI" errors
+        setIsLoading(true);
+        setError("");
+
+        const redirectUri = `${window.location.origin}/signin`;
+
         window.FB.login((response: any) => {
             if (response.authResponse) {
                 const code = response.authResponse.code;
-                exchangeCodeForToken(code);
+                exchangeCodeForToken(code, redirectUri);
             } else {
                 setIsLoading(false);
                 setError("Login cancelled or not authorized.");
@@ -58,16 +61,16 @@ export default function SignInPage() {
             config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
             response_type: 'code',
             override_default_response_type: true,
-            redirect_uri: `${window.location.origin}/signin`
+            redirect_uri: redirectUri
         });
     };
 
-    const exchangeCodeForToken = async (code: string) => {
+    const exchangeCodeForToken = async (code: string, redirectUri: string) => {
         try {
             const res = await fetch("/api/auth/facebook/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code }),
+                body: JSON.stringify({ code, redirectUri }),
             });
 
             if (!res.ok) {

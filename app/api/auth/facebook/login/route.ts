@@ -1,28 +1,23 @@
 import { NextResponse } from "next/server";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
-import { env } from "@/lib/env";
 
 export async function POST(req: Request) {
   try {
-    const { code } = await req.json();
+    const { code, redirectUri } = await req.json();
     if (!code) {
       return NextResponse.json({ error: "Missing authorization code" }, { status: 400 });
     }
 
     const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
     const appSecret = process.env.FACEBOOK_APP_SECRET;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
 
     if (!appId || !appSecret) {
       return NextResponse.json({ error: "Server config error: Missing Facebook App ID or Secret" }, { status: 500 });
     }
 
     // 1. Exchange code for access token
-    // We try to match the exact origin for the redirect_uri
-    const origin = appUrl.replace(/\/$/, '');
-    const redirectUri = `${origin}/signin`;
-    
+    // CRITICAL: We use the EXACT redirect_uri sent from the frontend to ensure a match
     const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     
     const tokenRes = await fetch(tokenUrl);
@@ -30,10 +25,9 @@ export async function POST(req: Request) {
 
     if (!tokenRes.ok) {
       console.error("Meta Login Token Exchange Error:", tokenData);
-      // Return the specific Meta error message to the frontend for debugging
       return NextResponse.json({ 
         error: "Facebook rejected the login exchange.", 
-        details: tokenData.error?.message || tokenData.error_description || "Invalid code or redirect_uri mismatch."
+        details: tokenData.error?.message || tokenData.error_description || "Redirect URI mismatch or invalid code."
       }, { status: 500 });
     }
 
