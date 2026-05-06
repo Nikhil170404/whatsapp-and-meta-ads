@@ -11,9 +11,7 @@ const envSchema = z.object({
     NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
     SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
-    // Instagram
-    NEXT_PUBLIC_INSTAGRAM_APP_ID: z.string().min(1),
-    INSTAGRAM_APP_SECRET: z.string().min(1),
+    // WhatsApp
     WEBHOOK_VERIFY_TOKEN: z.string().min(1),
     WHATSAPP_VERIFY_TOKEN: z.string().min(1).optional(),
     WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
@@ -43,8 +41,6 @@ const processEnv = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    NEXT_PUBLIC_INSTAGRAM_APP_ID: process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID,
-    INSTAGRAM_APP_SECRET: process.env.INSTAGRAM_APP_SECRET,
     WEBHOOK_VERIFY_TOKEN: process.env.WEBHOOK_VERIFY_TOKEN,
     WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
     WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
