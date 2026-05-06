@@ -15,6 +15,14 @@ const envSchema = z.object({
     NEXT_PUBLIC_INSTAGRAM_APP_ID: z.string().min(1),
     INSTAGRAM_APP_SECRET: z.string().min(1),
     WEBHOOK_VERIFY_TOKEN: z.string().min(1),
+    WHATSAPP_VERIFY_TOKEN: z.string().min(1).optional(),
+    WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
+    WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().min(1).optional(),
+
+    // Meta Ads
+    NEXT_PUBLIC_FACEBOOK_APP_ID: z.string().min(1).optional(),
+    FACEBOOK_APP_SECRET: z.string().min(1).optional(),
 
     // Razorpay
     NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().min(1),
@@ -38,6 +46,12 @@ const processEnv = {
     NEXT_PUBLIC_INSTAGRAM_APP_ID: process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID,
     INSTAGRAM_APP_SECRET: process.env.INSTAGRAM_APP_SECRET,
     WEBHOOK_VERIFY_TOKEN: process.env.WEBHOOK_VERIFY_TOKEN,
+    WHATSAPP_VERIFY_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
+    WHATSAPP_ACCESS_TOKEN: process.env.WHATSAPP_ACCESS_TOKEN,
+    WHATSAPP_PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    WHATSAPP_BUSINESS_ACCOUNT_ID: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID,
+    NEXT_PUBLIC_FACEBOOK_APP_ID: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
+    FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET,
     NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
