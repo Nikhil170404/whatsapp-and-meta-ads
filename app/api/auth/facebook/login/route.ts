@@ -13,22 +13,27 @@ export async function POST(req: Request) {
     const appSecret = process.env.FACEBOOK_APP_SECRET;
 
     if (!appId || !appSecret) {
+      console.error("Facebook Login: Missing env vars. APP_ID present:", !!appId, "APP_SECRET present:", !!appSecret);
       return NextResponse.json({ error: "Server config error: Missing Facebook App ID or Secret" }, { status: 500 });
     }
 
     // 1. Exchange code for access token
     // CRITICAL: We use the EXACT redirect_uri sent from the frontend to ensure a match
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const resolvedRedirectUri = redirectUri || `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')}/signin`;
+
+    console.log("Facebook Login: exchanging code with redirect_uri:", resolvedRedirectUri);
+
+    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(resolvedRedirectUri)}`;
     
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
-    if (!tokenRes.ok) {
-      console.error("Meta Login Token Exchange Error:", tokenData);
-      return NextResponse.json({ 
-        error: "Facebook rejected the login exchange.", 
+    if (!tokenRes.ok || tokenData.error) {
+      console.error("Meta Login Token Exchange Error:", JSON.stringify(tokenData));
+      return NextResponse.json({
+        error: "Facebook rejected the login exchange.",
         details: tokenData.error?.message || tokenData.error_description || "Redirect URI mismatch or invalid code."
-      }, { status: 500 });
+      }, { status: 401 });
     }
 
     const accessToken = tokenData.access_token;
