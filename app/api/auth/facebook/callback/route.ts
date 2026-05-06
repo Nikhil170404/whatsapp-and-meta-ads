@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     const adAccountsData = await adAccountsRes.json();
     const adAccountId = adAccountsData.data?.[0]?.account_id || "unknown_ad_account";
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
