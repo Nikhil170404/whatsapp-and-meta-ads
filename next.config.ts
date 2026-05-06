@@ -29,13 +29,13 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://www.googletagmanager.com",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://checkout.razorpay.com https://www.googletagmanager.com https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https: https://www.googletagmanager.com",
+      "img-src 'self' data: https: https://www.googletagmanager.com https://www.facebook.com",
       "media-src 'self' https://*.supabase.co",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co https://api.razorpay.com https://ipapi.co https://ipwho.is https://lumberjack.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com",
-      "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+      "connect-src 'self' https://*.supabase.co https://api.razorpay.com https://ipapi.co https://ipwho.is https://lumberjack.razorpay.com https://www.googletagmanager.com https://www.google-analytics.com https://graph.facebook.com https://www.facebook.com",
+      "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://www.facebook.com https://web.facebook.com",
     ].join("; "),
   },
 ];
