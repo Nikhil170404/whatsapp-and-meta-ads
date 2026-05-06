@@ -12,15 +12,14 @@ export type Database = {
       users: {
         Row: {
           id: string;
-          instagram_user_id: string;
-          instagram_username: string;
-          instagram_access_token: string;
-          instagram_token_expires_at: string;
+          facebook_user_id: string;
+          display_name: string | null;
+          fb_access_token: string | null;
+          fb_token_expires_at: string | null;
           profile_picture_url: string | null;
           email: string | null;
           plan_type: "free" | "starter" | "pro" | "expired";
           plan_expires_at: string | null;
-
           razorpay_subscription_id: string | null;
           subscription_status: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
           subscription_interval: "monthly" | "yearly" | null;
@@ -34,14 +33,13 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          instagram_user_id: string;
-          instagram_username: string;
-          instagram_access_token: string;
-          instagram_token_expires_at: string;
+          facebook_user_id: string;
+          display_name?: string | null;
+          fb_access_token?: string | null;
+          fb_token_expires_at?: string | null;
           email?: string | null;
           plan_type?: "free" | "starter" | "pro" | "expired";
           plan_expires_at?: string | null;
-
           razorpay_subscription_id?: string | null;
           subscription_status?: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
           subscription_interval?: "monthly" | "yearly" | null;
@@ -55,14 +53,13 @@ export type Database = {
         };
         Update: {
           id?: string;
-          instagram_user_id?: string;
-          instagram_username?: string;
-          instagram_access_token?: string;
-          instagram_token_expires_at?: string;
+          facebook_user_id?: string;
+          display_name?: string | null;
+          fb_access_token?: string | null;
+          fb_token_expires_at?: string | null;
           email?: string | null;
           plan_type?: "free" | "starter" | "pro" | "expired";
           plan_expires_at?: string | null;
-
           razorpay_subscription_id?: string | null;
           subscription_status?: "active" | "halted" | "cancelled" | "completed" | "inactive" | null;
           subscription_interval?: "monthly" | "yearly" | null;

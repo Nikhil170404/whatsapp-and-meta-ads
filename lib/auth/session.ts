@@ -1,51 +1,30 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
-import type { User } from "@/lib/supabase/types";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
-import { logger } from "@/lib/logger";
 
-// CRITICAL: Session secret must be set in environment
-// During build time (Vercel), we allow it to be empty to prevent build crashes
 const sessionSecret = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : "temporary_secret_for_build_purposes_only_32_chars");
 
-if (process.env.NODE_ENV === "production" && (!sessionSecret || sessionSecret.length < 32)) {
-    // Only throw in actual production runtime if missing
-    if (typeof window === "undefined" && !process.env.VERCEL) {
-        throw new Error("SESSION_SECRET environment variable must be set and be at least 32 characters");
-    }
-}
-
 const SECRET = new TextEncoder().encode(sessionSecret || "temporary_secret_for_build_purposes_only_32_chars");
-
 const COOKIE_NAME = "replykaro_session";
 
 export interface SessionUser {
   id: string;
-  // Legacy fields (kept for backward compatibility with existing DB)
-  instagram_user_id: string;
-  instagram_username: string;
-  // User-friendly aliases for WA/Ads dashboards
-  /** Facebook user ID used for auth */
-  facebook_user_id?: string;
-  /** Display name derived from profile */
-  display_name?: string;
+  facebook_user_id: string;
+  display_name: string;
   plan_type: "free" | "starter" | "pro" | "expired";
   profile_picture_url?: string;
   created_at: string;
-  plan_expires_at?: string;
-  subscription_status?: string;
   email?: string | null;
 }
 
-export async function createSession(user: User): Promise<string> {
+export async function createSession(user: any): Promise<string> {
   const token = await new SignJWT({
     id: user.id,
-    instagram_user_id: user.instagram_user_id,
-    instagram_username: user.instagram_username,
+    facebook_user_id: user.facebook_user_id,
+    display_name: user.display_name,
     plan_type: user.plan_type,
     profile_picture_url: user.profile_picture_url,
     created_at: user.created_at,
-    plan_expires_at: user.plan_expires_at,
     email: user.email,
   })
     .setProtectedHeader({ alg: "HS256" })
@@ -75,69 +54,8 @@ export async function getSession(): Promise<SessionUser | null> {
 
   try {
     const { payload } = await jwtVerify(token, SECRET);
-    const sessionUser = payload as unknown as SessionUser;
-
-    // Create a mutable copy
-    const updatedSessionUser: SessionUser = { ...sessionUser };
-
-    // P1 Fix: Fetch fresh plan details from DB with Caching (Scale Fix)
-    const cacheKey = `session_user:${sessionUser.id}`;
-
-    try {
-      // @ts-ignore
-      const { Redis: redisInstance } = await import("../redis") as any;
-      const redis = redisInstance;
-
-      // Try cache
-      const cached = await (redis as any).get(cacheKey);
-      if (cached) return cached as SessionUser;
-
-      const supabase = getSupabaseAdmin();
-
-      const { data: user } = await supabase
-        .from("users")
-        .select("plan_type, plan_expires_at, subscription_status, email")
-        .eq("id", sessionUser.id)
-        .single() as any;
-
-      if (user) {
-        // Override JWT data with fresh DB data
-        updatedSessionUser.plan_type = user.plan_type as any;
-        updatedSessionUser.plan_expires_at = user.plan_expires_at;
-        updatedSessionUser.subscription_status = user.subscription_status;
-        updatedSessionUser.email = user.email;
-
-        // Cache for 5 minutes
-        await redis.set(cacheKey, updatedSessionUser, { ex: 300 });
-      }
-    } catch (err) {
-      // Fallback to JWT data if Redis/DB fails
-      logger.error("Error refreshing session data", { userId: sessionUser.id, category: "auth" }, err as Error);
-    }
-
-    return updatedSessionUser;
+    return payload as unknown as SessionUser;
   } catch {
     return null;
   }
-}
-
-export async function deleteSession() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-
-  // 2.2: Invalidate session cache BEFORE deleting cookie
-  if (token) {
-    try {
-      const { payload } = await jwtVerify(token, SECRET);
-      const userId = (payload as any)?.id;
-      if (userId) {
-        const { invalidateSessionCache } = await import("@/lib/auth/cache");
-        await invalidateSessionCache(userId);
-      }
-    } catch {
-      // JWT may be expired/invalid — that's fine, just clean up cookie
-    }
-  }
-
-  cookieStore.delete(COOKIE_NAME);
 }

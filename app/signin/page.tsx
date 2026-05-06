@@ -64,17 +64,20 @@ export default function SignInPage() {
 
     const exchangeCodeForToken = async (code: string) => {
         try {
-            const res = await fetch("/api/whatsapp/connect", {
+            const res = await fetch("/api/auth/facebook/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ code }),
             });
 
-            if (!res.ok) throw new Error("Authentication failed");
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Authentication failed");
+            }
 
             router.push("/wa");
-        } catch (err) {
-            setError("Failed to sign in. Please try again.");
+        } catch (err: any) {
+            setError(err.message || "Failed to sign in. Please try again.");
             setIsLoading(false);
         }
     };
