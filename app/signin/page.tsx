@@ -1,95 +1,27 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, ArrowRight, BarChart3, ShieldCheck, Zap, CheckCircle2, Loader2 } from "lucide-react";
+import { MessageSquare, ArrowRight, BarChart3, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-
-declare global {
-  interface Window {
-    fbAsyncInit: () => void;
-    FB: any;
-  }
-}
+import { useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const router = useRouter();
-
-    useEffect(() => {
-        // Load Facebook SDK
-        if (document.getElementById('facebook-jssdk')) return;
-        
-        window.fbAsyncInit = function() {
-            window.FB.init({
-                appId            : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
-                autoLogAppEvents : true,
-                xfbml            : true,
-                version          : 'v21.0'
-            });
-        };
-
-        const js = document.createElement('script');
-        js.id = 'facebook-jssdk';
-        js.src = 'https://connect.facebook.net/en_US/sdk.js';
-        js.async = true;
-        js.defer = true;
-        js.crossOrigin = "anonymous";
-        document.body.appendChild(js);
-    }, []);
+    const searchParams = useSearchParams();
+    const error = searchParams.get("error");
 
     const handleFacebookLogin = () => {
-        if (!window.FB) return;
-
         setIsLoading(true);
-        setError("");
-
-            // Must exactly match a URI registered under Facebook App → Facebook Login → Valid OAuth Redirect URIs
-        const redirectUri = `${window.location.origin}/signin`;
-
-        window.FB.login((response: any) => {
-            if (response.authResponse) {
-                const code = response.authResponse.code;
-                exchangeCodeForToken(code, redirectUri);
-            } else {
-                setIsLoading(false);
-                setError("Login cancelled or not authorized.");
-            }
-        }, {
-            config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
-            response_type: 'code',
-            override_default_response_type: true,
-            redirect_uri: redirectUri
-        });
-    };
-
-    const exchangeCodeForToken = async (code: string, redirectUri: string) => {
-        try {
-            const res = await fetch("/api/auth/facebook/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code, redirectUri }),
-            });
-
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.details || data.error || "Authentication failed");
-            }
-
-            router.push("/wa");
-        } catch (err: any) {
-            setError(err.message || "Failed to sign in. Please try again.");
-            setIsLoading(false);
-        }
+        // Full-page redirect to the server-side OAuth flow.
+        // The backend builds the Facebook OAuth URL and redirects back here with ?code=...
+        window.location.href = "/api/auth/facebook/login";
     };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 flex items-center justify-center p-4 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-[#25D366]/5 to-transparent rounded-full blur-3xl" />
-            
+
             <div className="max-w-md w-full relative z-10">
                 <div className="text-center mb-8">
                     <Link href="/" className="inline-flex items-center gap-3 group">
@@ -122,11 +54,11 @@ export default function SignInPage() {
                     {error && (
                         <div className="mb-6 p-4 rounded-xl bg-rose-50 text-rose-600 text-xs font-bold flex items-center gap-2">
                             <CheckCircle2 className="w-4 h-4 rotate-45" />
-                            {error}
+                            {decodeURIComponent(error)}
                         </div>
                     )}
 
-                    <Button 
+                    <Button
                         onClick={handleFacebookLogin}
                         disabled={isLoading}
                         className="w-full h-14 bg-[#1877F2] text-white hover:bg-[#155EC0] rounded-2xl font-bold text-base shadow-lg shadow-[#1877F2]/20 flex items-center justify-center gap-3 transition-all"
