@@ -47,6 +47,7 @@ export default function SignInPage() {
         setIsLoading(true);
         setError("");
 
+            // Must exactly match a URI registered under Facebook App → Facebook Login → Valid OAuth Redirect URIs
         const redirectUri = `${window.location.origin}/signin`;
 
         window.FB.login((response: any) => {
