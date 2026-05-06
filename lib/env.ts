@@ -18,9 +18,10 @@ const envSchema = z.object({
     WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
     WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().min(1).optional(),
 
-    // Meta Ads
+    // Meta Ads / Facebook
     NEXT_PUBLIC_FACEBOOK_APP_ID: z.string().min(1).optional(),
     FACEBOOK_APP_SECRET: z.string().min(1).optional(),
+    NEXT_PUBLIC_FB_CONFIG_ID: z.string().min(1).optional(),
 
     // Razorpay
     NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().min(1),
@@ -48,6 +49,7 @@ const processEnv = {
     WHATSAPP_BUSINESS_ACCOUNT_ID: process.env.WHATSAPP_BUSINESS_ACCOUNT_ID,
     NEXT_PUBLIC_FACEBOOK_APP_ID: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
     FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET,
+    NEXT_PUBLIC_FB_CONFIG_ID: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
     NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
