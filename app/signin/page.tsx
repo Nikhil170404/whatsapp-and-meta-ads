@@ -72,7 +72,7 @@ export default function SignInPage() {
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || "Authentication failed");
+                throw new Error(data.details || data.error || "Authentication failed");
             }
 
             router.push("/wa");

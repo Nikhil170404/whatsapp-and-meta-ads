@@ -19,8 +19,10 @@ export async function POST(req: Request) {
     }
 
     // 1. Exchange code for access token
-    // For JS SDK flows, Meta often expects the redirect_uri to be the origin of the login
-    const redirectUri = `${appUrl.replace(/\/$/, '')}/signin`;
+    // We try to match the exact origin for the redirect_uri
+    const origin = appUrl.replace(/\/$/, '');
+    const redirectUri = `${origin}/signin`;
+    
     const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
     
     const tokenRes = await fetch(tokenUrl);
@@ -28,9 +30,10 @@ export async function POST(req: Request) {
 
     if (!tokenRes.ok) {
       console.error("Meta Login Token Exchange Error:", tokenData);
+      // Return the specific Meta error message to the frontend for debugging
       return NextResponse.json({ 
         error: "Facebook rejected the login exchange.", 
-        details: tokenData.error?.message || "Invalid OAuth code or redirect_uri mismatch."
+        details: tokenData.error?.message || tokenData.error_description || "Invalid code or redirect_uri mismatch."
       }, { status: 500 });
     }
 
