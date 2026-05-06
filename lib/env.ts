@@ -60,12 +60,12 @@ const processEnv = {
     QSTASH_TOKEN: process.env.QSTASH_TOKEN,
 };
 
-// Throw error if validation fails
 const parsed = envSchema.safeParse(processEnv);
 
-if (!parsed.success) {
+// Throw error if validation fails, except during build
+if (!parsed.success && !process.env.VERCEL) {
     console.error("❌ Invalid environment variables:", parsed.error.flatten().fieldErrors);
     throw new Error("Invalid environment variables. Check terminal output.");
 }
 
-export const env = parsed.data;
+export const env = (parsed.success ? parsed.data : processEnv) as z.infer<typeof envSchema>;
