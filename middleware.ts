@@ -17,7 +17,7 @@ const ADMIN_JWT_SECRET = ADMIN_SECRET ? new TextEncoder().encode(ADMIN_SECRET) :
 const ADMIN_COOKIE_NAME = "admin_token";
 
 // Routes that require authentication
-const protectedRoutes = ["/dashboard", "/keywords", "/analytics", "/settings"];
+const protectedRoutes = ["/dashboard", "/wa", "/ads", "/keywords", "/analytics", "/settings"];
 
 // Routes that should redirect to dashboard if authenticated
 const authRoutes = ["/signin", "/signup"];
@@ -111,9 +111,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect authenticated users from auth routes or landing page
+  // Redirect authenticated users from auth routes or landing page to WA dashboard
   if (session && (isAuthRoute || isRootPath(pathname))) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/wa", request.url));
   }
 
   return NextResponse.next();

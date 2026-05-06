@@ -11,8 +11,13 @@ import {
   LogOut,
   Menu,
   X,
-  ArrowLeft,
-  Link2
+  Users,
+  Send,
+  CreditCard,
+  Link2,
+  BarChart3,
+  MoreHorizontal,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -27,12 +32,29 @@ const navigation = [
   { name: "Connect", href: "/wa/connect", icon: Link2 },
   { name: "Automations", href: "/wa/automations", icon: Zap },
   { name: "Messages", href: "/wa/messages", icon: MessageSquare },
+  { name: "Contacts", href: "/wa/contacts", icon: Users },
+  { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
   { name: "Templates", href: "/wa/templates", icon: FileText },
+  { name: "Billing", href: "/wa/billing", icon: CreditCard },
+];
+
+// Bottom tab items for mobile (5 max for thumb reach)
+const bottomTabs = [
+  { name: "Home", href: "/wa", icon: Home },
+  { name: "Auto", href: "/wa/automations", icon: Zap },
+  { name: "Chat", href: "/wa/messages", icon: MessageSquare },
+  { name: "Templates", href: "/wa/templates", icon: FileText },
+  { name: "More", href: "__more__", icon: MoreHorizontal },
 ];
 
 export function WaSidebar({ user }: SidebarProps) {
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
+
+  const isTabActive = (href: string) => {
+    if (href === "/wa") return pathname === "/wa";
+    return pathname?.startsWith(href);
+  };
 
   return (
     <>
@@ -45,20 +67,23 @@ export function WaSidebar({ user }: SidebarProps) {
               <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg shadow-[#25D366]/20 group-hover:scale-110 transition-all duration-500 flex items-center justify-center bg-[#25D366] text-white font-bold ring-1 ring-[#25D366]/30">
                 <MessageSquare className="w-5 h-5 fill-current" />
               </div>
-              <span className="text-xl font-black tracking-tighter text-slate-900 uppercase leading-none">
-                WhatsApp<br/><span className="text-[10px] text-slate-400">by ReplyKaro</span>
-              </span>
+              <div>
+                <span className="text-lg font-black tracking-tighter text-slate-900 uppercase leading-none block">
+                  ReplyKaro
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">WhatsApp Platform</span>
+              </div>
             </Link>
           </div>
 
           {/* Navigation Section */}
-          <div className="flex-1 min-h-0 px-4 py-8 space-y-1 overflow-y-auto overscroll-contain">
+          <div className="flex-1 min-h-0 px-4 py-6 space-y-1 overflow-y-auto overscroll-contain">
             <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
               Main Menu
             </p>
-            <nav className="space-y-1.5">
+            <nav className="space-y-1">
               {navigation.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = item.href === "/wa" ? pathname === "/wa" : pathname?.startsWith(item.href);
                 return (
                   <Link
                     key={item.name}
@@ -80,16 +105,16 @@ export function WaSidebar({ user }: SidebarProps) {
               })}
             </nav>
 
-            <div className="mt-8">
+            <div className="mt-6 pt-6 border-t border-slate-100">
                <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
                  Switch Product
                </p>
                <Link
-                  href="/dashboard"
+                  href="/ads"
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200 group"
                 >
-                  <ArrowLeft className="h-5 w-5 text-slate-400 group-hover:text-primary transition-colors" />
-                  Instagram Dashboard
+                  <BarChart3 className="h-5 w-5 text-slate-400 group-hover:text-[#1877F2] transition-colors" />
+                  Meta Ads Dashboard
                 </Link>
             </div>
           </div>
@@ -100,11 +125,11 @@ export function WaSidebar({ user }: SidebarProps) {
               <div className="relative transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                 <SafeImage
                   src={user.profile_picture_url}
-                  alt={user.instagram_username || user.email || 'User'}
+                  alt={user.email || 'User'}
                   className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-[#25D366]/10 ring-2 ring-white"
                   fallbackComponent={
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25D366] to-[#1DA851] flex items-center justify-center text-white font-bold shadow-lg shadow-[#25D366]/10 ring-2 ring-white">
-                      {(user.instagram_username || user.email || 'U').charAt(0).toUpperCase()}
+                      {(user.email || 'U').charAt(0).toUpperCase()}
                     </div>
                   }
                 />
@@ -112,14 +137,14 @@ export function WaSidebar({ user }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-slate-900 truncate">
-                  {user.instagram_username ? `@${user.instagram_username}` : user.email}
+                  {user.email || 'User'}
                 </p>
                 <div className="flex flex-col gap-1 mt-0.5">
                   <span className={cn(
                     "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md w-fit",
                     "bg-[#25D366]/10 text-[#25D366]"
                   )}>
-                    {user.plan_type}
+                    {user.plan_type} plan
                   </span>
                 </div>
               </div>
@@ -131,43 +156,74 @@ export function WaSidebar({ user }: SidebarProps) {
         </div>
       </div>
 
-      {/* --- MOBILE HEADER --- */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-[60] px-4 py-4">
-        <div className="flex items-center justify-between glass-nav px-6 h-16 rounded-[2rem] bg-white/80 backdrop-blur-md border border-slate-100 shadow-sm">
-          <Link href="/wa" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl overflow-hidden flex items-center justify-center bg-[#25D366] text-white shadow-sm border border-[#25D366]/20">
-              <MessageSquare className="w-4 h-4 fill-current" />
-            </div>
-            <span className="text-lg font-black text-slate-900 tracking-tighter uppercase">WhatsApp</span>
-          </Link>
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="w-10 h-10 flex items-center justify-center text-slate-600 hover:bg-slate-50 rounded-full active:scale-90 transition-all"
-          >
-            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5 text-[#25D366]" />}
-          </button>
+      {/* --- MOBILE BOTTOM TAB BAR --- */}
+      <div className="lg:hidden bottom-tab-bar">
+        <div className="flex items-stretch h-[var(--tab-bar-height)]">
+          {bottomTabs.map((tab) => {
+            if (tab.href === "__more__") {
+              return (
+                <button
+                  key={tab.name}
+                  onClick={() => setIsMoreOpen(!isMoreOpen)}
+                  className={cn("tab-item", isMoreOpen && "active")}
+                >
+                  <tab.icon className="h-5 w-5" />
+                  <span>{tab.name}</span>
+                </button>
+              );
+            }
+            const isActive = isTabActive(tab.href);
+            return (
+              <Link
+                key={tab.name}
+                href={tab.href}
+                className={cn("tab-item", isActive && "active")}
+              >
+                <div className="relative">
+                  <tab.icon className="h-5 w-5" />
+                  {isActive && (
+                    <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#25D366]" />
+                  )}
+                </div>
+                <span>{tab.name}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
 
-      {/* Mobile Slide-over Overlay */}
+      {/* --- MOBILE "MORE" SHEET --- */}
       <div className={cn(
         "lg:hidden fixed inset-0 z-[55] bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300",
-        isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-      )} onClick={() => setIsMobileMenuOpen(false)} />
+        isMoreOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+      )} onClick={() => setIsMoreOpen(false)} />
 
-      {/* Mobile Sidebar Content */}
       <div className={cn(
-        "lg:hidden fixed top-24 left-4 bottom-4 w-[280px] z-[58] bg-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col rounded-[2.5rem] border border-slate-100 overflow-hidden",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-[calc(100%+2rem)]"
+        "lg:hidden fixed bottom-0 left-0 right-0 z-[58] bg-white shadow-[0_-32px_64px_-16px_rgba(0,0,0,0.15)] transition-transform duration-500 rounded-t-[2.5rem] border-t border-slate-100 overflow-hidden",
+        isMoreOpen ? "translate-y-0" : "translate-y-full"
       )}>
-        <nav className="flex-1 px-4 py-8 space-y-2 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
+        {/* Sheet handle */}
+        <div className="flex justify-center pt-3 pb-2">
+          <div className="w-10 h-1 rounded-full bg-slate-200" />
+        </div>
+
+        <div className="px-6 pb-2">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">More Options</p>
+        </div>
+
+        <nav className="px-4 pb-4 space-y-1">
+          {[
+            { name: "Contacts", href: "/wa/contacts", icon: Users },
+            { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
+            { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
+            { name: "Billing & Plans", href: "/wa/billing", icon: CreditCard },
+          ].map((item) => {
+            const isActive = pathname?.startsWith(item.href);
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
+                onClick={() => setIsMoreOpen(false)}
                 className={cn(
                   "flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all",
                   isActive
@@ -180,34 +236,35 @@ export function WaSidebar({ user }: SidebarProps) {
               </Link>
             );
           })}
-          
-          <div className="pt-4 mt-4 border-t border-slate-100">
+
+          <div className="pt-3 mt-3 border-t border-slate-100">
             <Link
-               href="/dashboard"
-               onClick={() => setIsMobileMenuOpen(false)}
-               className="flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              href="/ads"
+              onClick={() => setIsMoreOpen(false)}
+              className="flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold text-[#1877F2] hover:bg-[#1877F2]/5 transition-all"
             >
-               <ArrowLeft className="h-5 w-5" />
-               Instagram Dashboard
+              <BarChart3 className="h-5 w-5" />
+              Meta Ads Dashboard
             </Link>
           </div>
         </nav>
 
-        <div className="p-6 border-t border-slate-50 bg-slate-50/30 rounded-b-[2.5rem]">
+        {/* User info in more sheet */}
+        <div className="p-6 border-t border-slate-50 bg-slate-50/30">
           <div className="flex items-center gap-4 mb-4">
             <SafeImage
               src={user.profile_picture_url}
-              alt={user.instagram_username || user.email || 'User'}
+              alt={user.email || 'User'}
               fallbackComponent={
                 <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white font-bold">
-                  {(user.instagram_username || user.email || 'U').charAt(0).toUpperCase()}
+                  {(user.email || 'U').charAt(0).toUpperCase()}
                 </div>
               }
               className="w-10 h-10 rounded-xl object-cover"
             />
             <div className="flex-1">
               <p className="text-sm font-bold text-slate-900">
-                {user.instagram_username ? `@${user.instagram_username}` : user.email}
+                {user.email || 'User'}
               </p>
               <p className="text-xs text-[#25D366] uppercase font-black tracking-wider">{user.plan_type} plan</p>
             </div>
@@ -219,6 +276,21 @@ export function WaSidebar({ user }: SidebarProps) {
             <LogOut className="h-4 w-4" />
             Logout Account
           </a>
+        </div>
+      </div>
+
+      {/* --- MOBILE TOP HEADER (minimal - just branding) --- */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-[50] px-4 py-3">
+        <div className="flex items-center justify-between px-5 h-14 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-100/50 shadow-sm">
+          <Link href="/wa" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#25D366] text-white shadow-sm">
+              <MessageSquare className="w-4 h-4 fill-current" />
+            </div>
+            <span className="text-base font-black text-slate-900 tracking-tighter">ReplyKaro</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black uppercase tracking-widest text-[#25D366] bg-[#25D366]/10 px-2 py-1 rounded-lg">{user.plan_type}</span>
+          </div>
         </div>
       </div>
     </>

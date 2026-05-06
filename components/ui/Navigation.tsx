@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowRight, MessageSquare } from "lucide-react";
+import { Menu, X, ArrowRight, MessageSquare, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,7 +15,9 @@ export function Navigation({ }: NavigationProps) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
 
-    // Hide navigation on dashboard, auth, waitlist, fan rewards, admin, and individual blog post pages
+    // Hide navigation on dashboard, auth, admin, and other app pages
+    const isWaDashboard = pathname?.startsWith("/wa");
+    const isAdsDashboard = pathname?.startsWith("/ads");
     const isDashboard = pathname?.startsWith("/dashboard");
     const isAdmin = pathname?.startsWith("/admin");
     const isDmPage = pathname?.startsWith("/dm/");
@@ -40,11 +42,13 @@ export function Navigation({ }: NavigationProps) {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    if (isDashboard || isAdmin || isAuthPage || isWaitlist || isRewardsPage || isDmPage || isBlogPost || isOpenPage) return null;
+    // Hide on ALL dashboard/app routes
+    if (isWaDashboard || isAdsDashboard || isDashboard || isAdmin || isAuthPage || isWaitlist || isRewardsPage || isDmPage || isBlogPost || isOpenPage) return null;
 
     const navLinks = [
         { name: "WhatsApp", href: "/whatsapp" },
-        { name: "Pricing", href: isLoggedIn ? "/dashboard/billing" : "/whatsapp#pricing" },
+        { name: "Meta Ads", href: "/meta-ads" },
+        { name: "Pricing", href: "/whatsapp#pricing" },
     ];
 
     return (
@@ -59,13 +63,13 @@ export function Navigation({ }: NavigationProps) {
                         {/* Logo & Brand Pod */}
                         <Link href="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group flex-shrink-0">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
-                                <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-[#25D366] fill-[#25D366]" />
-                            </div>
+                                    <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-[#25D366] fill-[#25D366]" />
+                                </div>
                             <div className="text-base sm:text-lg md:text-xl font-[900] text-slate-900 tracking-tighter uppercase font-sans whitespace-nowrap">ReplyKaro</div>
                         </Link>
 
                         {/* Desktop Links */}
-                        <div className="hidden md:flex items-center gap-10 mx-8">
+                        <div className="hidden md:flex items-center gap-8 mx-8">
                             {navLinks.map((link) => {
                                 const isActive = pathname === link.href;
                                 return (
@@ -74,12 +78,12 @@ export function Navigation({ }: NavigationProps) {
                                         href={link.href}
                                         className={cn(
                                             "text-[11px] font-black uppercase tracking-[0.2em] transition-all relative group/link",
-                                            isActive ? "text-primary" : "text-slate-400 hover:text-primary"
+                                            isActive ? "text-[#25D366]" : "text-slate-400 hover:text-[#25D366]"
                                         )}
                                     >
                                         {link.name}
                                         {isActive && (
-                                            <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full" />
+                                            <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#25D366] rounded-full" />
                                         )}
                                     </Link>
                                 );
@@ -91,15 +95,15 @@ export function Navigation({ }: NavigationProps) {
                             {isLoggedIn === null ? (
                                 <div className="w-24 h-11 bg-slate-100 animate-pulse rounded-2xl" />
                             ) : isLoggedIn ? (
-                                <Link href="/dashboard">
-                                    <Button className="bg-primary text-white hover:bg-primary/90 rounded-xl sm:rounded-2xl px-4 sm:px-6 md:px-8 font-black text-[10px] sm:text-[11px] md:text-[13px] uppercase tracking-widest glow-primary h-9 sm:h-11 transition-all active:scale-95">
+                                <Link href="/wa">
+                                    <Button className="bg-[#25D366] text-white hover:bg-[#1DA851] rounded-xl sm:rounded-2xl px-4 sm:px-6 md:px-8 font-black text-[10px] sm:text-[11px] md:text-[13px] uppercase tracking-widest glow-whatsapp h-9 sm:h-11 transition-all active:scale-95">
                                         Dashboard
                                     </Button>
                                 </Link>
                             ) : (
                                 <>
                                     <Link href="/signin" className="hidden sm:block">
-                                        <Button variant="ghost" className="text-[11px] font-bold text-slate-500 hover:text-primary rounded-2xl px-6 uppercase tracking-widest">
+                                        <Button variant="ghost" className="text-[11px] font-bold text-slate-500 hover:text-[#25D366] rounded-2xl px-6 uppercase tracking-widest">
                                             Login
                                         </Button>
                                     </Link>
@@ -111,10 +115,10 @@ export function Navigation({ }: NavigationProps) {
                                 </>
                             )}
 
-                            {/* Mobile Menu Button - inside nav pill */}
+                            {/* Mobile Menu Button */}
                             <button
                                 onClick={() => setIsMobileMenuOpen(true)}
-                                className="md:hidden w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center text-slate-600 hover:text-primary rounded-lg sm:rounded-xl hover:bg-slate-50 active:scale-90 transition-all flex-shrink-0"
+                                className="md:hidden w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center text-slate-600 hover:text-[#25D366] rounded-lg sm:rounded-xl hover:bg-slate-50 active:scale-90 transition-all flex-shrink-0"
                             >
                                 <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
                             </button>
@@ -157,7 +161,7 @@ export function Navigation({ }: NavigationProps) {
                                 onClick={() => setIsMobileMenuOpen(false)}
                                 className={cn(
                                     "flex items-center justify-between p-4 rounded-2xl text-sm font-bold transition-all group",
-                                    isActive ? "bg-primary/5 text-primary" : "text-slate-600 hover:bg-slate-50 hover:text-primary"
+                                    isActive ? "bg-[#25D366]/5 text-[#25D366]" : "text-slate-600 hover:bg-slate-50 hover:text-[#25D366]"
                                 )}
                             >
                                 {item.name}
@@ -173,8 +177,15 @@ export function Navigation({ }: NavigationProps) {
                 <div className="p-6 border-t border-slate-50">
                     {!isLoggedIn && (
                         <Link href="/signin" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Button className="w-full h-14 bg-primary text-white rounded-2xl font-black uppercase tracking-widest glow-primary">
+                            <Button className="w-full h-14 bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl font-black uppercase tracking-widest glow-whatsapp">
                                 Get Started
+                            </Button>
+                        </Link>
+                    )}
+                    {isLoggedIn && (
+                        <Link href="/wa" onClick={() => setIsMobileMenuOpen(false)}>
+                            <Button className="w-full h-14 bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl font-black uppercase tracking-widest glow-whatsapp">
+                                Go to Dashboard
                             </Button>
                         </Link>
                     )}

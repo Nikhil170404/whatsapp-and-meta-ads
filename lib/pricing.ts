@@ -7,24 +7,19 @@ export const PRICING_PLANS = {
         description: "Test the waters risk-free",
         hindiDesc: "Bilkul free mein try karo",
         features: [
-            "1 Instagram Account",
+            "WhatsApp Business API",
             "3 Active Automations",
-            "1,000 DMs/month",
-            "Standard Delivery Speed",
-            "Queue All Comments ✨",
-            "Follow-Gate Feature ✨",
-            "Fan Mode (Points Tracking) 💎",
+            "100 Contacts Limit",
+            "Keyword Auto-Replies",
+            "Message Inbox ✨",
+            "Contact Management ✨",
             "Email Support (72h)",
         ],
         limits: {
             accounts: 1,
             automations: 3,
-            dmsPerMonth: 1000,
-            dmsPerHour: 180, // Safe Starter Speed
-            // INTERNAL SAFETY: 180 comments/hr. Meta's official Private Replies API limit is 750/hour. We stay well under.
-            commentsPerHour: 180,
-            queueEnabled: true,
-            priorityQueue: false,
+            contacts: 100,
+            metaDirectBilling: true,
         },
         cta: "Free Forever",
         popular: false,
@@ -40,88 +35,79 @@ export const PRICING_PLANS = {
     },
 
     STARTER: {
-        name: "Starter Pack",
-        price: "99",
+        name: "Platform Starter",
+        price: "499",
         upfront: "0",
         duration: "Monthly",
-        description: "Perfect for growing creators",
-        hindiDesc: "Naye creators ke liye perfect",
+        description: "Perfect for growing businesses",
+        hindiDesc: "Growing businesses ke liye perfect",
         features: [
-            "1 Instagram Account",
+            "WhatsApp Business API",
             "10 Active Automations",
-            "30,000 DMs/month",
-            "All Active Automations Priority",
-            "Queue All Comments",
-            "Handle Viral Posts 🔥",
-            "Story Automation ✨",
-            "Follow-Gate Feature ✨",
-            "Fan Mode (Custom Rewards) 💎",
-            "Daily Streak Bonuses 🔥",
+            "Unlimited Contacts",
+            "Keyword + Welcome Triggers",
+            "Template Broadcasts ✨",
+            "Handle Viral Campaigns 🔥",
+            "Contact CRM + Labels ✨",
+            "Message Templates 💎",
+            "Meta Ads Integration 🚀",
             "Email Support (48h)",
         ],
         limits: {
             accounts: 1,
             automations: 10,
-            dmsPerMonth: 30000,
-            dmsPerHour: 300, // Starter Speed — DMs + Comments both at 300/hr
-            commentsPerHour: 300,
-            queueEnabled: true,
-            priorityQueue: false,
+            contacts: 9999999, // Unlimited
+            metaDirectBilling: true,
         },
         cta: "Start Monthly Plan",
-        popular: false,
-        savings: "Get 2 months free with Yearly",
-        badge: "Most Affordable",
+        popular: true,
+        savings: "Save 20% with Yearly",
+        badge: "Most Popular",
         monthlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_MONTHLY,
         yearlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_YEARLY,
-        yearlyPrice: "999",
-        usdPrice: "3",
+        yearlyPrice: "4788", // 399/mo * 12
+        usdPrice: "6",
         usdMonthlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_USD_MONTHLY,
         usdYearlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_USD_YEARLY,
-        usdYearlyPrice: "30"
+        usdYearlyPrice: "60" // $5/mo * 12
     },
 
     PRO: {
-        name: "Pro Pack",
-        price: "299",
+        name: "Platform Pro",
+        price: "1999",
         upfront: "0",
         duration: "Monthly",
-        description: "Scale your engagement",
-        hindiDesc: "Pro creators aur teams ke liye",
+        description: "Scale your business operations",
+        hindiDesc: "Pro businesses aur teams ke liye",
         features: [
-            "1 Instagram Account",
+            "WhatsApp Business API",
             "Unlimited Automations",
-            "250,000 DMs/month",
-            "Priority Delivery Queue",
-            "Instant Queue Processing",
-            "Handle Multiple Viral Posts 🔥",
-            "Story Automation ✨",
-            "Follow-Gate Feature ✨",
-            "Fan Mode (Loyalty Engine) 💎",
-            "Re-engagement Bonuses 🎁",
+            "Unlimited Contacts",
+            "Priority Broadcast Queue",
+            "Advanced CRM + Segments",
+            "Multi-Campaign Support 🔥",
+            "All Trigger Types ✨",
+            "Advanced Meta Ads Sync 💎",
             "Detailed Analytics",
             "Priority Support (12h)",
         ],
         limits: {
-            accounts: 1,
+            accounts: 3,
             automations: 9999999, // Defines Unlimited
-            dmsPerMonth: 250000,
-            dmsPerHour: 450, // Pro Speed — DMs + Comments both at 450/hr (under Meta's 750/hr limit)
-            commentsPerHour: 450,
-            queueEnabled: true,
-            priorityQueue: true,
+            contacts: 9999999, // Unlimited
+            metaDirectBilling: true,
         },
         cta: "Start Pro Plan",
-        popular: true,
-        savings: "Best Value - Save 16%",
-        badge: "Most Popular",
+        popular: false,
+        savings: "Best Value - Save 25%",
+        badge: "FOR TEAMS",
         monthlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_MONTHLY,
         yearlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_YEARLY,
-        yearlyPrice: "2999",
-        usdPrice: "9",
+        yearlyPrice: "17988", // 1499/mo * 12
+        usdPrice: "24",
         usdMonthlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_USD_MONTHLY,
         usdYearlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_USD_YEARLY,
-        usdYearlyPrice: "90"
+        usdYearlyPrice: "240" // $20/mo * 12
     }
 };
 
@@ -138,92 +124,81 @@ export const PLAN_HIERARCHY: Record<string, number> = {
 export function getPlanByRazorpayId(razorpayPlanId: string): {
     plan: (typeof PLANS_ARRAY)[number];
     isYearly: boolean;
-    planType: string;
 } | null {
     for (const plan of PLANS_ARRAY) {
-        if (plan.yearlyPlanId === razorpayPlanId || (plan as any).usdYearlyPlanId === razorpayPlanId) {
-            const planType = plan.name === "Pro Pack" ? "pro" : plan.name === "Starter Pack" ? "starter" : "free";
-            return { plan, isYearly: true, planType };
+        if (plan.monthlyPlanId === razorpayPlanId || plan.usdMonthlyPlanId === razorpayPlanId) {
+            return { plan, isYearly: false };
         }
-        if (plan.monthlyPlanId === razorpayPlanId || (plan as any).usdMonthlyPlanId === razorpayPlanId) {
-            const planType = plan.name === "Pro Pack" ? "pro" : plan.name === "Starter Pack" ? "starter" : "free";
-            return { plan, isYearly: false, planType };
+        if (plan.yearlyPlanId === razorpayPlanId || plan.usdYearlyPlanId === razorpayPlanId) {
+            return { plan, isYearly: true };
         }
     }
     return null;
 }
 
-// Helper to get plan by name
-export function getPlanByName(name: string) {
-    return Object.values(PRICING_PLANS).find(p => p.name === name);
-}
+// Convert INR price to integer paisa
+export const getPriceInPaisa = (priceInINR: string | null | undefined): number => {
+    if (!priceInINR) return 0;
+    const cleanStr = priceInINR.replace(/,/g, '');
+    const num = parseFloat(cleanStr);
+    return isNaN(num) ? 0 : Math.round(num * 100);
+};
 
-// Helper to get plan by type
-export function getPlanByType(type: string) {
-    return PRICING_PLANS[type.toUpperCase() as keyof typeof PRICING_PLANS] || PRICING_PLANS.FREE;
-}
+export const isFreePlan = (planName: string | undefined | null) => {
+    if (!planName) return true;
+    return planName.toLowerCase() === "free";
+};
 
-// Helper to check feature access
-export function hasFeature(planType: string, feature: string): boolean {
-    const featureMap: Record<string, string[]> = {
-        free: ["follow_gate", "basic_automation", "queue", "fan_mode_basic"],
-        starter: ["follow_gate", "story_automation", "basic_analytics", "queue", "viral_handling", "fan_mode_custom", "streak_rewards", "followup_dm"],
-        pro: ["follow_gate", "story_automation", "detailed_analytics", "queue", "priority_queue", "viral_handling", "fan_mode_full", "reengagement_bonus", "followup_dm"],
+// Utility to calculate proration amount in rupees when upgrading
+export function calculateUpgradeProration(
+    currentPlanId: string | null,
+    newPlanId: string,
+    billingCycleStartDate: Date | null,
+    billingCycleEndDate: Date | null
+): { proratedAmountToPay: number; daysRemaining: number } | null {
+    if (!currentPlanId || !billingCycleStartDate || !billingCycleEndDate) return null;
+
+    const currentPlanDetails = getPlanByRazorpayId(currentPlanId);
+    const newPlanDetails = getPlanByRazorpayId(newPlanId);
+
+    if (!currentPlanDetails || !newPlanDetails) return null;
+
+    // We only support upgrade math within the same currency (INR for now)
+    const currentPrice = currentPlanDetails.isYearly 
+        ? parseFloat(currentPlanDetails.plan.yearlyPrice || "0") 
+        : parseFloat(currentPlanDetails.plan.price);
+        
+    const newPrice = newPlanDetails.isYearly 
+        ? parseFloat(newPlanDetails.plan.yearlyPrice || "0") 
+        : parseFloat(newPlanDetails.plan.price);
+
+    // If downgrading, standard systems usually don't refund proration automatically
+    if (newPrice <= currentPrice) return { proratedAmountToPay: 0, daysRemaining: 0 };
+
+    const totalDaysInCycle = Math.ceil((billingCycleEndDate.getTime() - billingCycleStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (totalDaysInCycle <= 0) return null;
+
+    const now = new Date();
+    let daysRemaining = Math.ceil((billingCycleEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Safety boundaries
+    if (daysRemaining < 0) daysRemaining = 0;
+    if (daysRemaining > totalDaysInCycle) daysRemaining = totalDaysInCycle;
+
+    // Proration math:
+    // (Unused value of old plan) = (old price / total days) * days remaining
+    // (Cost of new plan for remaining days) = (new price / total days) * days remaining
+    // Diff to pay now = (new cost) - (old unused value)
+    
+    const costOfNewForRemaining = (newPrice / totalDaysInCycle) * daysRemaining;
+    const unusedValueOfOld = (currentPrice / totalDaysInCycle) * daysRemaining;
+    
+    let diff = costOfNewForRemaining - unusedValueOfOld;
+    if (diff < 0) diff = 0;
+
+    // Round to 2 decimals
+    return {
+        proratedAmountToPay: Math.round(diff * 100) / 100,
+        daysRemaining
     };
-
-    return featureMap[planType.toLowerCase()]?.includes(feature) || false;
-}
-
-// Get limits for a plan type
-export function getPlanLimits(planType: string): {
-    accounts: number;
-    automations: number;
-    dmsPerMonth: number;
-    dmsPerHour: number;
-    commentsPerHour: number;
-    planName: string;
-    queueEnabled?: boolean;
-    priorityQueue?: boolean;
-} {
-    const planMap: Record<string, typeof PRICING_PLANS.FREE.limits & { planName: string }> = {
-        free: { ...PRICING_PLANS.FREE.limits, planName: "Free Starter" },
-        starter: { ...PRICING_PLANS.STARTER.limits, planName: "Starter Pack" },
-        pro: { ...PRICING_PLANS.PRO.limits, planName: "Pro Pack" },
-    };
-
-    return planMap[planType?.toLowerCase()] || planMap.free;
-}
-
-// Check if user can create more automations
-export function canCreateAutomation(planType: string, currentCount: number): boolean {
-    const limits = getPlanLimits(planType);
-    return currentCount < limits.automations;
-}
-
-// Check if user can send more DMs this month
-export function canSendDM(planType: string, currentMonthCount: number): boolean {
-    const limits = getPlanLimits(planType);
-    return currentMonthCount < limits.dmsPerMonth;
-}
-
-// Get upgrade suggestion based on current plan
-export function getUpgradeSuggestion(planType: string): {
-    nextPlan: string;
-    nextPlanPrice: string;
-    benefits: string[];
-} | null {
-    const upgrades: Record<string, { nextPlan: string; nextPlanPrice: string; benefits: string[] }> = {
-        free: {
-            nextPlan: "Starter Pack",
-            nextPlanPrice: "₹99/month",
-            benefits: ["10 Automations", "30,000 DMs/month", "Story Automation", "Handle Viral Posts"]
-        },
-        starter: {
-            nextPlan: "Pro Pack",
-            nextPlanPrice: "₹299/month",
-            benefits: ["Unlimited Automations", "250,000 DMs", "Priority Support", "Detailed Analytics"]
-        }
-    };
-
-    return upgrades[planType?.toLowerCase()] || upgrades.free;
 }

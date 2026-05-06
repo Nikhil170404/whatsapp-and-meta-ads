@@ -21,8 +21,14 @@ const COOKIE_NAME = "replykaro_session";
 
 export interface SessionUser {
   id: string;
+  // Legacy fields (kept for backward compatibility with existing DB)
   instagram_user_id: string;
   instagram_username: string;
+  // User-friendly aliases for WA/Ads dashboards
+  /** Facebook user ID used for auth */
+  facebook_user_id?: string;
+  /** Display name derived from profile */
+  display_name?: string;
   plan_type: "free" | "starter" | "pro" | "expired";
   profile_picture_url?: string;
   created_at: string;

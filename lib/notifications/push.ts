@@ -30,7 +30,7 @@ export async function notifyUser(userId: string, type: 'dm_sent' | 'billing' | '
 
         // 1. Fetch user notification preferences
         const { data: user, error } = await (supabase.from("users") as any)
-            .select("notification_settings, email, instagram_username")
+            .select("notification_settings, email, id")
             .eq("id", userId)
             .single();
 

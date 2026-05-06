@@ -30,6 +30,22 @@
     --nav-blur: 32px;
     --nav-shadow: 0 12px 64px -12px rgba(0, 0, 0, 0.08), 0 4px 20px -4px rgba(0, 0, 0, 0.04);
     --premium-glow: 0 0 50px -10px rgba(59, 130, 246, 0.15);
+
+    /* WhatsApp Brand Tokens */
+    --wa-green: #25D366;
+    --wa-green-dark: #1DA851;
+    --wa-green-light: #E8F5E9;
+    --wa-green-glow: 0 0 20px -5px rgba(37, 211, 102, 0.4);
+    --wa-green-glow-hover: 0 0 40px -5px rgba(37, 211, 102, 0.6);
+
+    /* Meta Ads Brand Tokens */
+    --meta-blue: #1877F2;
+    --meta-blue-dark: #155EC0;
+    --meta-blue-light: #E3F2FD;
+
+    /* Bottom Tab Bar */
+    --tab-bar-height: 72px;
+    --tab-bar-safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .dark {
@@ -105,6 +121,22 @@
     box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25);
   }
 
+  .glow-whatsapp {
+    box-shadow: var(--wa-green-glow);
+  }
+
+  .glow-whatsapp:hover {
+    box-shadow: var(--wa-green-glow-hover);
+  }
+
+  .glow-meta {
+    box-shadow: 0 0 20px -5px rgba(24, 119, 242, 0.4);
+  }
+
+  .glow-meta:hover {
+    box-shadow: 0 0 40px -5px rgba(24, 119, 242, 0.6);
+  }
+
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -112,6 +144,69 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* WhatsApp Chat Bubble Styles */
+  .wa-bubble-out {
+    background: var(--wa-green);
+    color: white;
+    border-radius: 18px 18px 4px 18px;
+  }
+
+  .wa-bubble-in {
+    background: white;
+    color: #1a1a1a;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 18px 18px 18px 4px;
+  }
+
+  /* Bottom Tab Bar */
+  .bottom-tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--tab-bar-height) + var(--tab-bar-safe-bottom));
+    padding-bottom: var(--tab-bar-safe-bottom);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(0, 0, 0, 0.04);
+    z-index: 60;
+  }
+
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    flex: 1;
+    padding: 8px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 56px;
+  }
+
+  .tab-item.active {
+    color: var(--wa-green);
+  }
+
+  .tab-item:not(.active) {
+    color: #94a3b8;
+  }
+
+  .tab-item:active {
+    transform: scale(0.92);
+  }
+
+  /* Content padding for bottom tabs on mobile */
+  .has-bottom-tabs {
+    padding-bottom: calc(var(--tab-bar-height) + var(--tab-bar-safe-bottom) + 16px);
   }
 
   .fancard-shine {
@@ -157,3 +252,46 @@
     border-color: rgba(255, 255, 255, 0.8);
   }
 }
+
+/* Animations */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(-5%); }
+  50% { transform: translateY(5%); }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 4s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+.animate-pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 2px solid var(--wa-green);
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+/* Typing indicator animation */
+@keyframes typing-dot {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-4px); }
+}
+
+.typing-dot:nth-child(1) { animation: typing-dot 1.4s infinite 0s; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.4s infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.4s infinite 0.4s; }

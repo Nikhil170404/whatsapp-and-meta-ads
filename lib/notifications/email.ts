@@ -39,7 +39,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
             html: `
                 <h1>Welcome, ${name}!</h1>
                 <p>We are excited to have you on board.</p>
-                <p>Get started by connecting your Instagram account in the dashboard.</p>
+                <p>Get started by connecting your WhatsApp Business Account in the dashboard.</p>
             `
         });
     } catch (error) {

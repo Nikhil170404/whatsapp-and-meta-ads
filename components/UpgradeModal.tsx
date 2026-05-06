@@ -55,7 +55,7 @@ export default function UpgradeModal({
 
     const handleUpgrade = () => {
         setLoading(true);
-        router.push("/dashboard/billing");
+        router.push("/wa/billing");
     };
 
     return (

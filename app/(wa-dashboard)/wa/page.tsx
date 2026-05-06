@@ -3,7 +3,11 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { MessageSquare, Zap, Activity, Settings, Plus, ExternalLink, RefreshCw } from "lucide-react";
+import { 
+  MessageSquare, Zap, Users, Send, CheckCircle2, 
+  AlertCircle, ArrowUpRight, TrendingUp, Activity,
+  FileText, CreditCard, Link2
+} from "lucide-react";
 
 export default async function WaOverviewPage() {
   const session = await getSession();
@@ -22,162 +26,154 @@ export default async function WaOverviewPage() {
     }
   );
 
+  // Connection status
   const { data: connection } = await supabase
     .from("wa_connections")
     .select("*")
     .eq("user_id", session.id)
     .single();
 
-  const { count: automationsCount } = await supabase
-    .from("wa_automations")
-    .select("*", { count: 'exact', head: true })
-    .eq("user_id", session.id);
+  // Active automations count
+  let automationCount = 0;
+  try {
+    const { count } = await supabase
+      .from("wa_automations")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", session.id)
+      .eq("is_active", true);
+    automationCount = count || 0;
+  } catch {}
 
-  const { count: messagesCount } = await supabase
-    .from("wa_messages")
-    .select("*", { count: 'exact', head: true })
-    .eq("user_id", session.id);
+  // Recent messages
+  let recentMessages: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("wa_messages")
+      .select("*")
+      .eq("user_id", session.id)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    recentMessages = data || [];
+  } catch {}
 
-  const { data: recentMessages } = await supabase
-    .from("wa_messages")
-    .select("*")
-    .eq("user_id", session.id)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const isConnected = connection?.status === 'active';
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">WhatsApp Overview</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage your WhatsApp Business connection and automations.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {connection?.status === 'active' ? (
-             <div className="flex items-center gap-2 px-4 py-2 bg-[#25D366]/10 text-[#25D366] rounded-xl font-bold text-sm">
-               <div className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-               Connected
-             </div>
-          ) : (
-            <Link 
-              href="/wa/connect" 
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-lg shadow-[#25D366]/20"
-            >
-              Connect Now
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">WhatsApp Dashboard</h1>
+        <p className="text-slate-500 font-medium mt-1 text-sm">
+          Welcome back! Here's your automation overview.
+        </p>
+      </div>
+
+      {/* Connection Banner */}
+      {!isConnected && (
+        <Link href="/wa/connect" className="block">
+          <div className="bg-gradient-to-r from-amber-50 to-amber-100/50 border border-amber-200/50 rounded-2xl p-5 flex items-center justify-between hover:shadow-md transition-all group">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-amber-800">Connect WhatsApp Business</h3>
+                <p className="text-sm text-amber-600">Set up your WhatsApp API connection to start automating.</p>
+              </div>
+            </div>
+            <ArrowUpRight className="w-5 h-5 text-amber-600 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+          </div>
+        </Link>
+      )}
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {[
+          { label: "Connection", value: isConnected ? "Active" : "Not Connected", icon: Activity, color: isConnected ? "text-[#25D366]" : "text-slate-400", bg: isConnected ? "bg-[#25D366]/10" : "bg-slate-50" },
+          { label: "Automations", value: `${automationCount} active`, icon: Zap, color: "text-violet-600", bg: "bg-violet-50" },
+          { label: "Messages Today", value: `${recentMessages.filter(m => new Date(m.created_at).toDateString() === new Date().toDateString()).length}`, icon: MessageSquare, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Plan", value: session.plan_type || "Free", icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-slate-100 p-4 md:p-5 hover:shadow-md transition-all group">
+            <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
+              <stat.icon className={`w-5 h-5 ${stat.color}`} />
+            </div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{stat.label}</p>
+            <p className="text-lg font-black text-slate-900 capitalize">{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: "New Automation", icon: Zap, href: "/wa/automations", color: "text-[#25D366]", bg: "bg-[#25D366]/5 border-[#25D366]/20 hover:bg-[#25D366]/10" },
+            { label: "Send Broadcast", icon: Send, href: "/wa/broadcasts", color: "text-violet-600", bg: "bg-violet-50 border-violet-100 hover:bg-violet-100" },
+            { label: "View Contacts", icon: Users, href: "/wa/contacts", color: "text-blue-600", bg: "bg-blue-50 border-blue-100 hover:bg-blue-100" },
+            { label: "Templates", icon: FileText, href: "/wa/templates", color: "text-amber-600", bg: "bg-amber-50 border-amber-100 hover:bg-amber-100" },
+          ].map((action, i) => (
+            <Link key={i} href={action.href}>
+              <div className={`${action.bg} border rounded-2xl p-4 md:p-5 text-center transition-all cursor-pointer group active:scale-95`}>
+                <action.icon className={`w-6 h-6 mx-auto mb-2 ${action.color} group-hover:scale-110 transition-transform`} />
+                <p className="text-xs font-bold text-slate-700">{action.label}</p>
+              </div>
             </Link>
-          )}
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
-            <MessageSquare className="w-24 h-24 text-[#25D366]" />
-          </div>
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-[#25D366]/10 flex items-center justify-center mb-4 text-[#25D366]">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Total Messages</p>
-            <h3 className="text-4xl font-black text-slate-900">{messagesCount || 0}</h3>
-          </div>
+      {/* Recent Messages */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest">Recent Messages</h2>
+          <Link href="/wa/messages" className="text-xs font-bold text-[#25D366] hover:underline">View All →</Link>
         </div>
-
-        <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
-            <Zap className="w-24 h-24 text-[#25D366]" />
-          </div>
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-[#25D366]/10 flex items-center justify-center mb-4 text-[#25D366]">
-              <Zap className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Active Automations</p>
-            <h3 className="text-4xl font-black text-slate-900">{automationsCount || 0}</h3>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:scale-110 transition-transform duration-500">
-            <Activity className="w-24 h-24 text-[#25D366]" />
-          </div>
-          <div className="relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-[#25D366]/10 flex items-center justify-center mb-4 text-[#25D366]">
-              <Activity className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Connection Status</p>
-            <h3 className="text-xl font-black text-slate-900 mt-2">
-              {connection ? connection.phone_number : 'Not Connected'}
-            </h3>
-            {connection && (
-              <p className="text-xs font-bold text-slate-400 mt-1 uppercase">WABA: {connection.waba_id}</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black text-slate-900">Recent Messages</h2>
-            <Link href="/wa/messages" className="text-sm font-bold text-[#25D366] hover:text-[#1DA851]">View All →</Link>
-          </div>
-          
-          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-            {recentMessages && recentMessages.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {recentMessages.map((msg: any) => (
-                  <div key={msg.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white ${msg.direction === 'inbound' ? 'bg-slate-800' : 'bg-[#25D366]'}`}>
-                        {msg.direction === 'inbound' ? 'IN' : 'OUT'}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900">{msg.direction === 'inbound' ? msg.from_phone : msg.to_phone}</p>
-                        <p className="text-sm text-slate-500 line-clamp-1">{msg.content || 'Media message'}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs font-bold text-slate-400 uppercase">{new Date(msg.created_at).toLocaleTimeString()}</span>
-                      <p className="text-xs font-bold text-slate-500 mt-0.5 capitalize">{msg.status}</p>
-                    </div>
+        
+        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+          {recentMessages.length > 0 ? (
+            <div className="divide-y divide-slate-50">
+              {recentMessages.map((msg: any) => (
+                <div key={msg.id} className="p-4 md:p-5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    msg.direction === 'outbound' ? 'bg-[#25D366]/10 text-[#25D366]' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    <MessageSquare className="w-5 h-5" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-12 text-center">
-                <div className="w-16 h-16 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto mb-4 text-slate-400">
-                  <MessageSquare className="w-8 h-8" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        {msg.direction === 'outbound' ? `→ ${msg.to_phone}` : `← ${msg.from_phone}`}
+                      </p>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                        msg.direction === 'outbound' ? 'bg-[#25D366]/10 text-[#25D366]' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {msg.direction}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 truncate">{msg.content}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[10px] text-slate-400 font-bold">
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                    <span className={`text-[9px] font-bold ${
+                      msg.status === 'read' ? 'text-blue-500' : 
+                      msg.status === 'delivered' ? 'text-[#25D366]' : 'text-slate-400'
+                    }`}>
+                      {msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : '✓'}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-1">No messages yet</h3>
-                <p className="text-slate-500 text-sm">When you connect WhatsApp and start messaging, they will appear here.</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <h2 className="text-xl font-black text-slate-900">Quick Actions</h2>
-          <div className="space-y-3">
-            <Link href="/wa/automations" className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-white hover:border-[#25D366]/30 hover:shadow-md hover:shadow-[#25D366]/5 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-[#25D366]/10 flex items-center justify-center text-[#25D366] group-hover:scale-110 transition-transform">
-                <Plus className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-slate-900 text-sm">Create Automation</h4>
-                <p className="text-xs text-slate-500 font-medium">Set up new keyword replies</p>
-              </div>
-            </Link>
-            
-            <Link href="/wa/templates" className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-white hover:border-[#25D366]/30 hover:shadow-md hover:shadow-[#25D366]/5 transition-all group">
-              <div className="w-10 h-10 rounded-xl bg-[#25D366]/10 flex items-center justify-center text-[#25D366] group-hover:scale-110 transition-transform">
-                <Plus className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-slate-900 text-sm">New Template</h4>
-                <p className="text-xs text-slate-500 font-medium">Submit templates to Meta</p>
-              </div>
-            </Link>
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-12 text-center">
+              <MessageSquare className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+              <p className="text-sm text-slate-400 font-medium">No messages yet. Connect your WhatsApp to start receiving messages.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

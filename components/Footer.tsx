@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Shield, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, Shield, Sparkles, ShieldCheck, MessageSquare, BarChart3 } from "lucide-react";
 
 export function Footer() {
   return (
@@ -17,19 +17,29 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-slate-400 font-bold leading-relaxed text-sm max-w-xs">
-              Built for the next generation of Indian creators. Automating WhatsApp Business with official Meta-verified engineering.
+              Built for the next generation of Indian businesses. Automating WhatsApp & Meta Ads with official Meta-verified engineering.
             </p>
           </div>
 
           {/* Links Grid */}
           <div className="col-span-1 md:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-12">
             <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">WhatsApp in India</p>
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Products</p>
               <div className="flex flex-col gap-4">
                 <Link href="/whatsapp" className="text-sm font-black text-[#25D366] hover:opacity-80 transition-opacity flex items-center gap-2 italic">
-                  #1 WhatsApp Automation India
-                  <ArrowRight className="h-3 w-3" />
+                  <MessageSquare className="h-3 w-3" />
+                  WhatsApp Automation
                 </Link>
+                <Link href="/meta-ads" className="text-sm font-black text-[#1877F2] hover:opacity-80 transition-opacity flex items-center gap-2 italic">
+                  <BarChart3 className="h-3 w-3" />
+                  Meta Ads Engine
+                </Link>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">WhatsApp vs Others</p>
+              <div className="flex flex-col gap-4">
                 <Link href="/alternatives/wati" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs WATI</Link>
                 <Link href="/alternatives/interakt" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs Interakt</Link>
                 <Link href="/alternatives/aisensy" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs AiSensy</Link>
@@ -44,10 +54,6 @@ export function Footer() {
                 <Link href="/whatsapp#pricing" className="text-sm font-black text-[#25D366] hover:text-[#25D366] transition-colors flex items-center gap-2 italic">
                   Pricing Plans
                   <Sparkles className="h-3 w-3" />
-                </Link>
-                <Link href="/meta-ads" className="text-sm font-black text-[#1877F2] hover:opacity-80 transition-opacity flex items-center gap-2 italic">
-                  Meta Ads Engine
-                  <ArrowRight className="h-3 w-3" />
                 </Link>
                 <Link href="/privacy" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Privacy Policy</Link>
                 <Link href="/terms" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Terms of Service</Link>
@@ -72,9 +78,9 @@ export function Footer() {
         </div>
 
         {/* Bottom Line */}
-        <div className="mt-20 pt-10 border-t border-slate-50 flex flex-col md:row items-center justify-between gap-6">
+        <div className="mt-20 pt-10 border-t border-slate-50 flex flex-col md:flex-row items-center justify-between gap-6">
           <p className="text-xs font-black uppercase tracking-widest text-slate-300">
-            &copy; {new Date().getFullYear()} ReplyKaro Engineering | WhatsApp Business Solutions
+            &copy; {new Date().getFullYear()} ReplyKaro Engineering | WhatsApp & Meta Ads Solutions
           </p>
           <div className="flex items-center gap-4 text-slate-300">
             <Shield className="h-4 w-4" />
