@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { MessageSquare, BarChart3, AlertCircle, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function SignInPage() {
+function SignInContent() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -96,5 +96,17 @@ export default function SignInPage() {
                 </p>
             </div>
         </div>
+    );
+}
+
+export default function SignInPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-[#1877F2] animate-spin" />
+            </div>
+        }>
+            <SignInContent />
+        </Suspense>
     );
 }
