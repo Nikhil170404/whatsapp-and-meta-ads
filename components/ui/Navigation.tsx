@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowRight, Zap } from "lucide-react";
+import { Menu, X, ArrowRight, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -43,10 +43,9 @@ export function Navigation({ }: NavigationProps) {
     if (isDashboard || isAdmin || isAuthPage || isWaitlist || isRewardsPage || isDmPage || isBlogPost || isOpenPage) return null;
 
     const navLinks = [
-        { name: "Pricing", href: isLoggedIn ? "/dashboard/billing" : "/pricing" },
-        { name: "Referral", href: "/referral" },
-        { name: "FAQ", href: "/faq" },
-        { name: "About", href: "/about" },
+        { name: "WhatsApp", href: "/whatsapp" },
+        { name: "Meta Ads", href: "/meta-ads" },
+        { name: "Pricing", href: isLoggedIn ? "/dashboard/billing" : "/whatsapp#pricing" },
     ];
 
     return (
@@ -61,7 +60,7 @@ export function Navigation({ }: NavigationProps) {
                         {/* Logo & Brand Pod */}
                         <Link href="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group flex-shrink-0">
                             <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
-                                <Zap className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-primary fill-primary" />
+                                <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-[#25D366] fill-[#25D366]" />
                             </div>
                             <div className="text-base sm:text-lg md:text-xl font-[900] text-slate-900 tracking-tighter uppercase font-sans whitespace-nowrap">ReplyKaro</div>
                         </Link>
@@ -106,8 +105,8 @@ export function Navigation({ }: NavigationProps) {
                                         </Button>
                                     </Link>
                                     <Link href="/signin" className="hidden md:block">
-                                        <Button className="bg-[#0f172a] text-white hover:bg-black rounded-2xl px-6 md:px-10 font-black text-[12px] uppercase tracking-widest h-11 md:h-12 transition-all active:scale-95 shadow-xl shadow-slate-200/50">
-                                            Launch
+                                        <Button className="bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl px-6 md:px-10 font-black text-[12px] uppercase tracking-widest h-11 md:h-12 transition-all active:scale-95 shadow-xl shadow-[#25D366]/20">
+                                            Start Free
                                         </Button>
                                     </Link>
                                 </>
