@@ -10,40 +10,44 @@ export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized. Please sign in again." }, { status: 401 });
     }
 
     const { code, wabaId, phoneNumberId } = await req.json();
 
     if (!code) {
-      return NextResponse.json({ error: "Missing OAuth code" }, { status: 400 });
+      return NextResponse.json({ error: "Missing authorization code from Meta." }, { status: 400 });
+    }
+
+    const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
+
+    if (!appId || !appSecret) {
+      return NextResponse.json({ error: "Server configuration error: Missing App ID or Secret." }, { status: 500 });
     }
 
     // 1. Exchange code for User Access Token
-    const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
-    const appSecret = process.env.FACEBOOK_APP_SECRET;
-
-    if (!appId || !appSecret) {
-      console.error("Missing FACEBOOK_APP_ID or FACEBOOK_APP_SECRET in .env");
-      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
-    }
-
-    const tokenRes = await fetch(
-      `${WA_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}`,
-      { method: "GET" }
-    );
+    // CRITICAL: The redirect_uri must match exactly what was sent in the FB.login call on the frontend
+    const redirectUri = `${appUrl.replace(/\/$/, '')}/wa/connect`;
+    const tokenUrl = `${WA_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    
+    const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
       console.error("Token Exchange Error:", tokenData);
-      return NextResponse.json({ error: "Failed to exchange token with Meta." }, { status: 500 });
+      return NextResponse.json({ 
+        error: "Meta rejected the token exchange.", 
+        details: tokenData.error?.message || "Unknown Meta Error" 
+      }, { status: 500 });
     }
 
     const systemUserToken = tokenData.access_token;
 
     // 2. Fetch Display Phone Number
     let phoneNumber = "Verified Number";
-    let displayName = "Unknown";
+    let displayName = "WhatsApp Business Account";
     
     if (phoneNumberId) {
       try {
@@ -55,22 +59,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Register Phone Number (Required by Meta Docs to start messaging)
-    if (phoneNumberId) {
-      // In a real production environment, you might need to handle the PIN properly.
-      // For Embedded Signup, the user already verified the number in the UI, 
-      // but Meta sometimes requires a registration API call to activate Cloud API routing.
-      const registerRes = await fetch(`${WA_API_URL}/${phoneNumberId}/register`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${systemUserToken}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ messaging_product: "whatsapp", pin: "123456" })
-      });
-    }
-
-    // 4. Subscribe App to WABA Webhooks
+    // 3. Subscribe App to WABA Webhooks
     if (wabaId) {
       await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
         method: "POST",
@@ -94,61 +83,28 @@ export async function POST(req: Request) {
       }
     );
 
+    // 4. Save connection to DB
     const { error: dbError } = await supabase
       .from("wa_connections")
       .upsert({
         user_id: session.id,
-        phone_number_id: phoneNumberId || "pending",
-        waba_id: wabaId || "pending",
-        access_token: systemUserToken,
+        phone_number_id: phoneNumberId || "unknown",
+        waba_id: wabaId || "unknown",
         phone_number: phoneNumber,
         display_name: displayName,
-        status: 'active'
+        access_token: systemUserToken,
+        status: 'active',
+        updated_at: new Date().toISOString()
       }, { onConflict: "user_id" });
 
     if (dbError) {
-      console.error("DB Error:", dbError);
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true, phoneNumber, displayName });
-  } catch (error: any) {
-    console.error("WA Connect Error:", error);
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
-  }
-}
-
-export async function DELETE(req: Request) {
-  try {
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
-
-    const { error: dbError } = await supabase
-      .from("wa_connections")
-      .delete()
-      .eq("user_id", session.id);
-
-    if (dbError) {
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
+      console.error("Database Error:", dbError);
+      return NextResponse.json({ error: "Failed to save connection to database." }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    console.error("Connect Route Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
