@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized. Please sign in again." }, { status: 401 });
     }
 
-    const { code, wabaId, phoneNumberId } = await req.json();
+    const { code, wabaId, phoneNumberId, redirectUri } = await req.json();
 
     if (!code) {
       return NextResponse.json({ error: "Missing authorization code from Meta." }, { status: 400 });
@@ -21,25 +21,25 @@ export async function POST(req: Request) {
 
     const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
     const appSecret = process.env.FACEBOOK_APP_SECRET;
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.replykaro.in";
 
     if (!appId || !appSecret) {
       return NextResponse.json({ error: "Server configuration error: Missing App ID or Secret." }, { status: 500 });
     }
 
-    // 1. Exchange code for User Access Token
-    // CRITICAL: The redirect_uri must match exactly what was sent in the FB.login call on the frontend
-    const redirectUri = `${appUrl.replace(/\/$/, '')}/wa/connect`;
-    const tokenUrl = `${WA_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    // CRITICAL: Use the redirectUri provided by the frontend for a perfect match
+    const finalRedirectUri = redirectUri || `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')}/wa/connect`;
+    const tokenUrl = `${WA_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
     
+    console.log("WhatsApp Connect: Exchanging code with redirect_uri:", finalRedirectUri);
+
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      console.error("Token Exchange Error:", tokenData);
+      console.error("WhatsApp Token Exchange Error:", tokenData);
       return NextResponse.json({ 
         error: "Meta rejected the token exchange.", 
-        details: tokenData.error?.message || "Unknown Meta Error" 
+        details: tokenData.error?.message || "Invalid code or redirect_uri mismatch." 
       }, { status: 500 });
     }
 

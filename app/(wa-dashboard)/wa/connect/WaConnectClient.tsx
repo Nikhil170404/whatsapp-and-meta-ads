@@ -69,7 +69,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
 
     window.FB.login((response: any) => {
       if (response.authResponse) {
-        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
+        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current, `${currentOrigin}/wa/connect`);
       } else {
         setIsLoading(false);
         setError("User cancelled login or did not fully authorize.");
@@ -84,12 +84,12 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     });
   };
 
-  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null) => {
+  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null, redirectUri: string) => {
     try {
       const res = await fetch("/api/whatsapp/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, wabaId, phoneNumberId }),
+        body: JSON.stringify({ code, wabaId, phoneNumberId, redirectUri }),
       });
 
       const data = await res.json();
