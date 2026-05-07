@@ -22,6 +22,7 @@ const envSchema = z.object({
     NEXT_PUBLIC_FACEBOOK_APP_ID: z.string().min(1).optional(),
     FACEBOOK_APP_SECRET: z.string().min(1).optional(),
     NEXT_PUBLIC_FB_CONFIG_ID: z.string().min(1).optional(),
+    NEXT_PUBLIC_WA_CONFIG_ID: z.string().min(1).optional(),
 
     // Razorpay
     NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().min(1),
@@ -50,6 +51,7 @@ const processEnv = {
     NEXT_PUBLIC_FACEBOOK_APP_ID: process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
     FACEBOOK_APP_SECRET: process.env.FACEBOOK_APP_SECRET,
     NEXT_PUBLIC_FB_CONFIG_ID: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
+    NEXT_PUBLIC_WA_CONFIG_ID: process.env.NEXT_PUBLIC_WA_CONFIG_ID,
     NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,

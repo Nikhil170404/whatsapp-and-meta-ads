@@ -56,15 +56,15 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
   }, []);
 
   const launchWhatsAppSignup = () => {
-    if (!process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || !process.env.NEXT_PUBLIC_FB_CONFIG_ID) {
-      setError("Missing Facebook App ID or Config ID in settings.");
+    const waConfigId = process.env.NEXT_PUBLIC_WA_CONFIG_ID;
+    if (!process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || !waConfigId) {
+      setError("Missing Facebook App ID or WhatsApp Config ID. Set NEXT_PUBLIC_WA_CONFIG_ID in your environment.");
       return;
     }
 
     setIsLoading(true);
     setError(null);
 
-    // Get current origin for redirect URI (e.g., http://localhost:3000)
     const currentOrigin = window.location.origin;
 
     window.FB.login((response: any) => {
@@ -75,10 +75,9 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
         setError("User cancelled login or did not fully authorize.");
       }
     }, {
-      config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
+      config_id: waConfigId,
       response_type: 'code',
       override_default_response_type: true,
-      // Adding redirect_uri explicitly helps fix the "URL blocked" error on localhost
       redirect_uri: `${currentOrigin}/wa/connect`,
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
