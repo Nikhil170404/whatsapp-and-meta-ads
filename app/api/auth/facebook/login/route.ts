@@ -45,11 +45,11 @@ export async function GET(req: Request) {
       client_id: appId,
       redirect_uri: redirectUri,
       response_type: "code",
-      scope: "email,public_profile",
     });
     
-    // If we have a configuration ID for Embedded Signup / Login, include it
+    // For Business Apps, permissions are managed via the Config ID
     if (configId) params.set("config_id", configId);
+    else params.set("scope", "email,public_profile"); // Fallback for standard apps
 
     return NextResponse.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`);
   }
