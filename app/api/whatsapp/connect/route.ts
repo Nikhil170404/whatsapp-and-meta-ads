@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPhoneNumberInfo } from "@/lib/whatsapp/service";
 
-const WA_API_URL = "https://graph.facebook.com/v21.0";
+const WA_API_URL = "https://graph.facebook.com/v25.0";
 
 export async function POST(req: Request) {
   try {
@@ -26,13 +26,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Server configuration error: Missing App ID or Secret." }, { status: 500 });
     }
 
-    // CRITICAL: Use the redirectUri provided by the frontend for a perfect match
+    // CRITICAL: redirect_uri must exactly match what the frontend sent to FB.login
     const finalRedirectUri = redirectUri || `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')}/wa/connect`;
-    const tokenUrl = `${WA_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
-    
+
     console.log("WhatsApp Connect: Exchanging code with redirect_uri:", finalRedirectUri);
 
-    const tokenRes = await fetch(tokenUrl);
+    // Meta requires POST with JSON body and grant_type for Embedded Signup token exchange
+    const tokenRes = await fetch(`${WA_API_URL}/oauth/access_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: appId,
+        client_secret: appSecret,
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: finalRedirectUri,
+      }),
+    });
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
