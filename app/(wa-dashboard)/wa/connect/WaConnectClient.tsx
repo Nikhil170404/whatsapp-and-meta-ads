@@ -89,6 +89,10 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       });
 
       const data = await res.json();
+      if (res.status === 401) {
+        window.location.href = "/signin?redirect=/wa/connect";
+        return;
+      }
       if (!res.ok) throw new Error(data.error || "Failed to exchange token.");
 
       setSuccess("Successfully connected!");
