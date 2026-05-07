@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized. Please sign in again." }, { status: 401 });
     }
 
-    const { code, wabaId, phoneNumberId, redirectUri } = await req.json();
+    const { code, wabaId, phoneNumberId } = await req.json();
 
     if (!code) {
       return NextResponse.json({ error: "Missing authorization code from Meta." }, { status: 400 });
@@ -26,12 +26,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Server configuration error: Missing App ID or Secret." }, { status: 500 });
     }
 
-    // 1. Exchange code for User Access Token
-    // CRITICAL: For WhatsApp Embedded Signup, Meta requires a POST request with grant_type
-    const finalRedirectUri = redirectUri || `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')}/wa/connect`;
-    
-    console.log("WhatsApp Connect: Exchanging code with POST to v25.0", { finalRedirectUri });
-
+    // FB.login() popup flow: do NOT include redirect_uri in token exchange.
+    // The code is bound to Facebook's internal SDK callback, not the app's URL.
+    // Including redirect_uri causes the "redirect_uri mismatch" error from Meta.
     const tokenRes = await fetch(`${WA_API_URL}/oauth/access_token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -39,18 +36,16 @@ export async function POST(req: Request) {
         grant_type: "authorization_code",
         client_id: appId,
         client_secret: appSecret,
-        code: code,
-        redirect_uri: finalRedirectUri
-      })
+        code,
+      }),
     });
 
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
-      console.error("WhatsApp Token Exchange Error:", tokenData);
-      return NextResponse.json({ 
-        error: "Meta rejected the token exchange.", 
-        details: tokenData.error?.message || "Invalid code or grant_type mismatch." 
+      console.error("WhatsApp Token Exchange Error:", JSON.stringify(tokenData));
+      return NextResponse.json({
+        error: tokenData.error?.message || "Meta rejected the token exchange.",
       }, { status: 500 });
     }
 

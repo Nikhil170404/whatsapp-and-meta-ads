@@ -64,13 +64,9 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setIsLoading(true);
     setError(null);
 
-    // Get current origin for redirect URI (e.g., http://localhost:3000)
-    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-    const redirectUri = `${currentOrigin}/wa/connect`;
-
     window.FB.login((response: any) => {
       if (response.authResponse) {
-        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current, redirectUri);
+        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
       } else {
         setIsLoading(false);
         setError("User cancelled login or did not fully authorize.");
@@ -79,21 +75,23 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
       response_type: 'code',
       override_default_response_type: true,
-      // Adding redirect_uri explicitly helps fix the "URL blocked" error
-      redirect_uri: redirectUri,
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
   };
 
-  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null, redirectUri: string) => {
+  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null) => {
     try {
       const res = await fetch("/api/whatsapp/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, wabaId, phoneNumberId, redirectUri }),
+        body: JSON.stringify({ code, wabaId, phoneNumberId }),
       });
 
       const data = await res.json();
+      if (res.status === 401) {
+        window.location.href = "/signin?redirect=/wa/connect";
+        return;
+      }
       if (!res.ok) throw new Error(data.details || data.error || "Failed to exchange token.");
 
       setSuccess("Successfully connected!");
