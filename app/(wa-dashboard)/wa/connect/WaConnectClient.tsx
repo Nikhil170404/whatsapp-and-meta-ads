@@ -65,11 +65,9 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setIsLoading(true);
     setError(null);
 
-    const currentOrigin = window.location.origin;
-
     window.FB.login((response: any) => {
       if (response.authResponse) {
-        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current, `${currentOrigin}/wa/connect`);
+        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
       } else {
         setIsLoading(false);
         setError("User cancelled login or did not fully authorize.");
@@ -78,17 +76,16 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       config_id: waConfigId,
       response_type: 'code',
       override_default_response_type: true,
-      redirect_uri: `${currentOrigin}/wa/connect`,
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
   };
 
-  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null, redirectUri: string) => {
+  const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null) => {
     try {
       const res = await fetch("/api/whatsapp/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, wabaId, phoneNumberId, redirectUri }),
+        body: JSON.stringify({ code, wabaId, phoneNumberId }),
       });
 
       const data = await res.json();
@@ -160,9 +157,6 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
         >
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Login with Facebook"}
         </button>
-        <p className="text-[10px] text-center text-slate-400">
-          Current Origin: {typeof window !== 'undefined' ? window.location.origin : ''}
-        </p>
       </div>
     </div>
   );
