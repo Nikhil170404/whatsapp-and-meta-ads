@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { getPhoneNumberInfo } from "@/lib/whatsapp/service";
 
-const WA_API_URL = "https://graph.facebook.com/v21.0";
+const WA_API_URL = "https://graph.facebook.com/v25.0";
 
 export async function POST(req: Request) {
   try {
@@ -26,20 +26,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Server configuration error: Missing App ID or Secret." }, { status: 500 });
     }
 
-    // CRITICAL: Use the redirectUri provided by the frontend for a perfect match
+    // 1. Exchange code for User Access Token
+    // CRITICAL: For WhatsApp Embedded Signup, Meta requires a POST request with grant_type
     const finalRedirectUri = redirectUri || `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')}/wa/connect`;
-    const tokenUrl = `${WA_API_URL}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&code=${code}&redirect_uri=${encodeURIComponent(finalRedirectUri)}`;
     
-    console.log("WhatsApp Connect: Exchanging code with redirect_uri:", finalRedirectUri);
+    console.log("WhatsApp Connect: Exchanging code with POST to v25.0", { finalRedirectUri });
 
-    const tokenRes = await fetch(tokenUrl);
+    const tokenRes = await fetch(`${WA_API_URL}/oauth/access_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        grant_type: "authorization_code",
+        client_id: appId,
+        client_secret: appSecret,
+        code: code,
+        redirect_uri: finalRedirectUri
+      })
+    });
+
     const tokenData = await tokenRes.json();
 
     if (!tokenData.access_token) {
       console.error("WhatsApp Token Exchange Error:", tokenData);
       return NextResponse.json({ 
         error: "Meta rejected the token exchange.", 
-        details: tokenData.error?.message || "Invalid code or redirect_uri mismatch." 
+        details: tokenData.error?.message || "Invalid code or grant_type mismatch." 
       }, { status: 500 });
     }
 

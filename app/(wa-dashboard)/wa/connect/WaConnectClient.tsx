@@ -26,7 +26,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
         appId            : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
         autoLogAppEvents : true,
         xfbml            : true,
-        version          : 'v21.0'
+        version          : 'v25.0'
       });
     };
 
@@ -65,11 +65,12 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setError(null);
 
     // Get current origin for redirect URI (e.g., http://localhost:3000)
-    const currentOrigin = window.location.origin;
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const redirectUri = `${currentOrigin}/wa/connect`;
 
     window.FB.login((response: any) => {
       if (response.authResponse) {
-        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current, `${currentOrigin}/wa/connect`);
+        exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current, redirectUri);
       } else {
         setIsLoading(false);
         setError("User cancelled login or did not fully authorize.");
@@ -78,8 +79,8 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,
       response_type: 'code',
       override_default_response_type: true,
-      // Adding redirect_uri explicitly helps fix the "URL blocked" error on localhost
-      redirect_uri: `${currentOrigin}/wa/connect`,
+      // Adding redirect_uri explicitly helps fix the "URL blocked" error
+      redirect_uri: redirectUri,
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
   };
@@ -93,7 +94,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to exchange token.");
+      if (!res.ok) throw new Error(data.details || data.error || "Failed to exchange token.");
 
       setSuccess("Successfully connected!");
       setTimeout(() => window.location.reload(), 2000);
@@ -152,12 +153,12 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
         </p>
       </div>
       <div className="max-w-xs mx-auto space-y-4">
-        {error && <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold">{error}</div>}
+        {error && <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold leading-relaxed">{error}</div>}
         {success && <div className="p-4 rounded-xl bg-green-50 text-green-700 text-sm font-bold">{success}</div>}
         <button
           onClick={launchWhatsAppSignup}
           disabled={isLoading}
-          className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] text-white rounded-xl font-bold"
+          className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] transition-colors text-white rounded-xl font-bold disabled:opacity-70"
         >
           {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Login with Facebook"}
         </button>
