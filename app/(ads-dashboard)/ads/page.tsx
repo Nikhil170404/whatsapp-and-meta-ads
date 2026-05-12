@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Zap, Link2, AlertCircle, ArrowUpRight, Activity, TrendingUp, DollarSign, Eye } from "lucide-react";
+import { BarChart3, Zap, Link2, AlertCircle, ArrowUpRight, Activity, TrendingUp, Clock, ExternalLink } from "lucide-react";
 
 export default async function AdsOverviewPage() {
   const session = await getSession();
@@ -56,6 +56,28 @@ export default async function AdsOverviewPage() {
         <p className="text-slate-500 font-medium mt-1 text-sm">
           Monitor campaigns and automate ad comment responses.
         </p>
+      </div>
+
+      {/* Meta API Approval Notice */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-2xl p-5">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5 text-blue-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black text-blue-800 mb-1">Meta API Approval in Progress</p>
+            <p className="text-xs text-blue-700 font-medium leading-relaxed mb-3">
+              Our Meta Business app is currently under review for full API access (comments, DMs, advanced ads permissions).
+              While approval is pending, you can connect your account, set up automations, and view campaigns — everything will go live the moment Meta approves.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">✓ Account connect works</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">✓ Campaign sync works</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold">⏳ Comment automation — coming soon</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold">⏳ Auto DM — coming soon</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Connection Banner */}

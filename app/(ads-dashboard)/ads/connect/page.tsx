@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth/session";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { CheckCircle2, ShieldCheck, Link2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ShieldCheck, Link2, ExternalLink, Clock, Info } from "lucide-react";
 import Link from "next/link";
 
 export default async function AdsConnectPage() {
@@ -33,6 +33,17 @@ export default async function AdsConnectPage() {
       <div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Connect Meta Ads</h1>
         <p className="text-slate-500 font-medium mt-1">Link your Facebook account to sync campaigns and automate ad comments.</p>
+      </div>
+
+      {/* Approval notice */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
+        <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-bold text-blue-700">Meta API Review In Progress</p>
+          <p className="text-xs text-blue-600 font-medium mt-0.5">
+            Connect your account now and set up automations. Comment reply and DM features will activate automatically once our Meta Business app is approved (usually 1–5 business days). Campaign sync works immediately.
+          </p>
+        </div>
       </div>
 
       {connection && connection.status === 'active' ? (
