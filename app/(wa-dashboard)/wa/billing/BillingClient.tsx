@@ -36,15 +36,15 @@ const PLANS: Plan[] = [
     ],
   },
   {
-    key: "starter",
+    key: "growth",
     name: "Growth Plan",
     priceMonthly: "999",
     priceYearly: "799",
     description: "Perfect for small businesses",
     popular: true,
     badge: "Most Popular",
-    planKeyMonthly: "starter_monthly",
-    planKeyYearly: "starter_yearly",
+    planKeyMonthly: "growth_monthly",
+    planKeyYearly: "growth_yearly",
     features: [
       "10 Active Automations",
       "Unlimited Contacts",
@@ -80,12 +80,12 @@ const PLANS: Plan[] = [
 // Profit projections — Vercel + Supabase + Upstash all FREE up to ~100 customers
 // Only real cost early on: domain (~₹1K/yr). Supabase Pro ($25/mo) needed ~100+ customers to avoid pause.
 const PROFIT_SCENARIOS = [
-  { customers: 10,  revenue: 12000,   razorpay: 420,   infra: 0,      profit: 11580,  annual: 138960,  infraNote: "100% free tier" },
-  { customers: 25,  revenue: 30000,   razorpay: 1050,  infra: 0,      profit: 28950,  annual: 347400,  infraNote: "100% free tier" },
-  { customers: 50,  revenue: 60000,   razorpay: 2100,  infra: 1000,   profit: 56900,  annual: 682800,  infraNote: "~free + domain" },
-  { customers: 100, revenue: 120000,  razorpay: 4200,  infra: 3000,   profit: 112800, annual: 1353600, infraNote: "Supabase Pro ₹2.1K" },
-  { customers: 250, revenue: 300000,  razorpay: 10500, infra: 15000,  profit: 274500, annual: 3294000, infraNote: "Vercel Pro + DB" },
-  { customers: 500, revenue: 600000,  razorpay: 21000, infra: 40000,  profit: 539000, annual: 6468000, infraNote: "Scaled infra" },
+  { customers: 10, revenue: 12000, razorpay: 420, infra: 0, profit: 11580, annual: 138960, infraNote: "100% free tier" },
+  { customers: 25, revenue: 30000, razorpay: 1050, infra: 0, profit: 28950, annual: 347400, infraNote: "100% free tier" },
+  { customers: 50, revenue: 60000, razorpay: 2100, infra: 1000, profit: 56900, annual: 682800, infraNote: "~free + domain" },
+  { customers: 100, revenue: 120000, razorpay: 4200, infra: 3000, profit: 112800, annual: 1353600, infraNote: "Supabase Pro ₹2.1K" },
+  { customers: 250, revenue: 300000, razorpay: 10500, infra: 15000, profit: 274500, annual: 3294000, infraNote: "Vercel Pro + DB" },
+  { customers: 500, revenue: 600000, razorpay: 21000, infra: 40000, profit: 539000, annual: 6468000, infraNote: "Scaled infra" },
 ];
 
 function formatINR(n: number): string {
@@ -226,18 +226,16 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
           return (
             <div
               key={plan.key}
-              className={`relative rounded-[2rem] p-6 border-2 transition-all ${
-                plan.popular
+              className={`relative rounded-[2rem] p-6 border-2 transition-all ${plan.popular
                   ? "border-[#25D366] bg-white shadow-xl shadow-[#25D366]/10"
                   : isCurrent
-                  ? "border-[#25D366]/30 bg-[#25D366]/5"
-                  : "border-slate-100 bg-white"
-              }`}
+                    ? "border-[#25D366]/30 bg-[#25D366]/5"
+                    : "border-slate-100 bg-white"
+                }`}
             >
               {plan.badge && (
-                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg ${
-                  plan.popular ? "bg-[#25D366] shadow-[#25D366]/20" : "bg-slate-700"
-                }`}>
+                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg ${plan.popular ? "bg-[#25D366] shadow-[#25D366]/20" : "bg-slate-700"
+                  }`}>
                   {isCurrent ? "✓ Active" : plan.badge}
                 </div>
               )}
@@ -256,11 +254,10 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
               <button
                 onClick={() => handleUpgrade(plan)}
                 disabled={isCurrent || plan.key === "free" || isUpgrading}
-                className={`w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                  isCurrent || plan.key === "free"
+                className={`w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center gap-2 ${isCurrent || plan.key === "free"
                     ? "bg-slate-100 text-slate-500 cursor-default"
                     : "bg-[#25D366] text-white hover:bg-[#1DA851] shadow-lg shadow-[#25D366]/20"
-                }`}
+                  }`}
               >
                 {isUpgrading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>

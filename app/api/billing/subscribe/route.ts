@@ -3,21 +3,23 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 
 const PLAN_CONFIGS: Record<string, { planId: string; name: string }> = {
-  starter_monthly: {
-    planId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_MONTHLY || "",
-    name: "Starter Pack Monthly",
+  // WhatsApp Growth
+  growth_monthly: {
+    planId: process.env.NEXT_PUBLIC_PLAN_GROWTH_MONTHLY || "",
+    name: "WhatsApp Growth Plan - Monthly",
   },
-  starter_yearly: {
-    planId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_YEARLY || "",
-    name: "Starter Pack Yearly",
+  growth_yearly: {
+    planId: process.env.NEXT_PUBLIC_PLAN_GROWTH_YEARLY || "",
+    name: "WhatsApp Growth Plan - Yearly",
   },
+  // WhatsApp Pro
   pro_monthly: {
-    planId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_MONTHLY || "",
-    name: "Pro Pack Monthly",
+    planId: process.env.NEXT_PUBLIC_PLAN_PRO_MONTHLY || "",
+    name: "WhatsApp Pro Plan - Monthly",
   },
   pro_yearly: {
-    planId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_YEARLY || "",
-    name: "Pro Pack Yearly",
+    planId: process.env.NEXT_PUBLIC_PLAN_PRO_YEARLY || "",
+    name: "WhatsApp Pro Plan - Yearly",
   },
 };
 

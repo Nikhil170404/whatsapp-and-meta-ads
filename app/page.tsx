@@ -314,12 +314,12 @@ export default function LandingPage() {
               </thead>
               <tbody>
                 {[
-                  { feat: "Free Plan",            vals: [true, false, false, false] },
-                  { feat: "Official API",         vals: [true, true, true, true] },
-                  { feat: "Keyword Auto-Reply",   vals: [true, true, true, true] },
-                  { feat: "Template Broadcasts",  vals: [true, true, true, true] },
+                  { feat: "Free Plan", vals: [true, false, false, false] },
+                  { feat: "Official API", vals: [true, true, true, true] },
+                  { feat: "Keyword Auto-Reply", vals: [true, true, true, true] },
+                  { feat: "Template Broadcasts", vals: [true, true, true, true] },
                   { feat: "Meta Ads Integration", vals: [true, false, false, false] },
-                  { feat: "UPI Payments",         vals: [true, true, true, true] },
+                  { feat: "UPI Payments", vals: [true, true, true, true] },
                 ].map((row) => (
                   <tr key={row.feat} className="border-t border-slate-100">
                     <td className="py-3 px-3 text-xs font-bold text-slate-700">{row.feat}</td>

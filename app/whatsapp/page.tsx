@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { 
-  MessageSquare, Zap, Target, Loader2, CheckCircle2, ArrowRight, ShieldCheck, 
+import {
+  MessageSquare, Zap, Target, Loader2, CheckCircle2, ArrowRight, ShieldCheck,
   BarChart3, Globe, Users, Send, FileText, Bot, Clock, Shield, ChevronDown,
   Check, X as XIcon, Star, Sparkles
 } from "lucide-react";
@@ -93,11 +93,11 @@ const comparisonFeatures = [
 ];
 
 const comparisonData: Record<string, boolean[]> = {
-  "ReplyKaro":  [true, true, true, true, true, true, true],
-  "WATI":       [false, true, true, true, true, true, false],
-  "Interakt":   [false, true, true, true, true, true, false],
-  "AiSensy":    [false, true, true, true, false, true, false],
-  "ManyChat":   [true, false, true, false, false, false, true],
+  "ReplyKaro": [true, true, true, true, true, true, true],
+  "WATI": [false, true, true, true, true, true, false],
+  "Interakt": [false, true, true, true, true, true, false],
+  "AiSensy": [false, true, true, true, false, true, false],
+  "ManyChat": [true, false, true, false, false, false, true],
 };
 
 const faqs = [
@@ -136,18 +136,18 @@ export default function WhatsAppLandingPage() {
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-[#25D366]/5 to-transparent rounded-full blur-3xl -z-10" />
-        
+
         <div className="container mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#25D366]/10 text-[#25D366] font-bold text-xs md:text-sm mb-8 border border-[#25D366]/20 animate-in fade-in slide-in-from-top-4 duration-700">
             <ShieldCheck className="w-4 h-4" />
             Official Meta WhatsApp Business API Partner
           </div>
-          
+
           <h1 className="text-5xl md:text-8xl font-black text-slate-900 tracking-tighter mb-8 leading-[0.9] animate-in fade-in slide-in-from-bottom-8 duration-1000">
             WhatsApp Automation.<br />
             <span className="text-[#25D366]">10x Cheaper.</span>
           </h1>
-          
+
           <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
             India's #1 WhatsApp Business automation tool. Auto-replies, broadcasts, contact CRM, and Meta Ads integration — starting from just <strong className="text-[#25D366]">₹999/month</strong>.
           </p>
@@ -295,7 +295,7 @@ export default function WhatsAppLandingPage() {
               Simple, honest <span className="text-[#25D366]">pricing</span>.
             </h2>
             <p className="text-slate-500 font-medium max-w-2xl mx-auto mb-8">No hidden fees. No per-message charges. Start free, upgrade when you grow.</p>
-            
+
             {/* Toggle */}
             <div className="inline-flex items-center gap-3 bg-slate-100 p-1.5 rounded-2xl">
               <button
@@ -315,17 +315,16 @@ export default function WhatsAppLandingPage() {
 
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {plans.map((plan, i) => (
-              <div key={i} className={`relative rounded-[2.5rem] p-8 border-2 transition-all duration-500 ${
-                plan.popular 
-                  ? 'border-[#25D366] bg-white shadow-2xl shadow-[#25D366]/10 scale-[1.02]' 
+              <div key={i} className={`relative rounded-[2.5rem] p-8 border-2 transition-all duration-500 ${plan.popular
+                  ? 'border-[#25D366] bg-white shadow-2xl shadow-[#25D366]/10 scale-[1.02]'
                   : 'border-slate-100 bg-white hover:border-[#25D366]/30 hover:shadow-xl'
-              }`}>
+                }`}>
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-6 py-1.5 bg-[#25D366] text-white text-xs font-black uppercase tracking-widest rounded-full shadow-lg shadow-[#25D366]/20">
                     {plan.badge}
                   </div>
                 )}
-                
+
                 <div className="mb-6">
                   <h3 className="text-lg font-black text-slate-900 mb-1">{plan.name}</h3>
                   <p className="text-sm text-slate-500">{plan.description}</p>
@@ -340,7 +339,7 @@ export default function WhatsAppLandingPage() {
                   </div>
                   {plan.usdPrice !== "0" && (
                     <p className="text-xs text-slate-400 font-bold mt-1">
-                      or {isYearly ? plan.usdYearlyPrice : plan.usdPrice}/{ isYearly ? 'year' : 'mo'} USD
+                      or {isYearly ? plan.usdYearlyPrice : plan.usdPrice}/{isYearly ? 'year' : 'mo'} USD
                     </p>
                   )}
                   <p className="text-[10px] text-slate-400 font-bold mt-3 border-t border-slate-100 pt-3">
@@ -349,11 +348,10 @@ export default function WhatsAppLandingPage() {
                 </div>
 
                 <Link href="/signin">
-                  <Button className={`w-full h-12 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 ${
-                    plan.popular 
-                      ? 'bg-[#25D366] text-white hover:bg-[#1DA851] shadow-lg shadow-[#25D366]/20' 
+                  <Button className={`w-full h-12 rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 ${plan.popular
+                      ? 'bg-[#25D366] text-white hover:bg-[#1DA851] shadow-lg shadow-[#25D366]/20'
                       : 'bg-slate-900 text-white hover:bg-slate-800'
-                  }`}>
+                    }`}>
                     {plan.cta}
                   </Button>
                 </Link>
@@ -458,7 +456,7 @@ export default function WhatsAppLandingPage() {
       <section className="pb-32 px-4">
         <div className="max-w-4xl mx-auto bg-slate-900 rounded-[3rem] p-12 md:p-20 relative overflow-hidden text-center">
           <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#25D366]/20 via-transparent to-transparent" />
-          
+
           <div className="relative z-10">
             <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter mb-6 leading-tight">
               Ready to automate<br /><span className="text-[#25D366]">WhatsApp?</span>
@@ -466,7 +464,7 @@ export default function WhatsAppLandingPage() {
             <p className="text-slate-400 font-medium text-lg mb-10 max-w-xl mx-auto">
               Join 2,500+ businesses that trust ReplyKaro for their WhatsApp automation. Start free today.
             </p>
-            
+
             <Link href="/signin">
               <Button className="h-16 px-12 bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl font-black text-lg uppercase tracking-widest glow-whatsapp transition-all active:scale-95 shadow-xl shadow-[#25D366]/20">
                 Start Free — No Credit Card
