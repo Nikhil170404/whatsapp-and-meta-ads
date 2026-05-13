@@ -132,3 +132,26 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE() {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { cookies: { get: (n: string) => cookieStore.get(n)?.value } }
+    );
+
+    await supabase
+      .from("wa_connections")
+      .update({ status: "disconnected", access_token: "", token_expires_at: null })
+      .eq("user_id", session.id);
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json({ error: "Failed to disconnect" }, { status: 500 });
+  }
+}
