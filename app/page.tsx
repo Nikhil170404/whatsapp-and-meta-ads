@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   MessageSquare, Zap, BarChart3, Users, Send, FileText, Bot,
@@ -15,6 +15,8 @@ const PLANS = [
     name: "Free Starter",
     monthly: "0",
     yearly: "0",
+    usdMonthly: "0",
+    usdYearly: "0",
     description: "Try before you buy",
     cta: "Start Free Forever",
     popular: false,
@@ -27,6 +29,8 @@ const PLANS = [
     name: "Growth Plan",
     monthly: "999",
     yearly: "799",
+    usdMonthly: "12",
+    usdYearly: "8",
     description: "Perfect for growing businesses",
     cta: "Get Growth Plan",
     popular: true,
@@ -39,6 +43,8 @@ const PLANS = [
     name: "Pro Plan",
     monthly: "1999",
     yearly: "1599",
+    usdMonthly: "24",
+    usdYearly: "20",
     description: "For serious businesses & agencies",
     cta: "Get Pro Plan",
     popular: false,
@@ -69,6 +75,18 @@ const FEATURES = [
 export default function LandingPage() {
   const [yearly, setYearly] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [country, setCountry] = useState("IN");
+
+  useEffect(() => {
+    const cookies = document.cookie.split("; ");
+    const countryCookie = cookies.find(c => c.startsWith("user_country="));
+    if (countryCookie) {
+      setCountry(countryCookie.split("=")[1]);
+    }
+  }, []);
+
+  const isInternational = country !== "IN";
+  const currencySymbol = isInternational ? "$" : "₹";
 
   return (
     <div className="bg-white overflow-x-hidden">
@@ -161,7 +179,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {[
               { v: "2,500+", l: "Businesses" },
-              { v: "₹999/mo", l: "Starting price" },
+              { v: `${currencySymbol}${isInternational ? "12" : "999"}/mo`, l: "Starting price" },
               { v: "1.2M+", l: "Messages/day" },
               { v: "99.9%", l: "Uptime" },
             ].map((s) => (
@@ -254,7 +272,9 @@ export default function LandingPage() {
                 </div>
                 <div className="mb-5">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-black text-slate-900">{p.key === "free" ? "Free" : `₹${yearly ? p.yearly : p.monthly}`}</span>
+                    <span className="text-4xl font-black text-slate-900">
+                      {p.key === "free" ? "Free" : `${currencySymbol}${isInternational ? (yearly ? p.usdYearly : p.usdMonthly) : (yearly ? p.yearly : p.monthly)}`}
+                    </span>
                     {p.key !== "free" && <span className="text-slate-400 text-sm font-bold">/mo</span>}
                   </div>
                   {yearly && p.key !== "free" && <p className="text-xs text-[#25D366] font-bold mt-0.5">billed yearly</p>}
@@ -300,10 +320,10 @@ export default function LandingPage() {
                 <tr>
                   <th className="text-left py-3 px-3 text-xs font-black text-slate-400 uppercase tracking-widest">Feature</th>
                   {[
-                    { name: "ReplyKaro", price: "₹999", hl: true },
-                    { name: "WATI", price: "₹2,499", hl: false },
-                    { name: "AiSensy", price: "₹999", hl: false },
-                    { name: "Interakt", price: "₹919", hl: false },
+                    { name: "ReplyKaro", price: isInternational ? "$12" : "₹999", hl: true },
+                    { name: "WATI", price: isInternational ? "$30" : "₹2,499", hl: false },
+                    { name: "AiSensy", price: isInternational ? "$15" : "₹999", hl: false },
+                    { name: "Interakt", price: isInternational ? "$12" : "₹919", hl: false },
                   ].map((c) => (
                     <th key={c.name} className={`py-3 px-3 text-center text-[10px] font-black uppercase tracking-widest ${c.hl ? "text-[#25D366]" : "text-slate-400"}`}>
                       {c.name}

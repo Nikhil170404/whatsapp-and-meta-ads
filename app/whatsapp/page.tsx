@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   MessageSquare, Zap, Target, Loader2, CheckCircle2, ArrowRight, ShieldCheck,
@@ -10,12 +10,27 @@ import {
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
 
-const plans = [
+interface Plan {
+  name: string;
+  price: string;
+  yearlyPrice: string;
+  usdPrice: string;
+  usdYearlyPrice: string;
+  badge: string;
+  description: string;
+  popular: boolean;
+  cta: string;
+  features: string[];
+  limits: string[];
+}
+
+const plans: Plan[] = [
   {
     name: "Free Starter",
     price: "0",
     yearlyPrice: "0",
     usdPrice: "0",
+    usdYearlyPrice: "0",
     badge: "FREE",
     description: "Test the waters risk-free",
     popular: false,
@@ -129,6 +144,18 @@ const faqs = [
 
 export default function WhatsAppLandingPage() {
   const [isYearly, setIsYearly] = useState(false);
+  const [country, setCountry] = useState("IN");
+
+  useEffect(() => {
+    const cookies = document.cookie.split("; ");
+    const countryCookie = cookies.find(c => c.startsWith("user_country="));
+    if (countryCookie) {
+      setCountry(countryCookie.split("=")[1]);
+    }
+  }, []);
+
+  const isInternational = country !== "IN";
+  const currencySymbol = isInternational ? "$" : "₹";
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   return (
@@ -333,13 +360,13 @@ export default function WhatsAppLandingPage() {
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-black text-slate-900">
-                      ₹{isYearly ? plan.yearlyPrice : plan.price}
+                      {currencySymbol}{isInternational ? (isYearly ? plan.usdYearlyPrice.replace('$', '') : plan.usdPrice.replace('$', '')) : (isYearly ? (plan.yearlyPrice ? (parseInt(plan.yearlyPrice) / 12).toFixed(0) : plan.price) : plan.price)}
                     </span>
-                    <span className="text-slate-400 font-bold text-sm">/{isYearly ? 'year' : 'mo'}</span>
+                    <span className="text-slate-400 font-bold text-sm">/mo</span>
                   </div>
-                  {plan.usdPrice !== "0" && (
-                    <p className="text-xs text-slate-400 font-bold mt-1">
-                      or {isYearly ? plan.usdYearlyPrice : plan.usdPrice}/{isYearly ? 'year' : 'mo'} USD
+                  {isYearly && plan.price !== "0" && (
+                    <p className="text-xs text-[#25D366] font-bold mt-1">
+                      billed yearly ({currencySymbol}{isInternational ? plan.usdYearlyPrice.replace('$', '') : plan.yearlyPrice})
                     </p>
                   )}
                   <p className="text-[10px] text-slate-400 font-bold mt-3 border-t border-slate-100 pt-3">
@@ -395,7 +422,7 @@ export default function WhatsAppLandingPage() {
                     <th key={c.name} className={`p-4 text-center text-xs font-black uppercase tracking-widest ${c.highlight ? 'text-[#25D366]' : 'text-slate-400'}`}>
                       {c.name}
                       <div className={`text-[10px] mt-1 font-black ${c.highlight ? 'text-[#25D366]' : 'text-slate-300'}`}>
-                        {c.price}
+                        {isInternational ? (c.name === "ReplyKaro" ? "$12" : (c.price.includes('$') ? c.price.split('/')[0] : "$30")) : c.price}
                       </div>
                     </th>
                   ))}

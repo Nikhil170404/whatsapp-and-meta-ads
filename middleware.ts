@@ -37,19 +37,6 @@ async function getSessionFromRequest(request: NextRequest) {
 }
 
 export async function middleware(request: NextRequest) {
-  // Capture referral code from ?ref= and store in cookie
-  const refCode = request.nextUrl.searchParams.get("ref");
-  if (refCode && /^[A-Z0-9]{6,12}$/i.test(refCode)) {
-    const response = NextResponse.next();
-    response.cookies.set("referral_code", refCode.toUpperCase(), {
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-    });
-    return response;
-  }
-
   const { pathname } = request.nextUrl;
 
   // --- 410 Legacy Handler (SEO Cleanup) ---
@@ -104,19 +91,41 @@ export async function middleware(request: NextRequest) {
 
   const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
+  // Set country cookie for currency detection (accessible to both client and server)
+  const country = request.headers.get("x-vercel-ip-country") || "IN";
+  
+  let response = NextResponse.next();
+
   // Redirect unauthenticated users from protected routes
   if (isProtectedRoute && !session) {
     const redirectUrl = new URL("/signin", request.url);
     redirectUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(redirectUrl);
+    response = NextResponse.redirect(redirectUrl);
+  } else if (session && (isAuthRoute || isRootPath(pathname))) {
+    // Redirect authenticated users from auth routes or landing page to WA dashboard
+    response = NextResponse.redirect(new URL("/wa", request.url));
   }
 
-  // Redirect authenticated users from auth routes or landing page to WA dashboard
-  if (session && (isAuthRoute || isRootPath(pathname))) {
-    return NextResponse.redirect(new URL("/wa", request.url));
+  // Handle referral code
+  const refCode = request.nextUrl.searchParams.get("ref");
+  if (refCode && /^[A-Z0-9]{6,12}$/i.test(refCode)) {
+    response.cookies.set("referral_code", refCode.toUpperCase(), {
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+    });
   }
 
-  return NextResponse.next();
+  // Set country cookie
+  response.cookies.set("user_country", country, {
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: "/",
+    httpOnly: false, // Let client-side JS read it
+    sameSite: "lax",
+  });
+
+  return response;
 }
 
 export const config = {

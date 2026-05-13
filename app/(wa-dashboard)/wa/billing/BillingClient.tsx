@@ -8,6 +8,8 @@ interface Plan {
   name: string;
   priceMonthly: string;
   priceYearly: string;
+  usdMonthly: string;
+  usdYearly: string;
   description: string;
   popular: boolean;
   planKeyMonthly: string;
@@ -22,6 +24,8 @@ const PLANS: Plan[] = [
     name: "Free Starter",
     priceMonthly: "0",
     priceYearly: "0",
+    usdMonthly: "0",
+    usdYearly: "0",
     description: "Try ReplyKaro — no credit card needed",
     popular: false,
     planKeyMonthly: "",
@@ -40,6 +44,8 @@ const PLANS: Plan[] = [
     name: "Growth Plan",
     priceMonthly: "999",
     priceYearly: "799",
+    usdMonthly: "12",
+    usdYearly: "8",
     description: "Perfect for small businesses",
     popular: true,
     badge: "Most Popular",
@@ -60,6 +66,8 @@ const PLANS: Plan[] = [
     name: "Pro Plan",
     priceMonthly: "1999",
     priceYearly: "1599",
+    usdMonthly: "24",
+    usdYearly: "20",
     description: "For serious businesses & agencies",
     popular: false,
     badge: "Best Value",
@@ -112,7 +120,9 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; isOwner?: boolean }) {
+export function BillingClient({ currentPlan, isOwner, country = "IN" }: { currentPlan: string; isOwner?: boolean; country?: string }) {
+  const isInternational = country !== "IN";
+  const currencySymbol = isInternational ? "$" : "₹";
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [upgradingKey, setUpgradingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +130,11 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
   const handleUpgrade = async (plan: Plan) => {
     if (plan.key === "free" || plan.key === currentPlan) return;
 
-    const planKey = billing === "yearly" ? plan.planKeyYearly : plan.planKeyMonthly;
+    let planKey = billing === "yearly" ? plan.planKeyYearly : plan.planKeyMonthly;
+    if (isInternational) {
+      planKey += "_usd";
+    }
+
     if (!planKey) {
       setError("This plan is not available yet. Contact us at hello@replykaro.in");
       return;
@@ -183,10 +197,10 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
               {currentPlan === "free" ? "Upgrade anytime — no contracts" : "Your subscription is active. Thank you! 🙏"}
             </p>
           </div>
-          {currentPlan === "free" && (
+          {currentPlan === "free" && !isInternational && (
             <div className="shrink-0 bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
               <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Competitors charge</p>
-              <p className="text-white font-black text-lg">₹999–₹2499</p>
+              <p className="text-white font-black text-lg">₹2,499–₹4,999</p>
               <p className="text-white/80 text-xs font-medium">We charge ₹999 🎉</p>
             </div>
           )}
@@ -220,7 +234,10 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
       <div className="grid md:grid-cols-3 gap-4 md:gap-6">
         {PLANS.map((plan) => {
           const isCurrent = currentPlan === plan.key;
-          const price = billing === "yearly" ? plan.priceYearly : plan.priceMonthly;
+          let price = billing === "yearly" ? plan.priceYearly : plan.priceMonthly;
+          if (isInternational) {
+            price = billing === "yearly" ? plan.usdYearly : plan.usdMonthly;
+          }
           const isUpgrading = upgradingKey === plan.key;
 
           return (
@@ -244,7 +261,7 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
               <p className="text-xs text-slate-500 mb-5">{plan.description}</p>
 
               <div className="flex items-baseline gap-1 mb-5">
-                <span className="text-4xl font-black text-slate-900">₹{price}</span>
+                <span className="text-4xl font-black text-slate-900">{currencySymbol}{price}</span>
                 <span className="text-slate-400 font-bold text-sm">/mo</span>
                 {billing === "yearly" && plan.key !== "free" && (
                   <span className="text-xs text-[#25D366] font-bold ml-1">billed yearly</span>
@@ -336,7 +353,7 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
       </div>
 
       {/* Owner-only: Revenue Profit Calculator */}
-      {isOwner && (
+      {isOwner && !isInternational && (
         <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 md:p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-[#25D366]/20 rounded-2xl flex items-center justify-center">

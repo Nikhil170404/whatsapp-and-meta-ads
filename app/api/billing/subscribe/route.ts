@@ -8,18 +8,34 @@ const PLAN_CONFIGS: Record<string, { planId: string; name: string }> = {
     planId: process.env.NEXT_PUBLIC_PLAN_GROWTH_MONTHLY || "",
     name: "WhatsApp Growth Plan - Monthly",
   },
+  growth_monthly_usd: {
+    planId: process.env.NEXT_PUBLIC_PLAN_GROWTH_MONTHLY_USD || "",
+    name: "WhatsApp Growth Plan USD - Monthly",
+  },
   growth_yearly: {
     planId: process.env.NEXT_PUBLIC_PLAN_GROWTH_YEARLY || "",
     name: "WhatsApp Growth Plan - Yearly",
+  },
+  growth_yearly_usd: {
+    planId: process.env.NEXT_PUBLIC_PLAN_GROWTH_YEARLY_USD || "",
+    name: "WhatsApp Growth Plan USD - Yearly",
   },
   // WhatsApp Pro
   pro_monthly: {
     planId: process.env.NEXT_PUBLIC_PLAN_PRO_MONTHLY || "",
     name: "WhatsApp Pro Plan - Monthly",
   },
+  pro_monthly_usd: {
+    planId: process.env.NEXT_PUBLIC_PLAN_PRO_MONTHLY_USD || "",
+    name: "WhatsApp Pro Plan USD - Monthly",
+  },
   pro_yearly: {
     planId: process.env.NEXT_PUBLIC_PLAN_PRO_YEARLY || "",
     name: "WhatsApp Pro Plan - Yearly",
+  },
+  pro_yearly_usd: {
+    planId: process.env.NEXT_PUBLIC_PLAN_PRO_YEARLY_USD || "",
+    name: "WhatsApp Pro Plan USD - Yearly",
   },
 };
 
