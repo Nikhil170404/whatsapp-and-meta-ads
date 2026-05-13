@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   MessageSquare, Zap, Users, Send, CheckCircle2,
-  ArrowUpRight, Activity, FileText, Circle, ChevronRight
+  ArrowUpRight, Activity, FileText, Circle, ChevronRight, AlertTriangle
 } from "lucide-react";
 
 export default async function WaOverviewPage() {
@@ -28,6 +28,7 @@ export default async function WaOverviewPage() {
   ]);
 
   const isConnected = connection?.status === "active";
+  const isTokenExpired = connection?.status === "expired";
   const hasTemplates = (templateCount ?? 0) > 0;
   const hasAutomations = (automationCount ?? 0) > 0;
   const msgs = recentMessages ?? [];
@@ -44,6 +45,20 @@ export default async function WaOverviewPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Expired token banner */}
+      {isTokenExpired && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-rose-800">Your WhatsApp token has expired</p>
+            <p className="text-xs text-rose-600 font-medium">Automations are paused. Reconnect to resume auto-replies.</p>
+          </div>
+          <Link href="/wa/connect" className="shrink-0 px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-colors">
+            Reconnect
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">

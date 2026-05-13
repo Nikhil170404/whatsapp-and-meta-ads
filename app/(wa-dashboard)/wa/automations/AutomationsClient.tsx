@@ -76,7 +76,9 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setAutomations((prev) => prev.map((a) => (a.id === auto.id ? data.automation : a)));
-    } catch {}
+    } catch (e: any) {
+      setError(e.message);
+    }
     setTogglingId(null);
   };
 
@@ -85,8 +87,12 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
     setDeletingId(id);
     try {
       const res = await fetch(`/api/whatsapp/automations?id=${id}`, { method: "DELETE" });
-      if (res.ok) setAutomations((prev) => prev.filter((a) => a.id !== id));
-    } catch {}
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete automation.");
+      setAutomations((prev) => prev.filter((a) => a.id !== id));
+    } catch (e: any) {
+      setError(e.message);
+    }
     setDeletingId(null);
   };
 

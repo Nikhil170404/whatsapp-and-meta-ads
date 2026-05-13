@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 import { sendTextMessage } from "@/lib/whatsapp/service";
+import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -66,11 +67,14 @@ export async function POST(req: Request) {
               // Find the connected user by phone_number_id
               const { data: connection } = await supabase
                 .from("wa_connections")
-                .select("user_id, access_token")
+                .select("user_id, access_token, token_expires_at")
                 .eq("phone_number_id", phoneNumberId)
                 .single();
 
               if (!connection) continue;
+
+              // Auto-refresh token if expiring within 7 days
+              const validToken = await refreshWaTokenIfNeeded(supabase, { ...connection, phone_number_id: phoneNumberId });
 
               // Save message to DB
               await supabase.from("wa_messages").insert({
@@ -100,12 +104,12 @@ export async function POST(req: Request) {
 
                   if (keywordMatch) {
                     try {
-                      // Send Auto-reply
+                      // Send Auto-reply using refreshed token
                       const response = await sendTextMessage(
                         phoneNumberId,
                         contact,
                         keywordMatch.reply_message,
-                        connection.access_token
+                        validToken
                       );
 
                       // Save outbound reply to DB
@@ -126,8 +130,15 @@ export async function POST(req: Request) {
                         .update({ sent_count: keywordMatch.sent_count + 1 })
                         .eq("id", keywordMatch.id);
 
-                    } catch (error) {
+                    } catch (error: any) {
                       console.error("Failed to send WA reply:", error);
+                      // Token expired or revoked — mark connection so UI shows reconnect prompt
+                      if (error?.message?.includes('"code":190') || error?.message?.includes('"code":131005')) {
+                        await supabase
+                          .from("wa_connections")
+                          .update({ status: "expired" })
+                          .eq("phone_number_id", phoneNumberId);
+                      }
                     }
                   }
                 }
