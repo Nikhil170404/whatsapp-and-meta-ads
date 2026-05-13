@@ -35,8 +35,8 @@ export const PRICING_PLANS = {
     },
 
     STARTER: {
-        name: "Platform Starter",
-        price: "499",
+        name: "Growth Plan",
+        price: "999",
         upfront: "0",
         duration: "Monthly",
         description: "Perfect for growing businesses",
@@ -56,20 +56,20 @@ export const PRICING_PLANS = {
         limits: {
             accounts: 1,
             automations: 10,
-            contacts: 9999999, // Unlimited
+            contacts: 9999999,
             metaDirectBilling: true,
         },
-        cta: "Start Monthly Plan",
+        cta: "Start Growth Plan",
         popular: true,
         savings: "Save 20% with Yearly",
         badge: "Most Popular",
         monthlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_MONTHLY,
         yearlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_PACK_YEARLY,
-        yearlyPrice: "4788", // 399/mo * 12
-        usdPrice: "6",
+        yearlyPrice: "9588", // 799/mo * 12
+        usdPrice: "12",
         usdMonthlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_USD_MONTHLY,
         usdYearlyPlanId: process.env.NEXT_PUBLIC_PLAN_STARTER_USD_YEARLY,
-        usdYearlyPrice: "60" // $5/mo * 12
+        usdYearlyPrice: "96", // $8/mo * 12
     },
 
     PRO: {
@@ -103,11 +103,11 @@ export const PRICING_PLANS = {
         badge: "FOR TEAMS",
         monthlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_MONTHLY,
         yearlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_PACK_YEARLY,
-        yearlyPrice: "17988", // 1499/mo * 12
+        yearlyPrice: "19188", // 1599/mo * 12
         usdPrice: "24",
         usdMonthlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_USD_MONTHLY,
         usdYearlyPlanId: process.env.NEXT_PUBLIC_PLAN_PRO_USD_YEARLY,
-        usdYearlyPrice: "240" // $20/mo * 12
+        usdYearlyPrice: "240", // $20/mo * 12
     }
 };
 

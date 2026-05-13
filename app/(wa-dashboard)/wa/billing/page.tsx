@@ -6,5 +6,8 @@ export default async function WaBillingPage() {
   const session = await getSession();
   if (!session) redirect("/signin");
 
-  return <BillingClient currentPlan={session.plan_type || "free"} />;
+  const ownerEmail = process.env.OWNER_EMAIL;
+  const isOwner = Boolean(ownerEmail && session.email && session.email === ownerEmail);
+
+  return <BillingClient currentPlan={session.plan_type || "free"} isOwner={isOwner} />;
 }

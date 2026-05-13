@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles } from "lucide-react";
+import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee } from "lucide-react";
 
 interface Plan {
   key: string;
@@ -38,8 +38,8 @@ const PLANS: Plan[] = [
   {
     key: "starter",
     name: "Growth Plan",
-    priceMonthly: "299",
-    priceYearly: "239",
+    priceMonthly: "999",
+    priceYearly: "799",
     description: "Perfect for small businesses",
     popular: true,
     badge: "Most Popular",
@@ -58,8 +58,8 @@ const PLANS: Plan[] = [
   {
     key: "pro",
     name: "Pro Plan",
-    priceMonthly: "799",
-    priceYearly: "639",
+    priceMonthly: "1999",
+    priceYearly: "1599",
     description: "For serious businesses & agencies",
     popular: false,
     badge: "Best Value",
@@ -76,6 +76,23 @@ const PLANS: Plan[] = [
     ],
   },
 ];
+
+// Profit projections for owner — solo founder infra costs (Vercel + Supabase + tools)
+const PROFIT_SCENARIOS = [
+  { customers: 15,  revenue: 18000,   razorpay: 630,   infra: 15000,  profit: 2370,   annual: 28440 },
+  { customers: 25,  revenue: 30000,   razorpay: 1050,  infra: 15000,  profit: 13950,  annual: 167400 },
+  { customers: 50,  revenue: 60000,   razorpay: 2100,  infra: 15000,  profit: 42900,  annual: 514800 },
+  { customers: 100, revenue: 120000,  razorpay: 4200,  infra: 20000,  profit: 95800,  annual: 1149600 },
+  { customers: 250, revenue: 300000,  razorpay: 10500, infra: 35000,  profit: 254500, annual: 3054000 },
+  { customers: 500, revenue: 600000,  razorpay: 21000, infra: 70000,  profit: 509000, annual: 6108000 },
+];
+
+function formatINR(n: number): string {
+  if (n >= 10_00_000) return `₹${(n / 10_00_000).toFixed(1)}Cr`;
+  if (n >= 1_00_000) return `₹${(n / 1_00_000).toFixed(1)}L`;
+  if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
+  return `₹${n}`;
+}
 
 declare global {
   interface Window {
@@ -94,7 +111,7 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-export function BillingClient({ currentPlan }: { currentPlan: string }) {
+export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; isOwner?: boolean }) {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [upgradingKey, setUpgradingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +186,7 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
             <div className="shrink-0 bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
               <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Competitors charge</p>
               <p className="text-white font-black text-lg">₹999–₹2499</p>
-              <p className="text-white/80 text-xs font-medium">We charge ₹99 🎉</p>
+              <p className="text-white/80 text-xs font-medium">We charge ₹999 🎉</p>
             </div>
           )}
         </div>
@@ -276,7 +293,7 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { title: "10× cheaper than competitors", desc: "Wati charges ₹2499/mo. We charge ₹299. Same WhatsApp API, fraction of the price." },
+            { title: "Up to 2.5× cheaper than competitors", desc: "Wati charges ₹2,499/mo. We charge ₹999. Same WhatsApp API, fraction of the price." },
             { title: "No setup fees ever", desc: "Zero onboarding cost. Connect your Meta account and you're live in 5 minutes." },
             { title: "Cancel anytime", desc: "No lock-in contracts. Cancel with one click. We earn your business every month." },
           ].map((item) => (
@@ -300,7 +317,7 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
           <div>
             <h3 className="text-sm font-black text-amber-900 mb-1">Meta WhatsApp Conversation Charges (Separate)</h3>
             <p className="text-xs text-amber-700 font-medium leading-relaxed">
-              WhatsApp charges per-conversation fees directly to your Meta account — these are <strong>separate</strong> from your ReplyKaro subscription. ReplyKaro is just your automation platform on top.
+              WhatsApp charges per-message fees directly to your Meta account — these are <strong>separate</strong> from your ReplyKaro subscription. ReplyKaro is your automation platform; Meta is your messaging carrier.
             </p>
           </div>
         </div>
@@ -317,8 +334,103 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
             </div>
           ))}
         </div>
-        <p className="text-[10px] text-amber-600 mt-3 font-medium">* Free service conversations are being phased out by Meta from Nov 2024. Rates are approximate and may vary. Check your Meta billing dashboard for exact charges.</p>
+        <p className="text-[10px] text-amber-600 mt-3 font-medium">* Service conversation charges vary. Rates are per-message (effective July 2025). Check your Meta billing dashboard for exact charges.</p>
       </div>
+
+      {/* Owner-only: Revenue Profit Calculator */}
+      {isOwner && (
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 md:p-8 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-[#25D366]/20 rounded-2xl flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-[#25D366]" />
+            </div>
+            <div>
+              <h2 className="text-base font-black">ReplyKaro Revenue Projections</h2>
+              <p className="text-xs text-slate-400 font-medium">Your SaaS profit at different subscriber counts</p>
+            </div>
+          </div>
+
+          <div className="mb-5 p-4 bg-white/5 rounded-2xl border border-white/10">
+            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+              <span className="text-[#25D366] font-black">Assumptions:</span> Avg ₹1,200/customer (mix of Growth ₹999 + Pro ₹1,999) · Razorpay 3.5% fee · Infra costs = Vercel + Supabase + tools (solo founder, no salary)
+            </p>
+          </div>
+
+          {/* Table header */}
+          <div className="hidden md:grid grid-cols-6 gap-2 px-4 mb-2">
+            {["Customers", "Monthly Revenue", "−Razorpay", "−Infra & Tools", "Net Profit/mo", "Annual Profit"].map((h) => (
+              <p key={h} className="text-[10px] font-black uppercase tracking-wider text-slate-400">{h}</p>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {PROFIT_SCENARIOS.map((row) => {
+              const isProfit = row.profit > 0;
+              return (
+                <div
+                  key={row.customers}
+                  className={`grid md:grid-cols-6 grid-cols-2 gap-2 p-4 rounded-2xl border transition-all ${
+                    isProfit
+                      ? "bg-[#25D366]/10 border-[#25D366]/20"
+                      : "bg-white/5 border-white/10"
+                  }`}
+                >
+                  <div>
+                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Customers</p>
+                    <p className="text-lg font-black">{row.customers}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Revenue/mo</p>
+                    <p className="text-sm font-bold text-slate-200">{formatINR(row.revenue)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Razorpay</p>
+                    <p className="text-sm font-bold text-rose-400">−{formatINR(row.razorpay)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Infra</p>
+                    <p className="text-sm font-bold text-rose-400">−{formatINR(row.infra)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Net/mo</p>
+                    <p className={`text-sm font-black ${isProfit ? "text-[#25D366]" : "text-rose-400"}`}>
+                      {isProfit ? "+" : ""}{formatINR(row.profit)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Annual</p>
+                    <p className={`text-sm font-black ${isProfit ? "text-[#25D366]" : "text-rose-400"}`}>
+                      {isProfit ? "+" : ""}{formatINR(row.annual)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Break-even at</p>
+              <p className="text-2xl font-black text-[#25D366]">~15</p>
+              <p className="text-xs text-slate-400 font-medium">paying customers</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 100 customers</p>
+              <p className="text-2xl font-black text-[#25D366]">₹96K/mo</p>
+              <p className="text-xs text-slate-400 font-medium">₹11.5L/year profit</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 500 customers</p>
+              <p className="text-2xl font-black text-[#25D366]">₹5.1L/mo</p>
+              <p className="text-xs text-slate-400 font-medium">₹61L/year profit</p>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-slate-500 mt-4 text-center font-medium">
+            Infra costs scale gradually: ₹15K (0–100 customers) → ₹35K (250) → ₹70K (500). No team salaries included — add those when you hire.
+          </p>
+        </div>
+      )}
 
       {/* Help */}
       <div className="bg-slate-50 rounded-2xl p-6 text-center">
