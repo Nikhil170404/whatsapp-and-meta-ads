@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { MessageSquare, Search, X, Send, ChevronLeft } from "lucide-react";
+import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, ExternalLink, Zap } from "lucide-react";
+import Link from "next/link";
 
 interface Message {
   id: string;
@@ -98,7 +99,40 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
           </div>
 
           <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
-            {filteredPhones.length > 0 ? (
+            {sortedPhones.length === 0 ? (
+              <div className="p-5 space-y-4">
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-amber-700">Webhook not set up yet</p>
+                  </div>
+                  <p className="text-xs text-amber-600 font-medium leading-relaxed mb-3">
+                    Messages appear here once you configure your webhook in Meta dashboard. It takes 2 minutes.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Steps:</p>
+                    {[
+                      "Go to Meta Developer Dashboard",
+                      "WhatsApp → Configuration → Webhooks",
+                      `Callback URL: https://yourdomain.com/api/webhooks/whatsapp`,
+                      "Verify Token: (your WHATSAPP_VERIFY_TOKEN env)",
+                      "Subscribe to: messages ✓",
+                    ].map((step, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="w-4 h-4 bg-amber-200 text-amber-800 rounded-full text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                        <p className="text-[10px] text-amber-700 font-medium leading-relaxed">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                  <p className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-[#25D366]" /> Automation is working ✅
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-medium">Your "hello → hi" automation fires correctly. Messages will appear here once webhook is configured.</p>
+                </div>
+              </div>
+            ) : filteredPhones.length > 0 ? (
               filteredPhones.map((phone) => {
                 const convo = conversations[phone];
                 const isActive = selectedPhone === phone;
@@ -127,7 +161,7 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
             ) : (
               <div className="p-8 text-center text-slate-400">
                 <MessageSquare className="w-8 h-8 mx-auto mb-2 text-slate-200" />
-                <p className="text-sm font-medium">{search ? `No results for "${search}"` : "No conversations yet"}</p>
+                <p className="text-sm font-medium">No results for "{search}"</p>
               </div>
             )}
           </div>
@@ -195,7 +229,7 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
               <p className="text-slate-500 max-w-sm text-sm">
                 {sortedPhones.length > 0
                   ? "Click a conversation on the left to view messages."
-                  : "Connect your WhatsApp account to start receiving messages."}
+                  : "Set up your webhook in Meta dashboard to start receiving messages here."}
               </p>
             </div>
           )}

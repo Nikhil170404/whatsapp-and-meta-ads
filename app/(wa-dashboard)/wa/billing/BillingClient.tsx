@@ -22,55 +22,55 @@ const PLANS: Plan[] = [
     name: "Free Starter",
     priceMonthly: "0",
     priceYearly: "0",
-    description: "Test the waters — no credit card needed",
+    description: "Try ReplyKaro — no credit card needed",
     popular: false,
     planKeyMonthly: "",
     planKeyYearly: "",
     features: [
-      "1,000 Messages/month",
       "3 Active Automations",
       "100 Contacts",
-      "Keyword Auto-Replies",
-      "Message Inbox",
-      "Basic Support",
+      "Keyword & Any Message Triggers",
+      "Message Inbox (view only)",
+      "1,000 free Meta conversations/mo",
+      "Community Support",
     ],
   },
   {
     key: "starter",
-    name: "Starter Pack",
-    priceMonthly: "99",
-    priceYearly: "79",
-    description: "For growing businesses",
+    name: "Growth Plan",
+    priceMonthly: "299",
+    priceYearly: "239",
+    description: "Perfect for small businesses",
     popular: true,
     badge: "Most Popular",
     planKeyMonthly: "starter_monthly",
     planKeyYearly: "starter_yearly",
     features: [
-      "30,000 Messages/month",
       "10 Active Automations",
       "Unlimited Contacts",
       "Template Broadcasts",
       "Contact CRM + Labels",
       "Meta Ads Sync",
+      "Welcome Message Trigger",
       "Email Support (48h)",
     ],
   },
   {
     key: "pro",
-    name: "Pro Pack",
-    priceMonthly: "299",
-    priceYearly: "229",
-    description: "Scale without limits",
+    name: "Pro Plan",
+    priceMonthly: "799",
+    priceYearly: "639",
+    description: "For serious businesses & agencies",
     popular: false,
     badge: "Best Value",
     planKeyMonthly: "pro_monthly",
     planKeyYearly: "pro_yearly",
     features: [
-      "250,000 Messages/month",
       "Unlimited Automations",
       "Unlimited Contacts",
-      "Priority Broadcasts",
+      "Priority Broadcast Queue",
       "Advanced CRM + Segments",
+      "Full Meta Ads Automation",
       "Detailed Analytics",
       "Priority Support (12h)",
     ],
@@ -276,7 +276,7 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { title: "10× cheaper than competitors", desc: "Wati charges ₹2499/mo. We charge ₹99. Same WhatsApp API, fraction of the price." },
+            { title: "10× cheaper than competitors", desc: "Wati charges ₹2499/mo. We charge ₹299. Same WhatsApp API, fraction of the price." },
             { title: "No setup fees ever", desc: "Zero onboarding cost. Connect your Meta account and you're live in 5 minutes." },
             { title: "Cancel anytime", desc: "No lock-in contracts. Cancel with one click. We earn your business every month." },
           ].map((item) => (
@@ -289,6 +289,35 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Meta WhatsApp conversation charges notice */}
+      <div className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 md:p-8">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+            <span className="text-amber-600 text-sm font-black">ℹ</span>
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-amber-900 mb-1">Meta WhatsApp Conversation Charges (Separate)</h3>
+            <p className="text-xs text-amber-700 font-medium leading-relaxed">
+              WhatsApp charges per-conversation fees directly to your Meta account — these are <strong>separate</strong> from your ReplyKaro subscription. ReplyKaro is just your automation platform on top.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { type: "Marketing", price: "₹0.86", desc: "Promotions, offers, broadcasts", color: "bg-rose-50 border-rose-100 text-rose-700" },
+            { type: "Utility", price: "₹0.14", desc: "Order updates, OTPs, alerts", color: "bg-blue-50 border-blue-100 text-blue-700" },
+            { type: "Service", price: "Free*", desc: "Replies within 24h window", color: "bg-green-50 border-green-100 text-green-700" },
+          ].map((item) => (
+            <div key={item.type} className={`rounded-xl p-4 border ${item.color}`}>
+              <p className="text-[10px] font-black uppercase tracking-wider opacity-70 mb-1">{item.type}</p>
+              <p className="text-xl font-black mb-0.5">{item.price}</p>
+              <p className="text-[10px] font-medium opacity-80">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-amber-600 mt-3 font-medium">* Free service conversations are being phased out by Meta from Nov 2024. Rates are approximate and may vary. Check your Meta billing dashboard for exact charges.</p>
       </div>
 
       {/* Help */}
