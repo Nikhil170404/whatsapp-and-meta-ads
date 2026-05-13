@@ -77,14 +77,15 @@ const PLANS: Plan[] = [
   },
 ];
 
-// Profit projections for owner — solo founder infra costs (Vercel + Supabase + tools)
+// Profit projections — Vercel + Supabase + Upstash all FREE up to ~100 customers
+// Only real cost early on: domain (~₹1K/yr). Supabase Pro ($25/mo) needed ~100+ customers to avoid pause.
 const PROFIT_SCENARIOS = [
-  { customers: 15,  revenue: 18000,   razorpay: 630,   infra: 15000,  profit: 2370,   annual: 28440 },
-  { customers: 25,  revenue: 30000,   razorpay: 1050,  infra: 15000,  profit: 13950,  annual: 167400 },
-  { customers: 50,  revenue: 60000,   razorpay: 2100,  infra: 15000,  profit: 42900,  annual: 514800 },
-  { customers: 100, revenue: 120000,  razorpay: 4200,  infra: 20000,  profit: 95800,  annual: 1149600 },
-  { customers: 250, revenue: 300000,  razorpay: 10500, infra: 35000,  profit: 254500, annual: 3054000 },
-  { customers: 500, revenue: 600000,  razorpay: 21000, infra: 70000,  profit: 509000, annual: 6108000 },
+  { customers: 10,  revenue: 12000,   razorpay: 420,   infra: 0,      profit: 11580,  annual: 138960,  infraNote: "100% free tier" },
+  { customers: 25,  revenue: 30000,   razorpay: 1050,  infra: 0,      profit: 28950,  annual: 347400,  infraNote: "100% free tier" },
+  { customers: 50,  revenue: 60000,   razorpay: 2100,  infra: 1000,   profit: 56900,  annual: 682800,  infraNote: "~free + domain" },
+  { customers: 100, revenue: 120000,  razorpay: 4200,  infra: 3000,   profit: 112800, annual: 1353600, infraNote: "Supabase Pro ₹2.1K" },
+  { customers: 250, revenue: 300000,  razorpay: 10500, infra: 15000,  profit: 274500, annual: 3294000, infraNote: "Vercel Pro + DB" },
+  { customers: 500, revenue: 600000,  razorpay: 21000, infra: 40000,  profit: 539000, annual: 6468000, infraNote: "Scaled infra" },
 ];
 
 function formatINR(n: number): string {
@@ -350,84 +351,75 @@ export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; i
             </div>
           </div>
 
-          <div className="mb-5 p-4 bg-white/5 rounded-2xl border border-white/10">
+          <div className="mb-5 p-4 bg-[#25D366]/10 rounded-2xl border border-[#25D366]/20">
+            <p className="text-xs text-[#25D366] font-black mb-1">Vercel + Supabase + Upstash = FREE for first 50–100 customers</p>
             <p className="text-xs text-slate-300 font-medium leading-relaxed">
-              <span className="text-[#25D366] font-black">Assumptions:</span> Avg ₹1,200/customer (mix of Growth ₹999 + Pro ₹1,999) · Razorpay 3.5% fee · Infra costs = Vercel + Supabase + tools (solo founder, no salary)
+              Avg ₹1,200/customer (Growth ₹999 + Pro ₹1,999 mix) · Razorpay 3.5% · No team salaries (you build it)
             </p>
           </div>
 
           {/* Table header */}
           <div className="hidden md:grid grid-cols-6 gap-2 px-4 mb-2">
-            {["Customers", "Monthly Revenue", "−Razorpay", "−Infra & Tools", "Net Profit/mo", "Annual Profit"].map((h) => (
+            {["Customers", "Revenue/mo", "−Razorpay", "−Infra", "Net Profit/mo", "Annual Profit"].map((h) => (
               <p key={h} className="text-[10px] font-black uppercase tracking-wider text-slate-400">{h}</p>
             ))}
           </div>
 
           <div className="space-y-2">
-            {PROFIT_SCENARIOS.map((row) => {
-              const isProfit = row.profit > 0;
-              return (
-                <div
-                  key={row.customers}
-                  className={`grid md:grid-cols-6 grid-cols-2 gap-2 p-4 rounded-2xl border transition-all ${
-                    isProfit
-                      ? "bg-[#25D366]/10 border-[#25D366]/20"
-                      : "bg-white/5 border-white/10"
-                  }`}
-                >
-                  <div>
-                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Customers</p>
-                    <p className="text-lg font-black">{row.customers}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Revenue/mo</p>
-                    <p className="text-sm font-bold text-slate-200">{formatINR(row.revenue)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Razorpay</p>
-                    <p className="text-sm font-bold text-rose-400">−{formatINR(row.razorpay)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Infra</p>
-                    <p className="text-sm font-bold text-rose-400">−{formatINR(row.infra)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Net/mo</p>
-                    <p className={`text-sm font-black ${isProfit ? "text-[#25D366]" : "text-rose-400"}`}>
-                      {isProfit ? "+" : ""}{formatINR(row.profit)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Annual</p>
-                    <p className={`text-sm font-black ${isProfit ? "text-[#25D366]" : "text-rose-400"}`}>
-                      {isProfit ? "+" : ""}{formatINR(row.annual)}
-                    </p>
-                  </div>
+            {PROFIT_SCENARIOS.map((row) => (
+              <div
+                key={row.customers}
+                className="grid md:grid-cols-6 grid-cols-2 gap-2 p-4 rounded-2xl border bg-[#25D366]/10 border-[#25D366]/20"
+              >
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Customers</p>
+                  <p className="text-lg font-black">{row.customers}</p>
+                  <p className="text-[10px] text-[#25D366] font-bold">{row.infraNote}</p>
                 </div>
-              );
-            })}
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Revenue/mo</p>
+                  <p className="text-sm font-bold text-slate-200">{formatINR(row.revenue)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Razorpay</p>
+                  <p className="text-sm font-bold text-rose-400">−{formatINR(row.razorpay)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Infra</p>
+                  <p className="text-sm font-bold text-rose-400">{row.infra === 0 ? "₹0 FREE" : `−${formatINR(row.infra)}`}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Net/mo</p>
+                  <p className="text-sm font-black text-[#25D366]">+{formatINR(row.profit)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Annual</p>
+                  <p className="text-sm font-black text-[#25D366]">+{formatINR(row.annual)}</p>
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Break-even at</p>
-              <p className="text-2xl font-black text-[#25D366]">~15</p>
-              <p className="text-xs text-slate-400 font-medium">paying customers</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">First customer</p>
+              <p className="text-2xl font-black text-[#25D366]">Day 1</p>
+              <p className="text-xs text-slate-400 font-medium">already profitable</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 100 customers</p>
-              <p className="text-2xl font-black text-[#25D366]">₹96K/mo</p>
-              <p className="text-xs text-slate-400 font-medium">₹11.5L/year profit</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 50 customers</p>
+              <p className="text-2xl font-black text-[#25D366]">₹57K/mo</p>
+              <p className="text-xs text-slate-400 font-medium">₹6.8L/year profit</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 500 customers</p>
-              <p className="text-2xl font-black text-[#25D366]">₹5.1L/mo</p>
-              <p className="text-xs text-slate-400 font-medium">₹61L/year profit</p>
+              <p className="text-2xl font-black text-[#25D366]">₹5.4L/mo</p>
+              <p className="text-xs text-slate-400 font-medium">₹65L/year profit</p>
             </div>
           </div>
 
           <p className="text-[10px] text-slate-500 mt-4 text-center font-medium">
-            Infra costs scale gradually: ₹15K (0–100 customers) → ₹35K (250) → ₹70K (500). No team salaries included — add those when you hire.
+            Infra stays ₹0 (free tiers) until ~100 customers. Supabase Pro ($25/mo) needed when DB {">"} 500MB or you need uptime guarantees. No team salary = maximum profit early stage.
           </p>
         </div>
       )}
