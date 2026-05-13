@@ -49,7 +49,24 @@ export async function POST(req: Request) {
       }, { status: 500 });
     }
 
-    const systemUserToken = tokenData.access_token;
+    const shortLivedToken = tokenData.access_token;
+
+    // Exchange short-lived token (~1-2 hrs) for long-lived token (~60 days)
+    let finalToken = shortLivedToken;
+    let tokenExpiresAt: string | null = null;
+    try {
+      const llRes = await fetch(
+        `${WA_API_URL}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`
+      );
+      const llData = await llRes.json();
+      if (llData.access_token) {
+        finalToken = llData.access_token;
+        const expiresIn = llData.expires_in || 60 * 24 * 60 * 60; // ~60 days in seconds
+        tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+      }
+    } catch (err) {
+      console.warn("Could not exchange for long-lived token, using short-lived:", err);
+    }
 
     // 2. Fetch Display Phone Number
     let phoneNumber = "Verified Number";
@@ -57,7 +74,7 @@ export async function POST(req: Request) {
     
     if (phoneNumberId) {
       try {
-        const waInfo = await getPhoneNumberInfo(phoneNumberId, systemUserToken);
+        const waInfo = await getPhoneNumberInfo(phoneNumberId, finalToken);
         if (waInfo.display_phone_number) phoneNumber = waInfo.display_phone_number;
         if (waInfo.verified_name) displayName = waInfo.verified_name;
       } catch (err) {
@@ -70,7 +87,7 @@ export async function POST(req: Request) {
       await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${systemUserToken}`,
+          "Authorization": `Bearer ${finalToken}`,
           "Content-Type": "application/json"
         }
       });
@@ -98,7 +115,8 @@ export async function POST(req: Request) {
         waba_id: wabaId || "unknown",
         phone_number: phoneNumber,
         display_name: displayName,
-        access_token: systemUserToken,
+        access_token: finalToken,
+        token_expires_at: tokenExpiresAt,
         status: 'active',
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id" });

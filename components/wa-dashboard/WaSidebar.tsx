@@ -29,21 +29,21 @@ interface SidebarProps {
 
 const navigation = [
   { name: "Overview", href: "/wa", icon: LayoutDashboard },
-  { name: "Connect", href: "/wa/connect", icon: Link2 },
   { name: "Automations", href: "/wa/automations", icon: Zap },
   { name: "Messages", href: "/wa/messages", icon: MessageSquare },
-  { name: "Contacts", href: "/wa/contacts", icon: Users },
   { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
+  { name: "Contacts", href: "/wa/contacts", icon: Users },
   { name: "Templates", href: "/wa/templates", icon: FileText },
+  { name: "Connect", href: "/wa/connect", icon: Link2 },
   { name: "Billing", href: "/wa/billing", icon: CreditCard },
 ];
 
-// Bottom tab items for mobile (5 max for thumb reach)
+// Bottom tab items for mobile — most-used features first
 const bottomTabs = [
   { name: "Home", href: "/wa", icon: Home },
   { name: "Auto", href: "/wa/automations", icon: Zap },
   { name: "Chat", href: "/wa/messages", icon: MessageSquare },
-  { name: "Templates", href: "/wa/templates", icon: FileText },
+  { name: "Broadcast", href: "/wa/broadcasts", icon: Send },
   { name: "More", href: "__more__", icon: MoreHorizontal },
 ];
 
@@ -214,7 +214,7 @@ export function WaSidebar({ user }: SidebarProps) {
         <nav className="px-4 pb-4 space-y-1">
           {[
             { name: "Contacts", href: "/wa/contacts", icon: Users },
-            { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
+            { name: "Templates", href: "/wa/templates", icon: FileText },
             { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
             { name: "Billing & Plans", href: "/wa/billing", icon: CreditCard },
           ].map((item) => {
