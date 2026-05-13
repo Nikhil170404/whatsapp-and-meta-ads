@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles } from "lucide-react";
+import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee } from "lucide-react";
 
 interface Plan {
   key: string;
@@ -22,60 +22,78 @@ const PLANS: Plan[] = [
     name: "Free Starter",
     priceMonthly: "0",
     priceYearly: "0",
-    description: "Test the waters — no credit card needed",
+    description: "Try ReplyKaro — no credit card needed",
     popular: false,
     planKeyMonthly: "",
     planKeyYearly: "",
     features: [
-      "1,000 Messages/month",
       "3 Active Automations",
       "100 Contacts",
-      "Keyword Auto-Replies",
-      "Message Inbox",
-      "Basic Support",
+      "Keyword & Any Message Triggers",
+      "Message Inbox (view only)",
+      "1,000 free Meta conversations/mo",
+      "Community Support",
     ],
   },
   {
     key: "starter",
-    name: "Starter Pack",
-    priceMonthly: "99",
-    priceYearly: "79",
-    description: "For growing businesses",
+    name: "Growth Plan",
+    priceMonthly: "999",
+    priceYearly: "799",
+    description: "Perfect for small businesses",
     popular: true,
     badge: "Most Popular",
     planKeyMonthly: "starter_monthly",
     planKeyYearly: "starter_yearly",
     features: [
-      "30,000 Messages/month",
       "10 Active Automations",
       "Unlimited Contacts",
       "Template Broadcasts",
       "Contact CRM + Labels",
       "Meta Ads Sync",
+      "Welcome Message Trigger",
       "Email Support (48h)",
     ],
   },
   {
     key: "pro",
-    name: "Pro Pack",
-    priceMonthly: "299",
-    priceYearly: "229",
-    description: "Scale without limits",
+    name: "Pro Plan",
+    priceMonthly: "1999",
+    priceYearly: "1599",
+    description: "For serious businesses & agencies",
     popular: false,
     badge: "Best Value",
     planKeyMonthly: "pro_monthly",
     planKeyYearly: "pro_yearly",
     features: [
-      "250,000 Messages/month",
       "Unlimited Automations",
       "Unlimited Contacts",
-      "Priority Broadcasts",
+      "Priority Broadcast Queue",
       "Advanced CRM + Segments",
+      "Full Meta Ads Automation",
       "Detailed Analytics",
       "Priority Support (12h)",
     ],
   },
 ];
+
+// Profit projections — Vercel + Supabase + Upstash all FREE up to ~100 customers
+// Only real cost early on: domain (~₹1K/yr). Supabase Pro ($25/mo) needed ~100+ customers to avoid pause.
+const PROFIT_SCENARIOS = [
+  { customers: 10,  revenue: 12000,   razorpay: 420,   infra: 0,      profit: 11580,  annual: 138960,  infraNote: "100% free tier" },
+  { customers: 25,  revenue: 30000,   razorpay: 1050,  infra: 0,      profit: 28950,  annual: 347400,  infraNote: "100% free tier" },
+  { customers: 50,  revenue: 60000,   razorpay: 2100,  infra: 1000,   profit: 56900,  annual: 682800,  infraNote: "~free + domain" },
+  { customers: 100, revenue: 120000,  razorpay: 4200,  infra: 3000,   profit: 112800, annual: 1353600, infraNote: "Supabase Pro ₹2.1K" },
+  { customers: 250, revenue: 300000,  razorpay: 10500, infra: 15000,  profit: 274500, annual: 3294000, infraNote: "Vercel Pro + DB" },
+  { customers: 500, revenue: 600000,  razorpay: 21000, infra: 40000,  profit: 539000, annual: 6468000, infraNote: "Scaled infra" },
+];
+
+function formatINR(n: number): string {
+  if (n >= 10_00_000) return `₹${(n / 10_00_000).toFixed(1)}Cr`;
+  if (n >= 1_00_000) return `₹${(n / 1_00_000).toFixed(1)}L`;
+  if (n >= 1000) return `₹${(n / 1000).toFixed(0)}K`;
+  return `₹${n}`;
+}
 
 declare global {
   interface Window {
@@ -94,7 +112,7 @@ function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-export function BillingClient({ currentPlan }: { currentPlan: string }) {
+export function BillingClient({ currentPlan, isOwner }: { currentPlan: string; isOwner?: boolean }) {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [upgradingKey, setUpgradingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +187,7 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
             <div className="shrink-0 bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
               <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Competitors charge</p>
               <p className="text-white font-black text-lg">₹999–₹2499</p>
-              <p className="text-white/80 text-xs font-medium">We charge ₹99 🎉</p>
+              <p className="text-white/80 text-xs font-medium">We charge ₹999 🎉</p>
             </div>
           )}
         </div>
@@ -276,7 +294,7 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { title: "10× cheaper than competitors", desc: "Wati charges ₹2499/mo. We charge ₹99. Same WhatsApp API, fraction of the price." },
+            { title: "Up to 2.5× cheaper than competitors", desc: "Wati charges ₹2,499/mo. We charge ₹999. Same WhatsApp API, fraction of the price." },
             { title: "No setup fees ever", desc: "Zero onboarding cost. Connect your Meta account and you're live in 5 minutes." },
             { title: "Cancel anytime", desc: "No lock-in contracts. Cancel with one click. We earn your business every month." },
           ].map((item) => (
@@ -290,6 +308,121 @@ export function BillingClient({ currentPlan }: { currentPlan: string }) {
           ))}
         </div>
       </div>
+
+      {/* Meta WhatsApp conversation charges notice */}
+      <div className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 md:p-8">
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
+            <span className="text-amber-600 text-sm font-black">ℹ</span>
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-amber-900 mb-1">Meta WhatsApp Conversation Charges (Separate)</h3>
+            <p className="text-xs text-amber-700 font-medium leading-relaxed">
+              WhatsApp charges per-message fees directly to your Meta account — these are <strong>separate</strong> from your ReplyKaro subscription. ReplyKaro is your automation platform; Meta is your messaging carrier.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { type: "Marketing", price: "₹0.86", desc: "Promotions, offers, broadcasts", color: "bg-rose-50 border-rose-100 text-rose-700" },
+            { type: "Utility", price: "₹0.14", desc: "Order updates, OTPs, alerts", color: "bg-blue-50 border-blue-100 text-blue-700" },
+            { type: "Service", price: "Free*", desc: "Replies within 24h window", color: "bg-green-50 border-green-100 text-green-700" },
+          ].map((item) => (
+            <div key={item.type} className={`rounded-xl p-4 border ${item.color}`}>
+              <p className="text-[10px] font-black uppercase tracking-wider opacity-70 mb-1">{item.type}</p>
+              <p className="text-xl font-black mb-0.5">{item.price}</p>
+              <p className="text-[10px] font-medium opacity-80">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-amber-600 mt-3 font-medium">* Service conversation charges vary. Rates are per-message (effective July 2025). Check your Meta billing dashboard for exact charges.</p>
+      </div>
+
+      {/* Owner-only: Revenue Profit Calculator */}
+      {isOwner && (
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 md:p-8 text-white">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-[#25D366]/20 rounded-2xl flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-[#25D366]" />
+            </div>
+            <div>
+              <h2 className="text-base font-black">ReplyKaro Revenue Projections</h2>
+              <p className="text-xs text-slate-400 font-medium">Your SaaS profit at different subscriber counts</p>
+            </div>
+          </div>
+
+          <div className="mb-5 p-4 bg-[#25D366]/10 rounded-2xl border border-[#25D366]/20">
+            <p className="text-xs text-[#25D366] font-black mb-1">Vercel + Supabase + Upstash = FREE for first 50–100 customers</p>
+            <p className="text-xs text-slate-300 font-medium leading-relaxed">
+              Avg ₹1,200/customer (Growth ₹999 + Pro ₹1,999 mix) · Razorpay 3.5% · No team salaries (you build it)
+            </p>
+          </div>
+
+          {/* Table header */}
+          <div className="hidden md:grid grid-cols-6 gap-2 px-4 mb-2">
+            {["Customers", "Revenue/mo", "−Razorpay", "−Infra", "Net Profit/mo", "Annual Profit"].map((h) => (
+              <p key={h} className="text-[10px] font-black uppercase tracking-wider text-slate-400">{h}</p>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {PROFIT_SCENARIOS.map((row) => (
+              <div
+                key={row.customers}
+                className="grid md:grid-cols-6 grid-cols-2 gap-2 p-4 rounded-2xl border bg-[#25D366]/10 border-[#25D366]/20"
+              >
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Customers</p>
+                  <p className="text-lg font-black">{row.customers}</p>
+                  <p className="text-[10px] text-[#25D366] font-bold">{row.infraNote}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Revenue/mo</p>
+                  <p className="text-sm font-bold text-slate-200">{formatINR(row.revenue)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Razorpay</p>
+                  <p className="text-sm font-bold text-rose-400">−{formatINR(row.razorpay)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">−Infra</p>
+                  <p className="text-sm font-bold text-rose-400">{row.infra === 0 ? "₹0 FREE" : `−${formatINR(row.infra)}`}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Net/mo</p>
+                  <p className="text-sm font-black text-[#25D366]">+{formatINR(row.profit)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Annual</p>
+                  <p className="text-sm font-black text-[#25D366]">+{formatINR(row.annual)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">First customer</p>
+              <p className="text-2xl font-black text-[#25D366]">Day 1</p>
+              <p className="text-xs text-slate-400 font-medium">already profitable</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 50 customers</p>
+              <p className="text-2xl font-black text-[#25D366]">₹57K/mo</p>
+              <p className="text-xs text-slate-400 font-medium">₹6.8L/year profit</p>
+            </div>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 500 customers</p>
+              <p className="text-2xl font-black text-[#25D366]">₹5.4L/mo</p>
+              <p className="text-xs text-slate-400 font-medium">₹65L/year profit</p>
+            </div>
+          </div>
+
+          <p className="text-[10px] text-slate-500 mt-4 text-center font-medium">
+            Infra stays ₹0 (free tiers) until ~100 customers. Supabase Pro ($25/mo) needed when DB {">"} 500MB or you need uptime guarantees. No team salary = maximum profit early stage.
+          </p>
+        </div>
+      )}
 
       {/* Help */}
       <div className="bg-slate-50 rounded-2xl p-6 text-center">
