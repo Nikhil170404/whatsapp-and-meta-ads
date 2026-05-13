@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   MessageSquare, Zap, Users, Send, CheckCircle2,
-  ArrowUpRight, Activity, FileText, Circle, ChevronRight, AlertTriangle
+  ArrowUpRight, FileText, ChevronRight, AlertTriangle,
+  Plus, Power, BarChart3
 } from "lucide-react";
 
 export default async function WaOverviewPage() {
@@ -19,201 +20,245 @@ export default async function WaOverviewPage() {
     { cookies: { get: (n: string) => cookieStore.get(n)?.value } }
   );
 
-  const [{ data: connection }, { count: automationCount }, { count: templateCount }, { count: contactCount }, { data: recentMessages }] = await Promise.all([
+  const [
+    { data: connection },
+    { data: automations },
+    { count: templateCount },
+    { count: contactCount },
+    { data: recentMessages },
+  ] = await Promise.all([
     supabase.from("wa_connections").select("*").eq("user_id", session.id).single(),
-    supabase.from("wa_automations").select("*", { count: "exact", head: true }).eq("user_id", session.id).eq("is_active", true),
+    supabase.from("wa_automations").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(5),
     supabase.from("wa_templates").select("*", { count: "exact", head: true }).eq("user_id", session.id),
     supabase.from("wa_contacts").select("*", { count: "exact", head: true }).eq("user_id", session.id),
-    supabase.from("wa_messages").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(5),
+    supabase.from("wa_messages").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(4),
   ]);
 
   const isConnected = connection?.status === "active";
   const isTokenExpired = connection?.status === "expired";
-  const hasTemplates = (templateCount ?? 0) > 0;
-  const hasAutomations = (automationCount ?? 0) > 0;
+  const activeAutomations = automations?.filter((a) => a.is_active) ?? [];
+  const allAutomations = automations ?? [];
   const msgs = recentMessages ?? [];
 
-  const steps = [
-    { label: "Connect WhatsApp Business", desc: "Link your WhatsApp Business Account via Meta", href: "/wa/connect", done: isConnected },
-    { label: "Create a Message Template", desc: "Build reusable templates for broadcasts & automations", href: "/wa/templates", done: hasTemplates },
-    { label: "Set Up an Automation", desc: "Auto-reply to keywords or any incoming message", href: "/wa/automations", done: hasAutomations },
-    { label: "Send Your First Broadcast", desc: "Reach all your contacts with one template message", href: "/wa/broadcasts", done: false },
-  ];
-
-  const completedSteps = steps.filter((s) => s.done).length;
-  const allDone = completedSteps === steps.length - 1; // last step is action-based
-
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Expired token banner */}
+    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+      {/* ── Expired token warning ── */}
       {isTokenExpired && (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-center gap-3">
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-rose-800">Your WhatsApp token has expired</p>
-            <p className="text-xs text-rose-600 font-medium">Automations are paused. Reconnect to resume auto-replies.</p>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-rose-800">WhatsApp token expired — automations are paused</p>
+            <p className="text-xs text-rose-600 font-medium">Reconnect to resume auto-replies.</p>
           </div>
-          <Link href="/wa/connect" className="shrink-0 px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-colors">
-            Reconnect
+          <Link href="/wa/connect" className="shrink-0 px-4 py-2.5 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-colors text-center">
+            Reconnect Now
           </Link>
         </div>
       )}
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-          Welcome, {session.display_name?.split(" ")[0] || "there"} 👋
-        </h1>
-        <p className="text-slate-500 font-medium mt-1 text-sm">
-          Your WhatsApp automation hub. Follow the steps below to get started.
-        </p>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+            Hey, {session.display_name?.split(" ")[0] || "there"} 👋
+          </h1>
+          <p className="text-slate-500 font-medium mt-1 text-sm">
+            {activeAutomations.length > 0
+              ? `${activeAutomations.length} automation${activeAutomations.length > 1 ? "s" : ""} running 24/7 for you.`
+              : "Set up your first automation to start auto-replying."}
+          </p>
+        </div>
+        <Link
+          href="/wa/automations"
+          className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-md shadow-[#25D366]/20 active:scale-95"
+        >
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">New Automation</span>
+          <span className="sm:hidden">New</span>
+        </Link>
       </div>
 
-      {/* Getting Started */}
-      {!allDone && (
-        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-5 md:p-6 border-b border-slate-100 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-black text-slate-900">Getting Started</h2>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">{completedSteps} of {steps.length} steps completed</p>
+      {/* ── Connect prompt (if not connected) ── */}
+      {!isConnected && !isTokenExpired && (
+        <div className="bg-gradient-to-br from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 rounded-[1.5rem] p-5 md:p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-[#25D366] flex items-center justify-center shrink-0">
+              <MessageSquare className="w-6 h-6 text-white fill-current" />
             </div>
-            <div className="flex items-center gap-1">
-              {steps.map((_, i) => (
-                <div key={i} className={`h-1.5 w-8 rounded-full transition-all ${i < completedSteps ? "bg-[#25D366]" : "bg-slate-100"}`} />
-              ))}
-            </div>
-          </div>
-          <div className="divide-y divide-slate-50">
-            {steps.map((step, i) => (
-              <Link key={i} href={step.href}>
-                <div className={`flex items-center gap-4 p-5 md:p-6 group hover:bg-slate-50 transition-colors cursor-pointer ${step.done ? "opacity-60" : ""}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border-2 transition-colors ${
-                    step.done
-                      ? "bg-[#25D366] border-[#25D366] text-white"
-                      : i === completedSteps
-                      ? "border-[#25D366] text-[#25D366]"
-                      : "border-slate-200 text-slate-300"
-                  }`}>
-                    {step.done ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      <span className="text-sm font-black">{i + 1}</span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-bold ${step.done ? "text-slate-400 line-through" : i === completedSteps ? "text-slate-900" : "text-slate-500"}`}>
-                      {step.label}
-                    </p>
-                    <p className="text-xs text-slate-400 font-medium mt-0.5">{step.desc}</p>
-                  </div>
-                  {!step.done && (
-                    <ChevronRight className={`w-5 h-5 shrink-0 transition-transform group-hover:translate-x-1 ${i === completedSteps ? "text-[#25D366]" : "text-slate-300"}`} />
-                  )}
-                </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-black text-slate-900 mb-1">Connect WhatsApp first</p>
+              <p className="text-sm text-slate-500 font-medium mb-4">Link your WhatsApp Business Account to enable automations, broadcasts, and messages.</p>
+              <Link
+                href="/wa/connect"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-md shadow-[#25D366]/15"
+              >
+                Connect WhatsApp <ArrowUpRight className="w-4 h-4" />
               </Link>
-            ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Stats */}
+      {/* ── Automations section ── */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Your Automations</h2>
+          <Link href="/wa/automations" className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-0.5">
+            Manage all <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {allAutomations.length === 0 ? (
+          /* Empty state: show 3 quick-start examples */
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
+            <div className="p-5 border-b border-slate-50">
+              <p className="text-sm font-bold text-slate-700">No automations yet. Start with one of these:</p>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {[
+                { keyword: "price", reply: "Hey! 👋 Our plans start at ₹999/mo. See full pricing at replykaro.in/pricing" },
+                { keyword: "catalog", reply: "Here's our full catalog 📱 [link]. Reply DEMO to book a free call." },
+                { keyword: "support", reply: "Hi! Our support team will get back to you within 2 hours. WhatsApp us anytime." },
+              ].map((ex) => (
+                <Link key={ex.keyword} href={`/wa/automations?keyword=${ex.keyword}`} className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors group">
+                  <div className="w-9 h-9 rounded-xl bg-[#25D366]/10 flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/15 transition-colors">
+                    <Zap className="w-4 h-4 text-[#25D366]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900">Keyword: <span className="text-[#25D366]">"{ex.keyword}"</span></p>
+                    <p className="text-xs text-slate-400 font-medium truncate">{ex.reply}</p>
+                  </div>
+                  <Plus className="w-4 h-4 text-slate-300 group-hover:text-[#25D366] transition-colors shrink-0" />
+                </Link>
+              ))}
+            </div>
+            <div className="p-4 border-t border-slate-50">
+              <Link href="/wa/automations" className="flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all">
+                <Plus className="w-4 h-4" /> Create Your First Automation
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
+            <div className="divide-y divide-slate-50">
+              {allAutomations.map((auto: any) => (
+                <div key={auto.id} className="flex items-center gap-3 p-4">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
+                    <Zap className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-slate-900 truncate">{auto.name}</p>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider shrink-0 ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
+                        {auto.is_active ? "ON" : "OFF"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium truncate">
+                      {auto.trigger_type === "keyword" ? `"${auto.trigger_keyword}"` : auto.trigger_type === "any" ? "Any message" : "First message"}
+                      {" · "}{auto.sent_count ?? 0} sent
+                    </p>
+                  </div>
+                  <Power className={`w-4 h-4 shrink-0 ${auto.is_active ? "text-[#25D366]" : "text-slate-300"}`} />
+                </div>
+              ))}
+            </div>
+            <div className="p-3 border-t border-slate-50">
+              <Link href="/wa/automations" className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#25D366] hover:bg-[#25D366]/5 rounded-xl transition-colors">
+                Manage automations <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Stats row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: "Connection", value: isConnected ? "Active" : "Not set up", icon: Activity, color: isConnected ? "text-[#25D366]" : "text-slate-400", bg: isConnected ? "bg-[#25D366]/10" : "bg-slate-50", href: "/wa/connect" },
-          { label: "Automations", value: `${automationCount ?? 0} active`, icon: Zap, color: "text-violet-600", bg: "bg-violet-50", href: "/wa/automations" },
+          {
+            label: "Connection",
+            value: isConnected ? "Active" : isTokenExpired ? "Expired" : "Not set up",
+            icon: MessageSquare,
+            color: isConnected ? "text-[#25D366]" : "text-rose-500",
+            bg: isConnected ? "bg-[#25D366]/10" : "bg-rose-50",
+            href: "/wa/connect",
+          },
+          { label: "Active Automations", value: `${activeAutomations.length}`, icon: Zap, color: "text-violet-600", bg: "bg-violet-50", href: "/wa/automations" },
           { label: "Contacts", value: `${contactCount ?? 0}`, icon: Users, color: "text-blue-600", bg: "bg-blue-50", href: "/wa/contacts" },
           { label: "Templates", value: `${templateCount ?? 0}`, icon: FileText, color: "text-amber-600", bg: "bg-amber-50", href: "/wa/templates" },
-        ].map((stat, i) => (
-          <Link key={i} href={stat.href}>
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 md:p-5 hover:shadow-md transition-all group cursor-pointer">
-              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
-                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+        ].map((s) => (
+          <Link key={s.label} href={s.href}>
+            <div className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-all group cursor-pointer">
+              <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-2.5`}>
+                <s.icon className={`w-4 h-4 ${s.color}`} />
               </div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-0.5">{stat.label}</p>
-              <p className="text-lg font-black text-slate-900 capitalize">{stat.value}</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{s.label}</p>
+              <p className="text-xl font-black text-slate-900 capitalize">{s.value}</p>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* How It Works */}
-      <div className="bg-gradient-to-br from-[#25D366]/5 to-slate-50 rounded-[2rem] border border-[#25D366]/10 p-6 md:p-8">
-        <h2 className="text-base font-black text-slate-900 mb-1">How ReplyKaro Works</h2>
-        <p className="text-xs text-slate-400 font-medium mb-6">Three ways to use WhatsApp automation</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* ── Quick actions ── */}
+      <div>
+        <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
-            {
-              icon: Zap,
-              color: "text-violet-600",
-              bg: "bg-violet-50",
-              title: "Keyword Automations",
-              desc: 'When someone texts "PRICE" → you automatically reply with your pricing. Works 24/7 without you.',
-              href: "/wa/automations",
-              cta: "Set up automation",
-            },
-            {
-              icon: FileText,
-              color: "text-amber-600",
-              bg: "bg-amber-50",
-              title: "Message Templates",
-              desc: "Pre-approved WhatsApp templates for promotions, order updates, reminders, and more.",
-              href: "/wa/templates",
-              cta: "Create template",
-            },
-            {
-              icon: Send,
-              color: "text-blue-600",
-              bg: "bg-blue-50",
-              title: "Broadcasts",
-              desc: "Send one template message to hundreds of contacts at once. Perfect for announcements & offers.",
-              href: "/wa/broadcasts",
-              cta: "Send broadcast",
-            },
-          ].map((item, i) => (
-            <div key={i} className="bg-white rounded-2xl p-5 border border-slate-100">
-              <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center mb-3`}>
-                <item.icon className={`w-5 h-5 ${item.color}`} />
+            { title: "Send a Broadcast", desc: "Message all contacts at once with a template", href: "/wa/broadcasts", icon: Send, color: "text-blue-600", bg: "bg-blue-50" },
+            { title: "Add a Template", desc: "Create reusable message templates", href: "/wa/templates", icon: FileText, color: "text-amber-600", bg: "bg-amber-50" },
+            { title: "View Messages", desc: "See all incoming conversations", href: "/wa/messages", icon: MessageSquare, color: "text-[#25D366]", bg: "bg-[#25D366]/10" },
+          ].map((qa) => (
+            <Link key={qa.title} href={qa.href}>
+              <div className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md hover:border-slate-200 transition-all group flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl ${qa.bg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                  <qa.icon className={`w-5 h-5 ${qa.color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 truncate">{qa.title}</p>
+                  <p className="text-xs text-slate-400 font-medium truncate">{qa.desc}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
               </div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">{item.title}</h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed mb-3">{item.desc}</p>
-              <Link href={item.href} className={`inline-flex items-center gap-1 text-xs font-bold ${item.color} hover:underline`}>
-                {item.cta} <ArrowUpRight className="w-3 h-3" />
-              </Link>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
 
-      {/* Recent Messages */}
+      {/* ── Recent messages ── */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest">Recent Messages</h2>
-          <Link href="/wa/messages" className="text-xs font-bold text-[#25D366] hover:underline">View All →</Link>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Recent Messages</h2>
+          <Link href="/wa/messages" className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-0.5">
+            View all <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-        <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
           {msgs.length > 0 ? (
             <div className="divide-y divide-slate-50">
               {msgs.map((msg: any) => (
-                <div key={msg.id} className="p-4 md:p-5 flex items-center gap-4 hover:bg-slate-50 transition-colors">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${msg.direction === "outbound" ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-500"}`}>
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 truncate">
-                      {msg.direction === "outbound" ? `→ ${msg.to_phone}` : `← ${msg.from_phone}`}
+                <Link key={msg.id} href="/wa/messages">
+                  <div className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${msg.direction === "outbound" ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-500"}`}>
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        {msg.direction === "outbound" ? `→ ${msg.to_phone}` : `← ${msg.from_phone}`}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate font-medium">{msg.content}</p>
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold shrink-0">
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
-                    <p className="text-xs text-slate-500 truncate">{msg.content}</p>
                   </div>
-                  <p className="text-[10px] text-slate-400 font-bold shrink-0">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
-            <div className="p-12 text-center">
-              <MessageSquare className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-sm text-slate-400 font-medium">No messages yet. Messages will appear here once your WhatsApp is connected and active.</p>
+            <div className="p-10 text-center">
+              <MessageSquare className="w-8 h-8 text-slate-200 mx-auto mb-3" />
+              <p className="text-sm text-slate-400 font-medium">No messages yet.</p>
+              <p className="text-xs text-slate-300 font-medium mt-1">Messages will appear here once WhatsApp is connected.</p>
             </div>
           )}
         </div>

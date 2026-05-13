@@ -31,45 +31,43 @@ const plans = [
     limits: ["Meta charges billed directly", "No Broadcasts", "No Meta Ads Sync"],
   },
   {
-    name: "Platform Starter",
-    price: "499",
-    yearlyPrice: "4788",
-    usdPrice: "$6",
-    usdYearlyPrice: "$60",
-    badge: "Best Value",
+    name: "Growth Plan",
+    price: "999",
+    yearlyPrice: "9588",
+    usdPrice: "$12",
+    usdYearlyPrice: "$96",
+    badge: "Most Popular",
     description: "Perfect for growing businesses",
-    popular: false,
-    cta: "Start for ₹499/mo",
+    popular: true,
+    cta: "Get Growth Plan",
     features: [
-      "1 WhatsApp Number",
       "10 Active Automations",
       "Unlimited Contacts",
       "Template Broadcasts",
       "Contact CRM + Labels",
       "Meta Ads Integration 🚀",
-      "Handle Viral Campaigns 🔥",
+      "Welcome Message Trigger",
       "Email Support (48h)",
     ],
-    limits: ["Meta charges billed directly", "No Priority Queue"],
+    limits: ["Meta charges billed directly"],
   },
   {
-    name: "Platform Pro",
+    name: "Pro Plan",
     price: "1999",
-    yearlyPrice: "17988",
+    yearlyPrice: "19188",
     usdPrice: "$24",
     usdYearlyPrice: "$240",
-    badge: "For Teams",
-    description: "Scale your business",
-    popular: true,
-    cta: "Start Pro Plan",
+    badge: "Best Value",
+    description: "For serious businesses & agencies",
+    popular: false,
+    cta: "Get Pro Plan",
     features: [
-      "3 WhatsApp Numbers",
       "Unlimited Automations",
       "Unlimited Contacts",
       "Priority Broadcast Queue",
       "Advanced CRM + Segments",
+      "Full Meta Ads Automation 💎",
       "Detailed Analytics",
-      "Advanced Meta Ads Sync 💎",
       "Priority Support (12h)",
     ],
     limits: ["Meta charges billed directly"],
@@ -77,7 +75,7 @@ const plans = [
 ];
 
 const competitors = [
-  { name: "ReplyKaro", price: "₹499/mo", free: true, highlight: true },
+  { name: "ReplyKaro", price: "₹999/mo", free: true, highlight: true },
   { name: "WATI", price: "₹2,499/mo", free: false, highlight: false },
   { name: "Interakt", price: "₹999/mo", free: false, highlight: false },
   { name: "AiSensy", price: "₹999/mo", free: false, highlight: false },
@@ -151,7 +149,7 @@ export default function WhatsAppLandingPage() {
           </h1>
           
           <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
-            India's #1 WhatsApp Business automation tool. Auto-replies, broadcasts, contact CRM, and Meta Ads integration — starting from just <strong className="text-[#25D366]">₹499/month</strong>.
+            India's #1 WhatsApp Business automation tool. Auto-replies, broadcasts, contact CRM, and Meta Ads integration — starting from just <strong className="text-[#25D366]">₹999/month</strong>.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
