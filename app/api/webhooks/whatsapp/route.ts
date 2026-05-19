@@ -128,11 +128,42 @@ export async function POST(req: Request) {
 
                 await supabase
                   .from("wa_automations")
-                  .update({ sent_count: matchedAutomation.sent_count + 1 })
+                  .update({
+                    sent_count: matchedAutomation.sent_count + 1,
+                    last_fired_at: new Date().toISOString(),
+                    last_error: null,
+                  })
                   .eq("id", matchedAutomation.id);
+
+                // Clear any previous connection error on success
+                await supabase
+                  .from("wa_connections")
+                  .update({ last_error: null, last_error_at: null })
+                  .eq("phone_number_id", phoneNumberId);
 
               } catch (error: any) {
                 console.error("Failed to send WA auto-reply:", error);
+
+                // Parse the Meta error message for a clean display string
+                let errorMsg = error?.message || "Unknown error sending reply";
+                try {
+                  const parsed = JSON.parse(errorMsg.replace(/^WhatsApp API Error: /, ""));
+                  const e = parsed?.error;
+                  errorMsg = e ? `(#${e.code}) ${e.message}` : errorMsg;
+                } catch {}
+
+                // Write error to DB so it's visible in the UI
+                await supabase
+                  .from("wa_connections")
+                  .update({ last_error: errorMsg, last_error_at: new Date().toISOString() })
+                  .eq("phone_number_id", phoneNumberId);
+
+                await supabase
+                  .from("wa_automations")
+                  .update({ last_error: errorMsg })
+                  .eq("id", matchedAutomation.id);
+
+                // Mark token as expired if Meta says so
                 if (error?.message?.includes('"code":190') || error?.message?.includes('"code":131005')) {
                   await supabase
                     .from("wa_connections")

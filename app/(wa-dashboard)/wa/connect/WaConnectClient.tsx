@@ -135,6 +135,20 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
             <p className="font-bold text-slate-900">{initialConnection.waba_id}</p>
           </div>
         </div>
+
+        {initialConnection.last_error && (
+          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl relative z-10">
+            <p className="text-xs font-bold text-amber-600 uppercase mb-1">Last Webhook Error</p>
+            <p className="text-sm font-medium text-amber-800 break-words">{initialConnection.last_error}</p>
+            {initialConnection.last_error_at && (
+              <p className="text-xs text-amber-500 mt-1">{new Date(initialConnection.last_error_at).toLocaleString()}</p>
+            )}
+            <p className="text-xs text-amber-600 mt-2 font-medium">
+              If this says "not in allowed list" — go to Meta Developer Dashboard → WhatsApp → API Setup → add your personal number as a test recipient.
+            </p>
+          </div>
+        )}
+
         <button onClick={handleDisconnect} className="mt-8 px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl text-sm">
           Disconnect Account
         </button>

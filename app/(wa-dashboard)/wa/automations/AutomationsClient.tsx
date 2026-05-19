@@ -11,6 +11,8 @@ interface Automation {
   reply_message: string;
   is_active: boolean;
   sent_count: number;
+  last_fired_at?: string;
+  last_error?: string;
   created_at: string;
 }
 
@@ -238,6 +240,11 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
                       <span className="text-xs font-medium text-slate-400">Sent {auto.sent_count ?? 0}×</span>
                     </div>
                     <p className="text-xs text-slate-500 truncate mt-0.5 max-w-xs">{auto.reply_message}</p>
+                    {auto.last_error && (
+                      <p className="text-xs text-amber-600 font-medium mt-0.5 truncate max-w-xs" title={auto.last_error}>
+                        ⚠ {auto.last_error}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
