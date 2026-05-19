@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     if (configId) params.set("config_id", configId);
     else params.set("scope", "email,public_profile"); // Fallback for standard apps
 
-    return NextResponse.redirect(`https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`);
+    return NextResponse.redirect(`https://www.facebook.com/v25.0/dialog/oauth?${params.toString()}`);
   }
 
   // 3. Step 2: Code received -> Exchange for access token
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       redirect_uri: redirectUri,
     });
 
-    const tokenRes = await fetch(`https://graph.facebook.com/v19.0/oauth/access_token?${tokenParams.toString()}`);
+    const tokenRes = await fetch(`https://graph.facebook.com/v25.0/oauth/access_token?${tokenParams.toString()}`);
     const tokenData = await tokenRes.json();
 
     if (!tokenRes.ok || tokenData.error) {
@@ -76,10 +76,25 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${appUrl}/signin?error=${encodeURIComponent(tokenData.error?.message || "Token exchange failed")}`);
     }
 
-    const accessToken = tokenData.access_token;
+    // Exchange short-lived token (~2 hrs) for long-lived token (~60 days)
+    let accessToken = tokenData.access_token;
+    let tokenExpiresAt = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+    try {
+      const llRes = await fetch(
+        `https://graph.facebook.com/v25.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${accessToken}`
+      );
+      const llData = await llRes.json();
+      if (llData.access_token) {
+        accessToken = llData.access_token;
+        const expiresIn = llData.expires_in || 60 * 24 * 60 * 60;
+        tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+      }
+    } catch (err) {
+      console.warn("Could not exchange for long-lived FB token, using short-lived:", err);
+    }
 
     // 4. Fetch Profile Info
-    const meRes = await fetch(`https://graph.facebook.com/v19.0/me?fields=id,name,email,picture&access_token=${accessToken}`);
+    const meRes = await fetch(`https://graph.facebook.com/v25.0/me?fields=id,name,email,picture&access_token=${accessToken}`);
     const meData = await meRes.json();
 
     if (!meData.id) {
@@ -95,7 +110,7 @@ export async function GET(req: Request) {
         facebook_user_id: meData.id,
         display_name: meData.name,
         fb_access_token: accessToken,
-        fb_token_expires_at: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+        fb_token_expires_at: tokenExpiresAt,
         email: meData.email || null,
         profile_picture_url: meData.picture?.data?.url || null,
         plan_type: "free",

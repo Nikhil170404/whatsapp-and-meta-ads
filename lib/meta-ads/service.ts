@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 
-const FB_API_URL = "https://graph.facebook.com/v21.0";
+const FB_API_URL = "https://graph.facebook.com/v25.0";
 
 export async function getAdAccounts(accessToken: string) {
   const response = await fetch(`${FB_API_URL}/me/adaccounts?fields=name,account_id,account_status`, {

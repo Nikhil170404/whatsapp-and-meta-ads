@@ -20,8 +20,8 @@ export async function GET(req: Request) {
     }
 
     // Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${env.NEXT_PUBLIC_FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(`${env.APP_URL}/api/auth/facebook/callback`)}&client_secret=${env.FACEBOOK_APP_SECRET}&code=${code}`;
-    
+    const tokenUrl = `https://graph.facebook.com/v25.0/oauth/access_token?client_id=${env.NEXT_PUBLIC_FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(`${env.APP_URL}/api/auth/facebook/callback`)}&client_secret=${env.FACEBOOK_APP_SECRET}&code=${code}`;
+
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
@@ -33,11 +33,11 @@ export async function GET(req: Request) {
     const accessToken = tokenData.access_token;
 
     // Fetch user info
-    const meRes = await fetch(`https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${accessToken}`);
+    const meRes = await fetch(`https://graph.facebook.com/v25.0/me?fields=id,name&access_token=${accessToken}`);
     const meData = await meRes.json();
 
     // Fetch ad accounts (just taking the first one for this implementation)
-    const adAccountsRes = await fetch(`https://graph.facebook.com/v21.0/me/adaccounts?fields=account_id&access_token=${accessToken}`);
+    const adAccountsRes = await fetch(`https://graph.facebook.com/v25.0/me/adaccounts?fields=account_id&access_token=${accessToken}`);
     const adAccountsData = await adAccountsRes.json();
     const adAccountId = adAccountsData.data?.[0]?.account_id || "unknown_ad_account";
 
