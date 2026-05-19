@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { env } from "@/lib/env";
 import { sendTextMessage } from "@/lib/whatsapp/service";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -11,7 +10,7 @@ export async function GET(req: Request) {
   const token = searchParams.get("hub.verify_token");
   const challenge = searchParams.get("hub.challenge");
 
-  if (mode === "subscribe" && token === env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode === "subscribe" && token === env.WEBHOOK_VERIFY_TOKEN) {
     return new NextResponse(challenge, { status: 200 });
   }
 
@@ -26,24 +25,12 @@ export async function POST(req: Request) {
       return new NextResponse("Not Found", { status: 404 });
     }
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
+    const supabase = getSupabaseAdmin() as any;
 
     for (const entry of body.entry) {
       for (const change of entry.changes) {
         if (change.field === "messages") {
           const value = change.value;
-          const wabaId = entry.id;
           const phoneNumberId = value.metadata.phone_number_id;
 
           // Process statuses (delivery/read receipts)
@@ -62,7 +49,7 @@ export async function POST(req: Request) {
               const contact = value.contacts?.[0]?.wa_id;
               if (!contact) continue;
 
-              const content = message.type === 'text' ? message.text.body : `[${message.type} message]`;
+              const content = message.type === "text" ? message.text.body : `[${message.type} message]`;
 
               // Find the connected user by phone_number_id
               const { data: connection } = await supabase
@@ -82,65 +69,75 @@ export async function POST(req: Request) {
                 wa_message_id: message.id,
                 from_phone: contact,
                 to_phone: value.metadata.display_phone_number,
-                direction: 'inbound',
+                direction: "inbound",
                 message_type: message.type,
                 content: content,
-                status: 'delivered'
+                status: "delivered",
               });
 
-              // Check automations
-              if (message.type === 'text') {
-                const { data: automations } = await supabase
+              // Only check automations for text messages
+              if (message.type !== "text") continue;
+
+              const { data: automations } = await supabase
+                .from("wa_automations")
+                .select("*")
+                .eq("user_id", connection.user_id)
+                .eq("is_active", true);
+
+              if (!automations || automations.length === 0) continue;
+
+              // Check if this is the sender's first-ever inbound message (for "welcome" trigger)
+              const { count: priorCount } = await supabase
+                .from("wa_messages")
+                .select("id", { count: "exact", head: true })
+                .eq("user_id", connection.user_id)
+                .eq("from_phone", contact)
+                .eq("direction", "inbound");
+
+              const isFirstMessage = (priorCount ?? 0) <= 1; // 1 = the one we just inserted
+
+              const matchedAutomation = automations.find((a: any) => {
+                if (a.trigger_type === "any") return true;
+                if (a.trigger_type === "welcome") return isFirstMessage;
+                if (a.trigger_type === "keyword" && a.trigger_keyword) {
+                  return content.toLowerCase().includes(a.trigger_keyword.toLowerCase());
+                }
+                return false;
+              });
+
+              if (!matchedAutomation) continue;
+
+              try {
+                const response = await sendTextMessage(
+                  phoneNumberId,
+                  contact,
+                  matchedAutomation.reply_message,
+                  validToken
+                );
+
+                await supabase.from("wa_messages").insert({
+                  user_id: connection.user_id,
+                  wa_message_id: response.messages?.[0]?.id || `auto-${Date.now()}`,
+                  from_phone: value.metadata.display_phone_number,
+                  to_phone: contact,
+                  direction: "outbound",
+                  message_type: "text",
+                  content: matchedAutomation.reply_message,
+                  status: "sent",
+                });
+
+                await supabase
                   .from("wa_automations")
-                  .select("*")
-                  .eq("user_id", connection.user_id)
-                  .eq("is_active", true);
+                  .update({ sent_count: matchedAutomation.sent_count + 1 })
+                  .eq("id", matchedAutomation.id);
 
-                if (automations && automations.length > 0) {
-                  const keywordMatch = automations.find(a => 
-                    a.trigger_type === 'any' || 
-                    (a.trigger_type === 'keyword' && a.trigger_keyword && content.toLowerCase().includes(a.trigger_keyword.toLowerCase()))
-                  );
-
-                  if (keywordMatch) {
-                    try {
-                      // Send Auto-reply using refreshed token
-                      const response = await sendTextMessage(
-                        phoneNumberId,
-                        contact,
-                        keywordMatch.reply_message,
-                        validToken
-                      );
-
-                      // Save outbound reply to DB
-                      await supabase.from("wa_messages").insert({
-                        user_id: connection.user_id,
-                        wa_message_id: response.messages?.[0]?.id || `auto-${Date.now()}`,
-                        from_phone: value.metadata.display_phone_number,
-                        to_phone: contact,
-                        direction: 'outbound',
-                        message_type: 'text',
-                        content: keywordMatch.reply_message,
-                        status: 'sent'
-                      });
-
-                      // Increment automation count
-                      await supabase
-                        .from("wa_automations")
-                        .update({ sent_count: keywordMatch.sent_count + 1 })
-                        .eq("id", keywordMatch.id);
-
-                    } catch (error: any) {
-                      console.error("Failed to send WA reply:", error);
-                      // Token expired or revoked — mark connection so UI shows reconnect prompt
-                      if (error?.message?.includes('"code":190') || error?.message?.includes('"code":131005')) {
-                        await supabase
-                          .from("wa_connections")
-                          .update({ status: "expired" })
-                          .eq("phone_number_id", phoneNumberId);
-                      }
-                    }
-                  }
+              } catch (error: any) {
+                console.error("Failed to send WA auto-reply:", error);
+                if (error?.message?.includes('"code":190') || error?.message?.includes('"code":131005')) {
+                  await supabase
+                    .from("wa_connections")
+                    .update({ status: "expired" })
+                    .eq("phone_number_id", phoneNumberId);
                 }
               }
             }
