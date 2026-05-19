@@ -11,7 +11,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Facebook App ID not configured" }, { status: 500 });
     }
 
-    const authUrl = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+    const authUrl = `https://www.facebook.com/v25.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
 
     return NextResponse.redirect(authUrl);
   } catch (error) {

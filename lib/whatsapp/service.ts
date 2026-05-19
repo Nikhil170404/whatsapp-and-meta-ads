@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 
-const WA_API_URL = "https://graph.facebook.com/v21.0";
+const WA_API_URL = "https://graph.facebook.com/v25.0";
 
 export async function sendTextMessage(
   phoneNumberId: string,
