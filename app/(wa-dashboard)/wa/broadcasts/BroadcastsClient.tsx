@@ -135,12 +135,29 @@ export function BroadcastsClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setBroadcasts((prev) => [data.broadcast, ...prev]);
+      // Immediately execute the broadcast
+      const execRes = await fetch(`/api/whatsapp/broadcasts/${data.broadcast.id}/send`, { method: "POST" });
+      const execData = await execRes.json();
+      if (!execRes.ok) throw new Error(execData.error);
+      setBroadcasts((prev) => [{ ...data.broadcast, status: "completed", sent_count: execData.sent, failed_count: execData.failed }, ...prev]);
       resetForm();
     } catch (e: any) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const executeBroadcast = async (id: string) => {
+    setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "sending" } : b));
+    try {
+      const res = await fetch(`/api/whatsapp/broadcasts/${id}/send`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "completed", sent_count: data.sent, failed_count: data.failed } : b));
+    } catch (e: any) {
+      setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "draft" } : b));
+      alert(e.message);
     }
   };
 
@@ -442,6 +459,14 @@ export function BroadcastsClient({
                   </div>
                 ))}
               </div>
+              {bc.status === "draft" && (
+                <button
+                  onClick={() => executeBroadcast(bc.id)}
+                  className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all"
+                >
+                  <Send className="w-4 h-4" /> Send Now
+                </button>
+              )}
             </div>
           ))
         ) : (
