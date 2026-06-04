@@ -9,7 +9,7 @@ export async function GET() {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
 
     const { data: connection, error: connErr } = await supabase
       .from("wa_connections")
