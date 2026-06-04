@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { sendTemplateMessage } from "@/lib/whatsapp/service";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -9,6 +10,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: broadcastId } = await params;
+
+    const rl = await checkRateLimit("api", `broadcast:${broadcastId}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+
     const supabase = getSupabaseAdmin() as any;
 
     const { data: broadcast } = await supabase
@@ -113,30 +118,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           .eq("id", recipient.id);
         sentCount++;
 
-        // Deduct wallet for managed billing
+        // Atomically deduct wallet — stops if balance runs out mid-broadcast
         if (conn.billing_type === "managed") {
-          const { data: wallet } = await supabase
-            .from("wa_wallet")
-            .select("balance_paise, total_spent_paise")
-            .eq("user_id", session.id)
-            .single();
-          if (wallet) {
-            await supabase
-              .from("wa_wallet")
-              .update({
-                balance_paise: wallet.balance_paise - 95,
-                total_spent_paise: wallet.total_spent_paise + 95,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("user_id", session.id);
-            await supabase.from("wa_wallet_transactions").insert({
-              user_id: session.id,
-              type: "debit",
-              amount_paise: 95,
-              balance_after_paise: wallet.balance_paise - 95,
-              description: `Broadcast: ${broadcast.name} → ${phone}`,
-            });
+          const { data: newBal, error: deductErr } = await supabase.rpc("deduct_wallet_balance", {
+            p_user_id: session.id,
+            p_amount: 95,
+          });
+          if (deductErr) {
+            // Wallet ran out mid-broadcast — stop sending
+            await supabase.from("wa_broadcast_recipients").update({ status: "failed", error: "Wallet empty" }).eq("id", recipient.id);
+            failedCount++;
+            break;
           }
+          await supabase.from("wa_wallet_transactions").insert({
+            user_id: session.id,
+            type: "debit",
+            amount_paise: 95,
+            balance_after_paise: newBal,
+            description: `Broadcast: ${broadcast.name} → ${phone}`,
+          });
         }
       } catch (err: any) {
         await supabase

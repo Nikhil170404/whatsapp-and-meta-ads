@@ -64,6 +64,18 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid billing_type" }, { status: 400 });
       }
 
+      // Prevent switching to direct if wallet has negative balance (defensive)
+      if (billing_type === "direct") {
+        const { data: wallet } = await supabase
+          .from("wa_wallet")
+          .select("balance_paise")
+          .eq("user_id", session.id)
+          .maybeSingle();
+        if (wallet && (wallet.balance_paise as number) < 0) {
+          return NextResponse.json({ error: "Cannot switch to direct billing with negative wallet balance" }, { status: 400 });
+        }
+      }
+
       const { error: updateErr } = await supabase
         .from("wa_connections")
         .update({ billing_type })
@@ -133,6 +145,17 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid payment signature" }, { status: 400 });
       }
 
+      // Idempotency: reject duplicate payment_id before touching wallet balance
+      const { data: existingTxn } = await supabase
+        .from("wa_wallet_transactions")
+        .select("id, balance_after_paise")
+        .eq("razorpay_payment_id", payment_id)
+        .maybeSingle();
+
+      if (existingTxn) {
+        return NextResponse.json({ success: true, balance_paise: existingTxn.balance_after_paise });
+      }
+
       const amount_paise = Math.round(amount_inr * 100);
 
       const { data: currentWallet, error: walletFetchErr } = await supabase
@@ -146,8 +169,29 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Wallet not found" }, { status: 400 });
       }
 
-      const newBalance = currentWallet.balance_paise + amount_paise;
-      const newTotalToppedUp = currentWallet.total_topped_up_paise + amount_paise;
+      const newBalance = (currentWallet.balance_paise as number) + amount_paise;
+      const newTotalToppedUp = (currentWallet.total_topped_up_paise as number) + amount_paise;
+
+      // Insert transaction first — unique constraint on razorpay_payment_id acts as final race guard
+      const { error: txnErr } = await supabase.from("wa_wallet_transactions").insert({
+        user_id: session.id,
+        type: "topup",
+        amount_paise,
+        balance_after_paise: newBalance,
+        description: `Top-up of ₹${amount_inr}`,
+        razorpay_order_id: order_id,
+        razorpay_payment_id: payment_id,
+      });
+
+      if (txnErr) {
+        // Unique constraint violation means concurrent duplicate — return current balance
+        if (txnErr.code === "23505") {
+          const { data: w } = await supabase.from("wa_wallet").select("balance_paise").eq("user_id", session.id).single();
+          return NextResponse.json({ success: true, balance_paise: w?.balance_paise ?? currentWallet.balance_paise });
+        }
+        console.error("verify_payment transaction log error:", txnErr);
+        return NextResponse.json({ error: txnErr.message }, { status: 500 });
+      }
 
       const { error: updateErr } = await supabase
         .from("wa_wallet")
@@ -161,21 +205,6 @@ export async function POST(req: Request) {
       if (updateErr) {
         console.error("verify_payment wallet update error:", updateErr);
         return NextResponse.json({ error: updateErr.message }, { status: 500 });
-      }
-
-      const { error: txnErr } = await supabase.from("wa_wallet_transactions").insert({
-        user_id: session.id,
-        type: "topup",
-        amount_paise,
-        balance_after_paise: newBalance,
-        description: `Top-up of ₹${amount_inr}`,
-        razorpay_order_id: order_id,
-        razorpay_payment_id: payment_id,
-      });
-
-      if (txnErr) {
-        console.error("verify_payment transaction log error:", txnErr);
-        return NextResponse.json({ error: txnErr.message }, { status: 500 });
       }
 
       return NextResponse.json({ success: true, balance_paise: newBalance });
