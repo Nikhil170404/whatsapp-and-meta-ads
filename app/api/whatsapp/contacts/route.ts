@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { PRICING_PLANS } from "@/lib/pricing";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET(req: Request) {
   try {
@@ -41,7 +43,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
     }
 
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+
     const supabase = getSupabaseAdmin() as any;
+
+    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
+    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
+    const limit = PRICING_PLANS[planKey]?.limits?.contacts ?? PRICING_PLANS.FREE.limits.contacts;
+    const { data: existing } = await supabase
+      .from("wa_contacts")
+      .select("id")
+      .eq("user_id", session.id)
+      .eq("phone_number", phone_number)
+      .maybeSingle();
+    if (!existing) {
+      const { count } = await supabase
+        .from("wa_contacts")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", session.id);
+      if ((count || 0) >= limit) {
+        return NextResponse.json({ error: `Contact limit reached (${limit} on your plan). Upgrade to add more contacts.` }, { status: 403 });
+      }
+    }
+
     const { data, error } = await supabase
       .from("wa_contacts")
       .upsert({

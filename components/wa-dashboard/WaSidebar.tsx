@@ -18,6 +18,7 @@ import {
   BarChart3,
   MoreHorizontal,
   Home,
+  Coins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -32,10 +33,12 @@ const navigation = [
   { name: "Automations", href: "/wa/automations", icon: Zap },
   { name: "Messages", href: "/wa/messages", icon: MessageSquare },
   { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
+  { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
   { name: "Contacts", href: "/wa/contacts", icon: Users },
   { name: "Templates", href: "/wa/templates", icon: FileText },
   { name: "Connect", href: "/wa/connect", icon: Link2 },
   { name: "Billing", href: "/wa/billing", icon: CreditCard },
+  { name: "Wallet", href: "/wa/wallet", icon: Coins },
 ];
 
 // Bottom tab items for mobile — most-used features first
@@ -213,9 +216,11 @@ export function WaSidebar({ user }: SidebarProps) {
 
         <nav className="px-4 pb-4 space-y-1">
           {[
+            { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
             { name: "Contacts", href: "/wa/contacts", icon: Users },
             { name: "Templates", href: "/wa/templates", icon: FileText },
             { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
+            { name: "Wallet", href: "/wa/wallet", icon: Coins },
             { name: "Billing & Plans", href: "/wa/billing", icon: CreditCard },
           ].map((item) => {
             const isActive = pathname?.startsWith(item.href);

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { PRICING_PLANS } from "@/lib/pricing";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET() {
   try {
@@ -33,7 +35,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name and reply message are required" }, { status: 400 });
     }
 
+    const rl = await checkRateLimit("automations", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+
     const supabase = getSupabaseAdmin() as any;
+
+    // Fetch fresh plan_type from DB so plan upgrades take effect without re-login
+    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
+    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
+    const limit = PRICING_PLANS[planKey]?.limits?.automations ?? PRICING_PLANS.FREE.limits.automations;
+    const { count } = await supabase
+      .from("wa_automations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.id);
+    if ((count || 0) >= limit) {
+      return NextResponse.json({ error: `Automation limit reached (${limit} on your plan). Upgrade to create more.` }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("wa_automations")
       .insert({
@@ -60,16 +78,23 @@ export async function PATCH(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { id, is_active } = body;
+    const { id, is_active, name, trigger_type, trigger_keyword, reply_message } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Automation ID is required" }, { status: 400 });
     }
 
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (typeof is_active === "boolean") updates.is_active = is_active;
+    if (name !== undefined) updates.name = name;
+    if (trigger_type !== undefined) updates.trigger_type = trigger_type;
+    if (trigger_keyword !== undefined) updates.trigger_keyword = trigger_keyword;
+    if (reply_message !== undefined) updates.reply_message = reply_message;
+
     const supabase = getSupabaseAdmin() as any;
     const { data, error } = await supabase
       .from("wa_automations")
-      .update({ is_active, updated_at: new Date().toISOString() })
+      .update(updates)
       .eq("id", id)
       .eq("user_id", session.id)
       .select()

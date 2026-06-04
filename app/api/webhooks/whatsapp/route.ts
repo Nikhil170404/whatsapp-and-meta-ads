@@ -54,7 +54,7 @@ export async function POST(req: Request) {
               // Find the connected user by phone_number_id
               const { data: connection } = await supabase
                 .from("wa_connections")
-                .select("user_id, access_token, token_expires_at")
+                .select("user_id, access_token, token_expires_at, billing_type")
                 .eq("phone_number_id", phoneNumberId)
                 .single();
 
@@ -107,6 +107,21 @@ export async function POST(req: Request) {
 
               if (!matchedAutomation) continue;
 
+              // Block automation if managed billing wallet is empty
+              if (connection.billing_type === "managed") {
+                const { data: wallet } = await supabase
+                  .from("wa_wallet")
+                  .select("balance_paise")
+                  .eq("user_id", connection.user_id)
+                  .maybeSingle();
+                if ((wallet?.balance_paise || 0) < 95) {
+                  await supabase.from("wa_automations")
+                    .update({ last_error: "Wallet empty — top up your ReplyKaro wallet to resume auto-replies" })
+                    .eq("id", matchedAutomation.id);
+                  continue;
+                }
+              }
+
               try {
                 const response = await sendTextMessage(
                   phoneNumberId,
@@ -134,6 +149,28 @@ export async function POST(req: Request) {
                     last_error: null,
                   })
                   .eq("id", matchedAutomation.id);
+
+                // Deduct wallet for managed billing
+                if (connection.billing_type === "managed") {
+                  const { data: walletNow } = await supabase
+                    .from("wa_wallet")
+                    .select("balance_paise, total_spent_paise")
+                    .eq("user_id", connection.user_id)
+                    .maybeSingle();
+                  const newBal = Math.max(0, (walletNow?.balance_paise || 0) - 95);
+                  await supabase.from("wa_wallet").update({
+                    balance_paise: newBal,
+                    total_spent_paise: (walletNow?.total_spent_paise || 0) + 95,
+                    updated_at: new Date().toISOString(),
+                  }).eq("user_id", connection.user_id);
+                  await supabase.from("wa_wallet_transactions").insert({
+                    user_id: connection.user_id,
+                    type: "debit",
+                    amount_paise: 95,
+                    balance_after_paise: newBal,
+                    description: `Auto-reply to ${contact}`,
+                  });
+                }
 
                 // Clear any previous connection error on success
                 await supabase

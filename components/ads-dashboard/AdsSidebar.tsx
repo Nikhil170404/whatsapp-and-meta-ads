@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Zap,
   BarChart3,
+  TrendingUp,
   LogOut,
   Link2,
   MessageSquare,
@@ -27,12 +28,14 @@ const navigation = [
   { name: "Overview", href: "/ads", icon: LayoutDashboard },
   { name: "Connect Account", href: "/ads/connect", icon: Link2 },
   { name: "Campaigns", href: "/ads/campaigns", icon: BarChart3 },
+  { name: "Analytics", href: "/ads/analytics", icon: BarChart3 },
   { name: "Ad Automations", href: "/ads/automations", icon: Zap },
 ];
 
 const bottomTabs = [
   { name: "Home", href: "/ads", icon: Home },
   { name: "Campaigns", href: "/ads/campaigns", icon: BarChart3 },
+  { name: "Analytics", href: "/ads/analytics", icon: TrendingUp },
   { name: "Auto", href: "/ads/automations", icon: Zap },
   { name: "More", href: "__more__", icon: MoreHorizontal },
 ];
@@ -199,6 +202,8 @@ export function AdsSidebar({ user }: SidebarProps) {
 
         <nav className="px-4 pb-4 space-y-1">
           {[
+            { name: "Analytics", href: "/ads/analytics", icon: BarChart3 },
+            { name: "Ad Automations", href: "/ads/automations", icon: Zap },
             { name: "Connect Meta Ads", href: "/ads/connect", icon: Link2 },
           ].map((item) => {
             const isActive = pathname?.startsWith(item.href);

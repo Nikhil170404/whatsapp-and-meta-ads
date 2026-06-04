@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search } from "lucide-react";
 
 interface Broadcast {
@@ -44,24 +44,33 @@ export function BroadcastsClient({
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
+  const [labelFilter, setLabelFilter] = useState("");
 
   const [form, setForm] = useState({
     name: "",
     template_id: "",
     contact_ids: [] as string[],
+    scheduled_at: "",
   });
 
   const selectedTemplate = templates.find((t) => t.id === form.template_id);
+
+  const contactLabels = useMemo(() => {
+    const s = new Set<string>();
+    contacts.forEach(c => ((c as any).labels ?? []).forEach((l: string) => s.add(l)));
+    return Array.from(s).sort();
+  }, [contacts]);
+
   const filteredContacts = contacts.filter(
     (c) =>
-      c.phone_number.includes(contactSearch) ||
-      (c.display_name ?? "").toLowerCase().includes(contactSearch.toLowerCase())
+      (c.phone_number.includes(contactSearch) || (c.display_name ?? "").toLowerCase().includes(contactSearch.toLowerCase())) &&
+      (!labelFilter || ((c as any).labels ?? []).includes(labelFilter))
   );
 
   const openForm = async () => {
     setShowForm(true);
     setStep(1);
-    setForm({ name: "", template_id: "", contact_ids: [] });
+    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "" });
     setError(null);
 
     setLoadingContacts(true);
@@ -76,7 +85,7 @@ export function BroadcastsClient({
   const resetForm = () => {
     setShowForm(false);
     setStep(1);
-    setForm({ name: "", template_id: "", contact_ids: [] });
+    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "" });
     setError(null);
   };
 
@@ -117,10 +126,12 @@ export function BroadcastsClient({
     setSaving(true);
     setError(null);
     try {
+      const payload: Record<string, any> = { ...form };
+      if (!payload.scheduled_at) delete payload.scheduled_at;
       const res = await fetch("/api/whatsapp/broadcasts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -243,6 +254,20 @@ export function BroadcastsClient({
                 </div>
               )}
 
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Schedule <span className="text-slate-400 font-medium normal-case">(optional — leave blank to send now)</span></label>
+                <input
+                  type="datetime-local"
+                  value={form.scheduled_at}
+                  onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })}
+                  min={new Date(Date.now() + 5 * 60 * 1000).toISOString().slice(0, 16)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366] bg-white"
+                />
+                {form.scheduled_at && (
+                  <p className="text-xs text-slate-400 font-medium mt-1">Will send at: {new Date(form.scheduled_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                )}
+              </div>
+
               {error && <p className="text-sm font-bold text-rose-600 bg-rose-50 px-4 py-3 rounded-xl">{error}</p>}
               <button onClick={goNext} disabled={approvedTemplates.length === 0} className="w-full py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] disabled:opacity-40 transition-all">
                 Next: Choose Contacts →
@@ -269,6 +294,17 @@ export function BroadcastsClient({
                 </div>
               ) : (
                 <>
+                  {contactLabels.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      <button onClick={() => setLabelFilter("")} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${!labelFilter ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>All</button>
+                      {contactLabels.map(l => (
+                        <button key={l} onClick={() => setLabelFilter(labelFilter === l ? "" : l)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${labelFilter === l ? "bg-[#25D366] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+                          🏷 {l}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="relative">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
@@ -331,6 +367,12 @@ export function BroadcastsClient({
                   <p className="text-sm font-bold text-slate-500">Recipients</p>
                   <p className="text-sm font-bold text-[#25D366]">{form.contact_ids.length} contacts</p>
                 </div>
+                {form.scheduled_at && (
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                    <p className="text-sm font-bold text-slate-500">Scheduled for</p>
+                    <p className="text-sm font-bold text-violet-600">{new Date(form.scheduled_at).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}</p>
+                  </div>
+                )}
               </div>
 
               {selectedTemplate && (

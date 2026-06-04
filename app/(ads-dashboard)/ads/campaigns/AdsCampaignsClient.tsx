@@ -98,7 +98,7 @@ export function AdsCampaignsClient({
             { label: "Active", value: activeCampaigns.toString(), icon: Activity, color: "text-green-600", bg: "bg-green-50" },
             { label: "Total Spend", value: `$${totalSpend.toFixed(2)}`, icon: DollarSign, color: "text-[#1877F2]", bg: "bg-[#1877F2]/10" },
             { label: "Impressions", value: totalImpressions.toLocaleString(), icon: Eye, color: "text-violet-600", bg: "bg-violet-50" },
-            { label: "Clicks", value: totalClicks.toLocaleString(), icon: MousePointerClick, color: "text-amber-600", bg: "bg-amber-50" },
+            { label: "Avg CTR", value: `${(campaigns.length > 0 ? campaigns.reduce((s,c) => s + Number(c.ctr || 0), 0) / campaigns.length : 0).toFixed(2)}%`, icon: TrendingUp, color: "text-emerald-600", bg: "bg-emerald-50" },
           ].map((stat) => (
             <div key={stat.label} className="bg-white rounded-2xl border border-slate-100 p-4 md:p-5">
               <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
@@ -151,9 +151,10 @@ export function AdsCampaignsClient({
                 <div className="bg-slate-50 rounded-xl p-3">
                   <div className="flex items-center gap-1.5 text-slate-400 mb-1">
                     <Eye className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Views</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Impressions</span>
                   </div>
                   <p className="text-sm font-black text-slate-900">{Number(camp.impressions).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">CPM: ${Number(camp.impressions) > 0 ? ((Number(camp.spend) / Number(camp.impressions)) * 1000).toFixed(2) : "0.00"}</p>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3">
                   <div className="flex items-center gap-1.5 text-slate-400 mb-1">
@@ -161,6 +162,7 @@ export function AdsCampaignsClient({
                     <span className="text-[10px] font-bold uppercase tracking-wider">Clicks</span>
                   </div>
                   <p className="text-sm font-black text-slate-900">{Number(camp.clicks).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">CPC: ${Number(camp.clicks) > 0 ? (Number(camp.spend) / Number(camp.clicks)).toFixed(2) : "0.00"}</p>
                 </div>
               </div>
 

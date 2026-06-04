@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { CheckCircle2, AlertCircle, Phone, ShieldCheck, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, Loader2, CreditCard } from "lucide-react";
 
 declare global {
   interface Window {
@@ -11,16 +12,25 @@ declare global {
 }
 
 export function WaConnectClient({ initialConnection }: { initialConnection: any }) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [billingStep, setBillingStep] = useState<"choose" | "done">("choose");
+
   const wabaIdRef = useRef<string | null>(null);
   const phoneIdRef = useRef<string | null>(null);
 
+  // Reset billing step whenever the success modal opens
+  useEffect(() => {
+    if (showSuccessModal) {
+      setBillingStep("choose");
+    }
+  }, [showSuccessModal]);
+
   useEffect(() => {
     if (document.getElementById('facebook-jssdk')) return;
-    
+
     window.fbAsyncInit = function() {
       window.FB.init({
         appId            : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
@@ -94,8 +104,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       }
       if (!res.ok) throw new Error(data.details || data.error || "Failed to exchange token.");
 
-      setSuccess("Successfully connected!");
-      setTimeout(() => window.location.reload(), 2000);
+      setShowSuccessModal(true);
     } catch (err: any) {
       setError(err.message);
       setIsLoading(false);
@@ -109,6 +118,140 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       window.location.reload();
     }
   };
+
+  const handleBillingChoice = async (billingType: "direct" | "managed") => {
+    setIsLoading(true);
+    try {
+      await fetch("/api/whatsapp/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_billing_type", billing_type: billingType }),
+      });
+      if (billingType === "managed") {
+        router.push("/wa/wallet");
+      } else {
+        setBillingStep("done");
+      }
+    } catch {
+      // Still proceed even if the API call fails
+      if (billingType === "managed") {
+        router.push("/wa/wallet");
+      } else {
+        setBillingStep("done");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (showSuccessModal) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+          {/* Header bar matching Meta style */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50">
+            <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center">
+              <svg viewBox="0 0 36 36" fill="white" className="w-4 h-4"><path d="M18 2C9.16 2 2 9.16 2 18a16 16 0 0 0 8.56 14.11L18 34l7.44-1.89A16 16 0 0 0 34 18C34 9.16 26.84 2 18 2z"/></svg>
+            </div>
+            <div className="w-5 h-5 rounded-sm border border-slate-300 flex items-center justify-center">
+              <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3"><path d="M2 4l6 4 6-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round"/><rect x="1" y="3" width="14" height="10" rx="2" stroke="#94a3b8" strokeWidth="1.5"/></svg>
+            </div>
+            <div className="ml-1 w-5 h-5 text-yellow-400">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5"><path d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"/></svg>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-8 py-8 text-center">
+            {/* Confetti avatar */}
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-purple-100" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-200 to-purple-200 flex items-center justify-center">
+                  <svg viewBox="0 0 40 40" fill="none" className="w-10 h-10"><circle cx="20" cy="14" r="7" fill="#94a3b8"/><path d="M6 36c0-7.73 6.27-14 14-14s14 6.27 14 14" fill="#94a3b8"/></svg>
+                </div>
+              </div>
+              {/* Confetti dots */}
+              {["top-1 left-3 bg-purple-400","top-3 right-2 bg-blue-400","bottom-2 left-1 bg-green-400","bottom-1 right-3 bg-yellow-400","top-6 left-0 bg-pink-400","bottom-6 right-0 bg-indigo-400"].map((cls, i) => (
+                <div key={i} className={`absolute w-2 h-2 rounded-full ${cls}`} />
+              ))}
+            </div>
+
+            <h2 className="text-xl font-bold text-slate-900 mb-2">
+              Your account is connected to Replykaro
+            </h2>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              We'll review your business to ensure that it complies with WhatsApp's{" "}
+              <span className="text-blue-500 cursor-pointer">Commerce Policy</span> and get in touch
+              with you within 24 hours if there's an issue.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 pb-6 flex flex-col gap-3">
+            {billingStep === "choose" ? (
+              <>
+                <div className="mb-1 text-center">
+                  <h3 className="text-base font-black text-slate-900">How will you pay for WhatsApp messages?</h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Meta charges ₹0.86 per marketing message. Choose how you'd like to handle this.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => handleBillingChoice("direct")}
+                  disabled={isLoading}
+                  className="w-full flex flex-col items-start gap-0.5 px-4 py-3.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-60 transition-colors rounded-xl text-left border border-slate-200"
+                >
+                  <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                    I have a Visa/Mastercard
+                  </span>
+                  <span className="text-xs text-slate-500 ml-6">Pay Meta directly, no extra charges</span>
+                </button>
+
+                <button
+                  onClick={() => handleBillingChoice("managed")}
+                  disabled={isLoading}
+                  className="w-full flex flex-col items-start gap-0.5 px-4 py-3.5 bg-[#25D366]/5 hover:bg-[#25D366]/10 disabled:opacity-60 transition-colors rounded-xl text-left border border-[#25D366]/30"
+                >
+                  <span className="font-bold text-[#25D366] text-sm flex items-center gap-2">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/><path d="M8 12h8M12 8v8" strokeLinecap="round"/></svg>
+                    )}
+                    Use UPI / Indian Payments
+                  </span>
+                  <span className="text-xs text-slate-500 ml-6">Top up wallet here, we pay Meta for you</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push("/wa/billing")}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#0a7c4a] hover:bg-[#086b3f] transition-colors text-white font-semibold rounded-xl text-sm"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Add payment method
+                </button>
+                <button
+                  onClick={() => { setShowSuccessModal(false); router.push("/wa"); }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 transition-colors text-white font-semibold rounded-xl text-sm"
+                >
+                  Finish
+                </button>
+              </>
+            )}
+          </div>
+
+          <p className="pb-5 text-center text-[10px] text-slate-400">
+            Replykaro's{" "}
+            <span className="text-blue-500 cursor-pointer">Privacy Policy</span> and{" "}
+            <span className="text-blue-500 cursor-pointer">Terms</span>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (initialConnection?.status === 'active') {
     return (
@@ -166,7 +309,6 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       </div>
       <div className="max-w-xs mx-auto space-y-4">
         {error && <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold leading-relaxed">{error}</div>}
-        {success && <div className="p-4 rounded-xl bg-green-50 text-green-700 text-sm font-bold">{success}</div>}
         <button
           onClick={launchWhatsAppSignup}
           disabled={isLoading}
