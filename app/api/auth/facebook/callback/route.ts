@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
 
 export async function GET(req: Request) {
@@ -19,7 +18,6 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${env.APP_URL}/signin?redirect=/ads/connect`);
     }
 
-    // Exchange code for access token
     const tokenUrl = `https://graph.facebook.com/v25.0/oauth/access_token?client_id=${env.NEXT_PUBLIC_FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(`${env.APP_URL}/api/auth/facebook/callback`)}&client_secret=${env.FACEBOOK_APP_SECRET}&code=${code}`;
 
     const tokenRes = await fetch(tokenUrl);
@@ -32,35 +30,31 @@ export async function GET(req: Request) {
 
     const accessToken = tokenData.access_token;
 
-    // Fetch user info
-    const meRes = await fetch(`https://graph.facebook.com/v25.0/me?fields=id,name&access_token=${accessToken}`);
+    const [meRes, adAccountsRes, pagesRes] = await Promise.all([
+      fetch(`https://graph.facebook.com/v25.0/me?fields=id,name&access_token=${accessToken}`),
+      fetch(`https://graph.facebook.com/v25.0/me/adaccounts?fields=account_id&access_token=${accessToken}`),
+      fetch(`https://graph.facebook.com/v25.0/me/accounts?fields=id,name,access_token&access_token=${accessToken}`),
+    ]);
+
     const meData = await meRes.json();
-
-    // Fetch ad accounts (just taking the first one for this implementation)
-    const adAccountsRes = await fetch(`https://graph.facebook.com/v25.0/me/adaccounts?fields=account_id&access_token=${accessToken}`);
     const adAccountsData = await adAccountsRes.json();
+    const pagesData = await pagesRes.json();
+
     const adAccountId = adAccountsData.data?.[0]?.account_id || "unknown_ad_account";
+    const firstPage = pagesData.data?.[0];
+    const pageId = firstPage?.id || null;
+    const pageAccessToken = firstPage?.access_token || null;
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
+    const supabase = getSupabaseAdmin() as any;
 
-    // Save ad connection
     await supabase.from("ad_connections").upsert({
       user_id: session.id,
       fb_user_id: meData.id,
       ad_account_id: adAccountId,
+      page_id: pageId,
+      page_access_token: pageAccessToken,
       access_token: accessToken,
-      status: 'active'
+      status: 'active',
     }, { onConflict: "user_id" });
 
     return NextResponse.redirect(`${env.APP_URL}/ads`);

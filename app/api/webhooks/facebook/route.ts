@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { sendTextMessage } from "@/lib/whatsapp/service";
 
 const FB_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -31,6 +32,83 @@ export async function POST(req: Request) {
       const pageId = entry.id;
 
       for (const change of entry.changes || []) {
+        if (change.field === "leadgen") {
+          const leadgenId = change.value?.leadgen_id;
+          if (!leadgenId) continue;
+
+          const { data: conn } = await supabase
+            .from("ad_connections")
+            .select("user_id, access_token, page_id")
+            .eq("page_id", pageId)
+            .maybeSingle();
+
+          if (!conn) continue;
+
+          try {
+            const leadRes = await fetch(
+              `${FB_API_URL}/${leadgenId}?fields=field_data,created_time&access_token=${conn.access_token}`
+            );
+            const leadData: any = await leadRes.json();
+            const fieldData: Array<{ name: string; values: string[] }> = leadData.field_data || [];
+
+            const getName = () => {
+              const f = fieldData.find((d) => d.name === "full_name" || d.name === "first_name");
+              return f?.values?.[0] || null;
+            };
+            const getEmail = () => {
+              const f = fieldData.find((d) => d.name === "email");
+              return f?.values?.[0] || null;
+            };
+            const getPhone = () => {
+              const f = fieldData.find((d) => d.name === "phone_number" || d.name === "phone");
+              return f?.values?.[0] || null;
+            };
+
+            const name = getName();
+            const email = getEmail();
+            const phone = getPhone();
+
+            await supabase.from("ad_leads").upsert({
+              user_id: conn.user_id,
+              page_id: conn.page_id,
+              lead_id: leadgenId,
+              name,
+              email,
+              phone,
+              raw_data: fieldData,
+            }, { onConflict: "lead_id" });
+
+            if (phone) {
+              const { data: waConn } = await supabase
+                .from("wa_connections")
+                .select("phone_number_id, access_token")
+                .eq("user_id", conn.user_id)
+                .eq("status", "active")
+                .maybeSingle();
+
+              if (waConn) {
+                try {
+                  await sendTextMessage(
+                    waConn.phone_number_id,
+                    phone,
+                    `Hi ${name || "there"}! Thanks for your interest. We'll be in touch soon.`,
+                    waConn.access_token
+                  );
+                  await supabase
+                    .from("ad_leads")
+                    .update({ whatsapp_sent: true })
+                    .eq("lead_id", leadgenId);
+                } catch (waErr) {
+                  console.error("WhatsApp send error for lead:", waErr);
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Leadgen processing error:", err);
+          }
+          continue;
+        }
+
         if (change.field !== "feed" && change.field !== "comments") continue;
 
         const val = change.value;
