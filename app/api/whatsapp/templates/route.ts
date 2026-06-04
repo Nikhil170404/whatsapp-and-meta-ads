@@ -2,12 +2,45 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 
+const WA_API_URL = "https://graph.facebook.com/v25.0";
+
 export async function GET() {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const supabase = getSupabaseAdmin() as any;
+
+    // Also sync approved templates from Meta
+    const { data: conn } = await supabase
+      .from("wa_connections")
+      .select("waba_id, access_token")
+      .eq("user_id", session.id)
+      .maybeSingle();
+
+    if (conn?.waba_id && conn?.access_token) {
+      try {
+        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?fields=name,status,category,language,components&limit=50`, {
+          headers: { Authorization: `Bearer ${conn.access_token}` },
+        });
+        if (metaRes.ok) {
+          const metaData = await metaRes.json();
+          for (const t of metaData.data || []) {
+            const bodyComp = t.components?.find((c: any) => c.type === "BODY");
+            await supabase.from("wa_templates").upsert({
+              user_id: session.id,
+              name: t.name,
+              category: t.category,
+              language: t.language,
+              body_text: bodyComp?.text || "",
+              status: t.status?.toLowerCase() === "approved" ? "approved" : t.status?.toLowerCase() || "pending",
+              meta_template_id: t.id || null,
+            }, { onConflict: "user_id,name" });
+          }
+        }
+      } catch { /* ignore sync errors */ }
+    }
+
     const { data, error } = await supabase
       .from("wa_templates")
       .select("*")
@@ -33,23 +66,70 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name and body text are required" }, { status: 400 });
     }
 
+    // Template names must be lowercase with underscores for Meta
+    const metaName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+
     const supabase = getSupabaseAdmin() as any;
+
+    // Save to DB first
     const { data, error } = await supabase
       .from("wa_templates")
-      .insert({
+      .upsert({
         user_id: session.id,
-        name,
+        name: metaName,
         category: category || "UTILITY",
         language: language || "en_US",
         body_text,
         status: "pending",
-      })
+      }, { onConflict: "user_id,name" })
       .select()
       .single();
 
     if (error) throw error;
-    return NextResponse.json({ template: data });
+
+    // Submit to Meta for approval
+    const { data: conn } = await supabase
+      .from("wa_connections")
+      .select("waba_id, access_token")
+      .eq("user_id", session.id)
+      .maybeSingle();
+
+    let metaError: string | null = null;
+    if (conn?.waba_id && conn?.access_token) {
+      try {
+        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${conn.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: metaName,
+            category: category || "UTILITY",
+            language: language || "en_US",
+            components: [{ type: "BODY", text: body_text }],
+          }),
+        });
+        const metaData = await metaRes.json();
+        if (metaData.id) {
+          await supabase
+            .from("wa_templates")
+            .update({ meta_template_id: metaData.id, status: "pending" })
+            .eq("id", data.id);
+          data.meta_template_id = metaData.id;
+        } else {
+          metaError = metaData.error?.message || "Meta rejected the template";
+        }
+      } catch (err: any) {
+        metaError = err.message;
+      }
+    } else {
+      metaError = "WhatsApp not connected — template saved locally only";
+    }
+
+    return NextResponse.json({ template: data, meta_error: metaError });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
