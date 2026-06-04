@@ -3,11 +3,15 @@ import { getSession } from "@/lib/auth/session";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { sendTextMessage } from "@/lib/whatsapp/service";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const { to, message } = await req.json();
     if (!to || !message?.trim()) {

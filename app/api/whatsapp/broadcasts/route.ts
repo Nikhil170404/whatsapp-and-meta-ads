@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET() {
   try {
@@ -32,6 +33,9 @@ export async function POST(req: Request) {
     if (!name || !template_id || !contact_ids?.length) {
       return NextResponse.json({ error: "Name, template, and contacts are required" }, { status: 400 });
     }
+
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const supabase = getSupabaseAdmin() as any;
 

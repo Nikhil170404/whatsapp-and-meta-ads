@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET(req: Request) {
   try {
@@ -42,9 +43,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
     }
 
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+
     const supabase = getSupabaseAdmin() as any;
 
-    const planKey = (session.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
+    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
+    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
     const limit = PRICING_PLANS[planKey]?.limits?.contacts ?? PRICING_PLANS.FREE.limits.contacts;
     const { data: existing } = await supabase
       .from("wa_contacts")

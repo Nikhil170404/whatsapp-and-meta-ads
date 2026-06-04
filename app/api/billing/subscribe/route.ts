@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 const PLAN_CONFIGS: Record<string, { planId: string; name: string }> = {
   // WhatsApp Growth
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("auth", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
 
     const { plan_key } = await req.json();
     const config = PLAN_CONFIGS[plan_key];

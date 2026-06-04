@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { PRICING_PLANS } from "@/lib/pricing";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET() {
   try {
@@ -34,9 +35,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name and reply message are required" }, { status: 400 });
     }
 
+    const rl = await checkRateLimit("automations", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+
     const supabase = getSupabaseAdmin() as any;
 
-    const planKey = (session.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
+    // Fetch fresh plan_type from DB so plan upgrades take effect without re-login
+    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
+    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
     const limit = PRICING_PLANS[planKey]?.limits?.automations ?? PRICING_PLANS.FREE.limits.automations;
     const { count } = await supabase
       .from("wa_automations")
