@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action } = body;
 
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabaseAdmin() as any;
 
     if (action === "set_billing_type") {
       const { billing_type } = body as { billing_type: "direct" | "managed" };
