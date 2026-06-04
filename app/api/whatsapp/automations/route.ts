@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { PRICING_PLANS } from "@/lib/pricing";
 
 export async function GET() {
   try {
@@ -34,6 +35,17 @@ export async function POST(req: Request) {
     }
 
     const supabase = getSupabaseAdmin() as any;
+
+    const planKey = (session.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
+    const limit = PRICING_PLANS[planKey]?.limits?.automations ?? PRICING_PLANS.FREE.limits.automations;
+    const { count } = await supabase
+      .from("wa_automations")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", session.id);
+    if ((count || 0) >= limit) {
+      return NextResponse.json({ error: `Automation limit reached (${limit} on your plan). Upgrade to create more.` }, { status: 403 });
+    }
+
     const { data, error } = await supabase
       .from("wa_automations")
       .insert({
