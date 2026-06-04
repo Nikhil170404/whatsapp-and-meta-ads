@@ -263,6 +263,27 @@ CREATE TABLE IF NOT EXISTS ad_leads (
 );
 
 -- ---------------------------------------------------------------------------
+-- Click-to-WhatsApp ad campaigns created via ReplyKaro
+CREATE TABLE IF NOT EXISTS ctwa_campaigns (
+  id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID          REFERENCES users(id) ON DELETE CASCADE,
+  name             TEXT          NOT NULL,
+  ad_text          TEXT          NOT NULL,
+  headline         TEXT          NOT NULL,
+  whatsapp_number  TEXT          NOT NULL,
+  opening_message  TEXT,
+  daily_budget_inr NUMERIC(10,2) NOT NULL,
+  target_countries TEXT[]        DEFAULT '{IN}',
+  meta_campaign_id TEXT,
+  meta_adset_id    TEXT,
+  meta_creative_id TEXT,
+  meta_ad_id       TEXT,
+  status           TEXT          DEFAULT 'paused',
+  created_at       TIMESTAMPTZ   DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ   DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS product_waitlist (
   id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -352,6 +373,7 @@ ALTER TABLE ad_connections          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ad_campaigns            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ad_automations          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ad_leads                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ctwa_campaigns          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_waitlist        ENABLE ROW LEVEL SECURITY;
 
 -- Drop before recreate so re-runs never fail on "policy already exists"
@@ -369,6 +391,7 @@ DROP POLICY IF EXISTS "Service role full access" ON ad_connections;
 DROP POLICY IF EXISTS "Service role full access" ON ad_campaigns;
 DROP POLICY IF EXISTS "Service role full access" ON ad_automations;
 DROP POLICY IF EXISTS "Service role full access" ON ad_leads;
+DROP POLICY IF EXISTS "Service role full access" ON ctwa_campaigns;
 DROP POLICY IF EXISTS "Service role full access" ON product_waitlist;
 
 CREATE POLICY "Service role full access" ON wa_connections          FOR ALL TO service_role USING (true);
@@ -385,6 +408,7 @@ CREATE POLICY "Service role full access" ON ad_connections          FOR ALL TO s
 CREATE POLICY "Service role full access" ON ad_campaigns            FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON ad_automations          FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON ad_leads                FOR ALL TO service_role USING (true);
+CREATE POLICY "Service role full access" ON ctwa_campaigns          FOR ALL TO service_role USING (true);
 CREATE POLICY "Service role full access" ON product_waitlist        FOR ALL TO service_role USING (true);
 
 -- ---------------------------------------------------------------------------
