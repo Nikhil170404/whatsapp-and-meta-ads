@@ -11,10 +11,10 @@ import {
   LogOut,
   Link2,
   MessageSquare,
-  CreditCard,
   MoreHorizontal,
   Home,
   Users,
+  Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -27,6 +27,7 @@ interface SidebarProps {
 const navigation = [
   { name: "Overview", href: "/ads", icon: LayoutDashboard },
   { name: "Connect Account", href: "/ads/connect", icon: Link2 },
+  { name: "Click-to-WhatsApp", href: "/ads/ctwa", icon: Megaphone },
   { name: "Campaigns", href: "/ads/campaigns", icon: BarChart3 },
   { name: "Leads", href: "/ads/leads", icon: Users },
   { name: "Analytics", href: "/ads/analytics", icon: BarChart3 },
@@ -203,6 +204,7 @@ export function AdsSidebar({ user }: SidebarProps) {
 
         <nav className="px-4 pb-4 space-y-1">
           {[
+            { name: "Click-to-WhatsApp", href: "/ads/ctwa", icon: Megaphone },
             { name: "Leads", href: "/ads/leads", icon: Users },
             { name: "Analytics", href: "/ads/analytics", icon: BarChart3 },
             { name: "Ad Automations", href: "/ads/automations", icon: Zap },
