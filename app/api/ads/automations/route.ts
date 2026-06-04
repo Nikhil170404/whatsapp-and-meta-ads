@@ -59,14 +59,20 @@ export async function PATCH(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { id, is_active } = body;
+    const { id, is_active, trigger_keyword, reply_message, send_dm } = body;
 
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (typeof is_active === "boolean") updates.is_active = is_active;
+    if (trigger_keyword !== undefined) updates.trigger_keyword = trigger_keyword;
+    if (reply_message !== undefined) updates.reply_message = reply_message;
+    if (typeof send_dm === "boolean") updates.send_dm = send_dm;
 
     const supabase = getSupabaseAdmin() as any;
     const { data, error } = await supabase
       .from("ad_automations")
-      .update({ is_active })
+      .update(updates)
       .eq("id", id)
       .eq("user_id", session.id)
       .select()
