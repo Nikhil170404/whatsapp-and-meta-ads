@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, ExternalLink, Zap } from "lucide-react";
+import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface Message {
@@ -20,15 +20,30 @@ interface Conversation {
   lastMessage: Message;
 }
 
+const QUICK_REPLIES = [
+  { label: "👋 Hi", text: "Hi! How can I help you today?" },
+  { label: "✅ Thanks", text: "Thank you for reaching out! We'll get back to you shortly." },
+  { label: "📦 Order", text: "Your order is being processed. You'll receive an update soon." },
+  { label: "💰 Price", text: "For pricing details, please visit our website or reply with your requirements." },
+  { label: "🕐 Soon", text: "Our team will contact you within 24 hours. Thank you for your patience!" },
+  { label: "❌ Unavail", text: "This item is currently unavailable. We'll notify you when it's back in stock." },
+];
+
 export function MessagesClient({ initialMessages }: { initialMessages: Message[] }) {
+  const [messages, setMessages] = useState(initialMessages);
   const [search, setSearch] = useState("");
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const conversations = useMemo<Record<string, Conversation>>(() => {
     const groups: Record<string, Message[]> = {};
-    for (const msg of initialMessages) {
+    for (const msg of messages) {
       const phone = msg.direction === "inbound" ? msg.from_phone! : msg.to_phone!;
       if (!groups[phone]) groups[phone] = [];
       groups[phone].push(msg);
@@ -39,7 +54,7 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
       result[phone] = { phone, messages: sorted, lastMessage: sorted[0] };
     }
     return result;
-  }, [initialMessages]);
+  }, [messages]);
 
   const sortedPhones = useMemo(() => {
     return Object.keys(conversations).sort((a, b) => {
@@ -68,18 +83,66 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
   const selectConversation = (phone: string) => {
     setSelectedPhone(phone);
     setShowMobileChat(true);
+    setSendError(null);
+    setInput("");
+    setShowQuickReplies(false);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || !selectedPhone || sending) return;
+    const text = input.trim();
+    setInput("");
+    setSendError(null);
+    setSending(true);
+    setShowQuickReplies(false);
+
+    // Optimistic message
+    const optimistic: Message = {
+      id: `opt_${Date.now()}`,
+      direction: "outbound",
+      to_phone: selectedPhone,
+      content: text,
+      status: "sending",
+      created_at: new Date().toISOString(),
+    };
+    setMessages(prev => [...prev, optimistic]);
+
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: selectedPhone, message: text }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send");
+      // Replace optimistic with real
+      setMessages(prev => prev.map(m => m.id === optimistic.id ? { ...optimistic, id: data.message?.id ?? optimistic.id, status: "sent" } : m));
+    } catch (e: any) {
+      setSendError(e.message);
+      // Remove optimistic on error
+      setMessages(prev => prev.filter(m => m.id !== optimistic.id));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-4 shrink-0">
         <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Messages</h1>
-        <p className="text-slate-500 font-medium mt-1 text-sm">View your WhatsApp inbound and outbound messages.</p>
+        <p className="text-slate-500 font-medium mt-1 text-sm">View and reply to WhatsApp conversations.</p>
       </div>
 
       <div className="flex-1 bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden flex min-h-0">
-        {/* Conversation sidebar */}
-        <div className={`w-full md:w-80 border-r border-slate-100 flex flex-col ${showMobileChat ? "hidden md:flex" : "flex"}`}>
+        {/* Conversation list */}
+        <div className={`w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col shrink-0 ${showMobileChat ? "hidden md:flex" : "flex"}`}>
           <div className="p-4 border-b border-slate-100 shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -102,34 +165,13 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
             {sortedPhones.length === 0 ? (
               <div className="p-5 space-y-4">
                 <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
-                  <div className="flex items-start gap-2 mb-3">
+                  <div className="flex items-start gap-2 mb-2">
                     <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                     <p className="text-xs font-bold text-amber-700">Webhook not set up yet</p>
                   </div>
-                  <p className="text-xs text-amber-600 font-medium leading-relaxed mb-3">
-                    Messages appear here once you configure your webhook in Meta dashboard. It takes 2 minutes.
+                  <p className="text-xs text-amber-600 font-medium leading-relaxed">
+                    Messages appear here once your webhook is configured in Meta Dashboard.
                   </p>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-wider">Steps:</p>
-                    {[
-                      "Go to Meta Developer Dashboard",
-                      "WhatsApp → Configuration → Webhooks",
-                      `Callback URL: https://yourdomain.com/api/webhooks/whatsapp`,
-                      "Verify Token: (your WHATSAPP_VERIFY_TOKEN env)",
-                      "Subscribe to: messages ✓",
-                    ].map((step, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="w-4 h-4 bg-amber-200 text-amber-800 rounded-full text-[9px] font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                        <p className="text-[10px] text-amber-700 font-medium leading-relaxed">{step}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3">
-                  <p className="text-xs font-bold text-slate-600 mb-1 flex items-center gap-1">
-                    <Zap className="w-3 h-3 text-[#25D366]" /> Automation is working ✅
-                  </p>
-                  <p className="text-[10px] text-slate-500 font-medium">Your "hello → hi" automation fires correctly. Messages will appear here once webhook is configured.</p>
                 </div>
               </div>
             ) : filteredPhones.length > 0 ? (
@@ -142,18 +184,25 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
                     onClick={() => selectConversation(phone)}
                     className={`w-full p-4 text-left hover:bg-slate-50 transition-colors ${isActive ? "bg-[#25D366]/5 border-l-4 border-l-[#25D366]" : ""}`}
                   >
-                    <div className="flex justify-between items-start mb-1 gap-2">
-                      <p className={`font-bold text-sm truncate ${isActive ? "text-[#25D366]" : "text-slate-900"}`}>{phone}</p>
-                      <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">
-                        {new Date(convo.lastMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 line-clamp-1">{convo.lastMessage.content}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${convo.lastMessage.direction === "inbound" ? "bg-slate-100 text-slate-500" : "bg-[#25D366]/10 text-[#25D366]"}`}>
-                        {convo.lastMessage.direction === "inbound" ? "Received" : "Sent"}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{convo.messages.length} msgs</span>
+                    <div className="flex gap-3 items-start">
+                      <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366] font-bold text-sm shrink-0">
+                        {phone.charAt(phone.length - 2)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-0.5 gap-2">
+                          <p className={`font-bold text-sm truncate ${isActive ? "text-[#25D366]" : "text-slate-900"}`}>{phone}</p>
+                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">
+                            {new Date(convo.lastMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-1">{convo.lastMessage.content}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${convo.lastMessage.direction === "inbound" ? "bg-slate-100 text-slate-500" : "bg-[#25D366]/10 text-[#25D366]"}`}>
+                            {convo.lastMessage.direction === "inbound" ? "↙ In" : "↗ Out"}
+                          </span>
+                          <span className="text-[10px] text-slate-400">{convo.messages.length} msgs</span>
+                        </div>
+                      </div>
                     </div>
                   </button>
                 );
@@ -168,11 +217,11 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
         </div>
 
         {/* Chat area */}
-        <div className={`flex-1 flex flex-col bg-slate-50/30 min-w-0 ${!showMobileChat && !selectedPhone ? "hidden md:flex" : "flex"}`}>
+        <div className={`flex-1 flex flex-col bg-[#f0f2f5] min-w-0 ${!showMobileChat && !selectedPhone ? "hidden md:flex" : "flex"}`}>
           {activeConvo ? (
             <>
               {/* Chat header */}
-              <div className="p-4 bg-white border-b border-slate-100 flex items-center gap-3 shrink-0">
+              <div className="p-4 bg-white border-b border-slate-100 flex items-center gap-3 shrink-0 shadow-sm">
                 <button
                   onClick={() => setShowMobileChat(false)}
                   className="md:hidden p-1.5 hover:bg-slate-100 rounded-lg text-slate-500"
@@ -180,28 +229,28 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366] font-bold shrink-0">
-                  {activeConvo.phone.charAt(0)}
+                  {activeConvo.phone.charAt(activeConvo.phone.length - 2)}
                 </div>
-                <div>
+                <div className="flex-1">
                   <h3 className="font-bold text-slate-900 text-sm">{activeConvo.phone}</h3>
                   <p className="text-xs text-slate-400">{activeConvo.messages.length} messages</p>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {activeMessages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.direction === "outbound" ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                    <div className={`max-w-[78%] md:max-w-[65%] rounded-2xl px-4 py-2.5 shadow-sm ${
                       msg.direction === "outbound"
-                        ? "bg-[#25D366] text-white rounded-br-none"
-                        : "bg-white border border-slate-100 shadow-sm rounded-bl-none text-slate-900"
-                    }`}>
+                        ? "bg-[#d9fdd3] text-slate-800 rounded-br-none"
+                        : "bg-white border border-slate-100 rounded-bl-none text-slate-900"
+                    } ${msg.status === "sending" ? "opacity-60" : ""}`}>
                       <p className="text-sm leading-relaxed">{msg.content}</p>
-                      <div className={`text-[10px] font-bold mt-1 flex justify-end items-center gap-1 ${msg.direction === "outbound" ? "text-white/70" : "text-slate-400"}`}>
+                      <div className="text-[10px] font-medium mt-1 flex justify-end items-center gap-1 text-slate-400">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        {msg.direction === "outbound" && msg.status && (
-                          <span className="opacity-80 capitalize">• {msg.status}</span>
+                        {msg.direction === "outbound" && (
+                          <span>{msg.status === "sending" ? "⌛" : msg.status === "read" ? "✓✓" : "✓"}</span>
                         )}
                       </div>
                     </div>
@@ -210,14 +259,65 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Reply input — read-only hint */}
-              <div className="p-4 bg-white border-t border-slate-100 shrink-0">
-                <div className="flex gap-2 items-center p-3 bg-slate-50 rounded-xl">
-                  <MessageSquare className="w-4 h-4 text-slate-400 shrink-0" />
-                  <p className="text-sm text-slate-400 font-medium flex-1">
-                    Replies are sent via <a href="/wa/automations" className="text-[#25D366] font-bold hover:underline">Automations</a> or <a href="/wa/broadcasts" className="text-[#25D366] font-bold hover:underline">Broadcasts</a>
-                  </p>
+              {/* Send area */}
+              <div className="bg-white border-t border-slate-100 shrink-0">
+                {/* Quick replies */}
+                {showQuickReplies && (
+                  <div className="px-4 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto">
+                    {QUICK_REPLIES.map((qr) => (
+                      <button
+                        key={qr.label}
+                        onClick={() => { setInput(qr.text); setShowQuickReplies(false); inputRef.current?.focus(); }}
+                        className="shrink-0 px-3 py-1.5 bg-[#25D366]/10 text-[#25D366] rounded-xl text-xs font-bold hover:bg-[#25D366]/20 transition-colors whitespace-nowrap"
+                      >
+                        {qr.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {sendError && (
+                  <div className="px-4 py-2 bg-rose-50 border-b border-rose-100">
+                    <p className="text-xs font-bold text-rose-600 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" /> {sendError}
+                    </p>
+                  </div>
+                )}
+
+                <div className="p-3 flex items-end gap-2">
+                  <button
+                    onClick={() => setShowQuickReplies(v => !v)}
+                    className={`p-2.5 rounded-xl transition-colors shrink-0 ${showQuickReplies ? "bg-[#25D366]/10 text-[#25D366]" : "text-slate-400 hover:bg-slate-100"}`}
+                    title="Quick replies"
+                  >
+                    <Zap className="w-4 h-4" />
+                  </button>
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    rows={1}
+                    placeholder="Type a message..."
+                    className="flex-1 resize-none bg-slate-50 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:bg-white transition-all min-h-[42px] max-h-32"
+                    style={{ height: "auto" }}
+                    onInput={(e) => {
+                      const el = e.currentTarget;
+                      el.style.height = "auto";
+                      el.style.height = Math.min(el.scrollHeight, 128) + "px";
+                    }}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!input.trim() || sending}
+                    className="p-2.5 bg-[#25D366] text-white rounded-xl hover:bg-[#1DA851] disabled:opacity-40 transition-all shrink-0 active:scale-95"
+                  >
+                    {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </button>
                 </div>
+                <p className="text-[10px] text-slate-400 px-4 pb-2 text-center">
+                  Only works within 24h of the customer&apos;s last message (WhatsApp policy)
+                </p>
               </div>
             </>
           ) : (
@@ -227,9 +327,7 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
               </div>
               <h2 className="text-xl font-bold text-slate-900 mb-2">Select a conversation</h2>
               <p className="text-slate-500 max-w-sm text-sm">
-                {sortedPhones.length > 0
-                  ? "Click a conversation on the left to view messages."
-                  : "Set up your webhook in Meta dashboard to start receiving messages here."}
+                {sortedPhones.length > 0 ? "Click a conversation to open it." : "Set up your webhook to start receiving messages."}
               </p>
             </div>
           )}

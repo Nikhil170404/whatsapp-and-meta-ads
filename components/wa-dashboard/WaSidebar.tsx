@@ -32,6 +32,7 @@ const navigation = [
   { name: "Automations", href: "/wa/automations", icon: Zap },
   { name: "Messages", href: "/wa/messages", icon: MessageSquare },
   { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
+  { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
   { name: "Contacts", href: "/wa/contacts", icon: Users },
   { name: "Templates", href: "/wa/templates", icon: FileText },
   { name: "Connect", href: "/wa/connect", icon: Link2 },
@@ -213,6 +214,7 @@ export function WaSidebar({ user }: SidebarProps) {
 
         <nav className="px-4 pb-4 space-y-1">
           {[
+            { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
             { name: "Contacts", href: "/wa/contacts", icon: Users },
             { name: "Templates", href: "/wa/templates", icon: FileText },
             { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
