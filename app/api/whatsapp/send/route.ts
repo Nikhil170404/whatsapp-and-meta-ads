@@ -21,10 +21,9 @@ export async function POST(req: Request) {
       { cookies: { get: (n: string) => cookieStore.get(n)?.value } }
     );
 
-    // Get user's WhatsApp connection
     const { data: connection, error: connErr } = await supabase
       .from("wa_connections")
-      .select("phone_number_id, access_token, status")
+      .select("phone_number_id, access_token, status, billing_type")
       .eq("user_id", session.id)
       .single();
 
@@ -35,7 +34,81 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "WhatsApp connection is not active. Please reconnect." }, { status: 400 });
     }
 
-    // Send via WhatsApp API
+    if (connection.billing_type === "managed") {
+      const { data: wallet, error: walletErr } = await supabase
+        .from("wa_wallet")
+        .select("balance_paise, total_spent_paise")
+        .eq("user_id", session.id)
+        .single();
+
+      if (walletErr || !wallet) {
+        console.error("Send message wallet fetch error:", walletErr);
+        return NextResponse.json({ error: "Wallet not found. Please set up managed billing." }, { status: 400 });
+      }
+
+      if (wallet.balance_paise < 95) {
+        return NextResponse.json(
+          {
+            error: "Insufficient wallet balance. Top up your ReplyKaro wallet to continue sending messages.",
+            code: "INSUFFICIENT_BALANCE",
+          },
+          { status: 402 }
+        );
+      }
+
+      const result = await sendTextMessage(
+        connection.phone_number_id,
+        to,
+        message.trim(),
+        connection.access_token
+      );
+
+      const msgId = result?.messages?.[0]?.id ?? `local_${Date.now()}`;
+      const { data: savedMsg } = await supabase
+        .from("wa_messages")
+        .insert({
+          user_id: session.id,
+          message_id: msgId,
+          direction: "outbound",
+          from_phone: null,
+          to_phone: to,
+          content: message.trim(),
+          status: "sent",
+        })
+        .select()
+        .single();
+
+      const newBalance = wallet.balance_paise - 95;
+      const newTotalSpent = wallet.total_spent_paise + 95;
+
+      const { error: debitErr } = await supabase
+        .from("wa_wallet")
+        .update({
+          balance_paise: newBalance,
+          total_spent_paise: newTotalSpent,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", session.id);
+
+      if (debitErr) {
+        console.error("Send message wallet debit error:", debitErr);
+      }
+
+      const { error: txnErr } = await supabase.from("wa_wallet_transactions").insert({
+        user_id: session.id,
+        type: "debit",
+        amount_paise: 95,
+        balance_after_paise: newBalance,
+        description: `Message to ${to}`,
+      });
+
+      if (txnErr) {
+        console.error("Send message wallet transaction log error:", txnErr);
+      }
+
+      return NextResponse.json({ success: true, message: savedMsg });
+    }
+
     const result = await sendTextMessage(
       connection.phone_number_id,
       to,
@@ -43,7 +116,6 @@ export async function POST(req: Request) {
       connection.access_token
     );
 
-    // Save to wa_messages table
     const msgId = result?.messages?.[0]?.id ?? `local_${Date.now()}`;
     const { data: savedMsg } = await supabase
       .from("wa_messages")
