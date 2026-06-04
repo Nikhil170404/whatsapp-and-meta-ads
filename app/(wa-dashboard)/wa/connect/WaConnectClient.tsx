@@ -16,13 +16,21 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [billingStep, setBillingStep] = useState<"choose" | "done">("choose");
 
   const wabaIdRef = useRef<string | null>(null);
   const phoneIdRef = useRef<string | null>(null);
 
+  // Reset billing step whenever the success modal opens
+  useEffect(() => {
+    if (showSuccessModal) {
+      setBillingStep("choose");
+    }
+  }, [showSuccessModal]);
+
   useEffect(() => {
     if (document.getElementById('facebook-jssdk')) return;
-    
+
     window.fbAsyncInit = function() {
       window.FB.init({
         appId            : process.env.NEXT_PUBLIC_FACEBOOK_APP_ID,
@@ -111,6 +119,31 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     }
   };
 
+  const handleBillingChoice = async (billingType: "direct" | "managed") => {
+    setIsLoading(true);
+    try {
+      await fetch("/api/whatsapp/wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_billing_type", billing_type: billingType }),
+      });
+      if (billingType === "managed") {
+        router.push("/wa/wallet");
+      } else {
+        setBillingStep("done");
+      }
+    } catch {
+      // Still proceed even if the API call fails
+      if (billingType === "managed") {
+        router.push("/wa/wallet");
+      } else {
+        setBillingStep("done");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (showSuccessModal) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -156,19 +189,58 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
 
           {/* Footer */}
           <div className="px-6 pb-6 flex flex-col gap-3">
-            <button
-              onClick={() => router.push("/wa/billing")}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#0a7c4a] hover:bg-[#086b3f] transition-colors text-white font-semibold rounded-xl text-sm"
-            >
-              <CreditCard className="w-4 h-4" />
-              Add payment method
-            </button>
-            <button
-              onClick={() => { setShowSuccessModal(false); router.push("/wa"); }}
-              className="w-full py-3 bg-slate-900 hover:bg-slate-800 transition-colors text-white font-semibold rounded-xl text-sm"
-            >
-              Finish
-            </button>
+            {billingStep === "choose" ? (
+              <>
+                <div className="mb-1 text-center">
+                  <h3 className="text-base font-black text-slate-900">How will you pay for WhatsApp messages?</h3>
+                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                    Meta charges ₹0.86 per marketing message. Choose how you'd like to handle this.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => handleBillingChoice("direct")}
+                  disabled={isLoading}
+                  className="w-full flex flex-col items-start gap-0.5 px-4 py-3.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-60 transition-colors rounded-xl text-left border border-slate-200"
+                >
+                  <span className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                    I have a Visa/Mastercard
+                  </span>
+                  <span className="text-xs text-slate-500 ml-6">Pay Meta directly, no extra charges</span>
+                </button>
+
+                <button
+                  onClick={() => handleBillingChoice("managed")}
+                  disabled={isLoading}
+                  className="w-full flex flex-col items-start gap-0.5 px-4 py-3.5 bg-[#25D366]/5 hover:bg-[#25D366]/10 disabled:opacity-60 transition-colors rounded-xl text-left border border-[#25D366]/30"
+                >
+                  <span className="font-bold text-[#25D366] text-sm flex items-center gap-2">
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : (
+                      <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/><path d="M8 12h8M12 8v8" strokeLinecap="round"/></svg>
+                    )}
+                    Use UPI / Indian Payments
+                  </span>
+                  <span className="text-xs text-slate-500 ml-6">Top up wallet here, we pay Meta for you</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push("/wa/billing")}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-[#0a7c4a] hover:bg-[#086b3f] transition-colors text-white font-semibold rounded-xl text-sm"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Add payment method
+                </button>
+                <button
+                  onClick={() => { setShowSuccessModal(false); router.push("/wa"); }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 transition-colors text-white font-semibold rounded-xl text-sm"
+                >
+                  Finish
+                </button>
+              </>
+            )}
           </div>
 
           <p className="pb-5 text-center text-[10px] text-slate-400">
