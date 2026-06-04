@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth/session";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
 import { getPhoneNumberInfo } from "@/lib/whatsapp/service";
 
@@ -93,18 +92,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!, 
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
+    const supabase = getSupabaseAdmin() as any;
 
     // 4. Save connection to DB
     const { error: dbError } = await supabase
@@ -123,7 +111,7 @@ export async function POST(req: Request) {
 
     if (dbError) {
       console.error("Database Error:", dbError);
-      return NextResponse.json({ error: "Failed to save connection to database." }, { status: 500 });
+      return NextResponse.json({ error: `Database error: ${dbError.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
@@ -138,12 +126,7 @@ export async function DELETE() {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { cookies: { get: (n: string) => cookieStore.get(n)?.value } }
-    );
+    const supabase = getSupabaseAdmin() as any;
 
     await supabase
       .from("wa_connections")
