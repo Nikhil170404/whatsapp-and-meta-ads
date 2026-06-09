@@ -14,9 +14,49 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [polling, setPolling] = useState(false);
 
   const wabaIdRef = useRef<string | null>(null);
   const phoneIdRef = useRef<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll for connection status — used on mobile where FB.login callback may not fire
+  const startPolling = () => {
+    setPolling(true);
+    let attempts = 0;
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        const res = await fetch("/api/whatsapp/status");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connected) {
+            stopPolling();
+            setIsLoading(false);
+            setShowSuccessModal(true);
+            return;
+          }
+        }
+      } catch {}
+      if (attempts >= 20) { // stop after 60s
+        stopPolling();
+        setIsLoading(false);
+        setError("Connection timed out. If you completed setup, try refreshing the page.");
+      }
+    }, 3000);
+  };
+
+  const stopPolling = () => {
+    setPolling(false);
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopPolling();
+  }, []);
 
   useEffect(() => {
     if (document.getElementById('facebook-jssdk')) return;
@@ -64,14 +104,15 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setIsLoading(true);
     setError(null);
 
+    // Detect mobile — on mobile FB.login opens a new tab so the callback may never fire
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
     window.FB.login((response: any) => {
+      stopPolling(); // callback fired — stop polling
       if (response.authResponse) {
-        // On mobile, postMessage may not have fired so wabaIdRef could be null.
-        // Backend will auto-lookup WABA from the token in that case.
         exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
       } else {
         setIsLoading(false);
-        // On mobile the tab closes without a proper cancel — treat null authResponse as cancel
         if (response.status !== 'connected') {
           setError("Setup cancelled or not completed. Please try again.");
         }
@@ -82,6 +123,11 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       override_default_response_type: true,
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
+
+    // On mobile, start polling immediately since callback likely won't fire
+    if (isMobile) {
+      setTimeout(() => startPolling(), 5000); // give 5s for user to start the flow
+    }
   };
 
   const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null) => {
@@ -207,12 +253,19 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       </div>
       <div className="max-w-xs mx-auto space-y-4">
         {error && <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold leading-relaxed">{error}</div>}
+        {polling && (
+          <div className="p-3 rounded-xl bg-blue-50 text-blue-700 text-sm font-medium text-center">
+            Waiting for Facebook to complete setup… Please finish the steps in the tab that opened.
+          </div>
+        )}
         <button
           onClick={launchWhatsAppSignup}
           disabled={isLoading}
           className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] transition-colors text-white rounded-xl font-bold disabled:opacity-70"
         >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Login with Facebook"}
+          {isLoading ? (
+            <><Loader2 className="w-5 h-5 animate-spin" />{polling ? "Verifying connection…" : "Connecting…"}</>
+          ) : "Login with Facebook"}
         </button>
         <p className="text-[10px] text-center text-slate-400">
           Current Origin: {typeof window !== 'undefined' ? window.location.origin : ''}
