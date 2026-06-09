@@ -16,99 +16,25 @@ interface Automation {
   created_at: string;
 }
 
+interface FormPanelProps {
+  isEdit: boolean;
+  id?: string;
+  form: { name: string; trigger_type: string; trigger_keyword: string; reply_message: string };
+  setForm: React.Dispatch<React.SetStateAction<{ name: string; trigger_type: string; trigger_keyword: string; reply_message: string }>>;
+  error: string | null;
+  saving: boolean;
+  onSubmit: (id?: string) => void;
+  onCancel: () => void;
+}
+
 const TRIGGER_OPTIONS = [
   { value: "keyword", label: "Specific Keyword", desc: "Reply when message contains a word" },
   { value: "any", label: "Any Message", desc: "Reply to every incoming message" },
   { value: "welcome", label: "First Message Only", desc: "Reply only to first-time senders" },
 ];
 
-export function AutomationsClient({ initialAutomations }: { initialAutomations: Automation[] }) {
-  const [automations, setAutomations] = useState(initialAutomations);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const emptyForm = { name: "", trigger_type: "keyword", trigger_keyword: "", reply_message: "" };
-  const [form, setForm] = useState(emptyForm);
-
-  const resetForm = () => { setForm(emptyForm); setError(null); setShowForm(false); setEditingId(null); };
-
-  const startEdit = (auto: Automation) => {
-    setForm({ name: auto.name, trigger_type: auto.trigger_type, trigger_keyword: auto.trigger_keyword ?? "", reply_message: auto.reply_message });
-    setEditingId(auto.id);
-    setShowForm(false);
-    setError(null);
-  };
-
-  const handleCreate = async () => {
-    if (!form.name.trim()) return setError("Give your automation a name.");
-    if (!form.reply_message.trim()) return setError("Add a reply message.");
-    if (form.trigger_type === "keyword" && !form.trigger_keyword.trim()) return setError("Add a trigger keyword.");
-    setSaving(true); setError(null);
-    try {
-      const res = await fetch("/api/whatsapp/automations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAutomations((prev) => [data.automation, ...prev]);
-      resetForm();
-    } catch (e: any) { setError(e.message); }
-    finally { setSaving(false); }
-  };
-
-  const handleEdit = async (id: string) => {
-    if (!form.name.trim()) return setError("Give your automation a name.");
-    if (!form.reply_message.trim()) return setError("Add a reply message.");
-    if (form.trigger_type === "keyword" && !form.trigger_keyword.trim()) return setError("Add a trigger keyword.");
-    setSaving(true); setError(null);
-    try {
-      const res = await fetch("/api/whatsapp/automations", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, ...form }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAutomations(prev => prev.map(a => a.id === id ? data.automation : a));
-      resetForm();
-    } catch (e: any) { setError(e.message); }
-    finally { setSaving(false); }
-  };
-
-  const handleToggle = async (auto: Automation) => {
-    setTogglingId(auto.id);
-    try {
-      const res = await fetch("/api/whatsapp/automations", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: auto.id, is_active: !auto.is_active }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setAutomations(prev => prev.map(a => a.id === auto.id ? data.automation : a));
-    } catch (e: any) { setError(e.message); }
-    setTogglingId(null);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this automation?")) return;
-    setDeletingId(id);
-    try {
-      const res = await fetch(`/api/whatsapp/automations?id=${id}`, { method: "DELETE" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to delete.");
-      setAutomations(prev => prev.filter(a => a.id !== id));
-    } catch (e: any) { setError(e.message); }
-    setDeletingId(null);
-  };
-
-  const FormPanel = ({ isEdit, id }: { isEdit: boolean; id?: string }) => (
+function FormPanel({ isEdit, id, form, setForm, error, saving, onSubmit, onCancel }: FormPanelProps) {
+  return (
     <div className="bg-white rounded-[2rem] border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-black text-slate-900">{isEdit ? "Edit Automation" : "New Automation"}</h2>
@@ -158,16 +84,104 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
         )}
         {error && <p className="text-sm font-bold text-rose-600 bg-rose-50 px-4 py-3 rounded-xl">{error}</p>}
         <div className="flex items-center gap-3 pt-2">
-          <button onClick={isEdit ? () => handleEdit(id!) : handleCreate} disabled={saving}
+          <button onClick={() => onSubmit(id)} disabled={saving}
             className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] disabled:opacity-60 transition-all">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : isEdit ? <Check className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
             {saving ? "Saving..." : isEdit ? "Save Changes" : "Create Automation"}
           </button>
-          <button onClick={resetForm} className="px-6 py-3 text-slate-500 font-bold text-sm hover:text-slate-700 transition-colors">Cancel</button>
+          <button onClick={onCancel} className="px-6 py-3 text-slate-500 font-bold text-sm hover:text-slate-700 transition-colors">Cancel</button>
         </div>
       </div>
     </div>
   );
+}
+
+export function AutomationsClient({ initialAutomations }: { initialAutomations: Automation[] }) {
+  const [automations, setAutomations] = useState(initialAutomations);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const emptyForm = { name: "", trigger_type: "keyword", trigger_keyword: "", reply_message: "" };
+  const [form, setForm] = useState(emptyForm);
+
+  const resetForm = () => { setForm(emptyForm); setError(null); setShowForm(false); setEditingId(null); };
+
+  const startEdit = (auto: Automation) => {
+    setForm({ name: auto.name, trigger_type: auto.trigger_type, trigger_keyword: auto.trigger_keyword ?? "", reply_message: auto.reply_message });
+    setEditingId(auto.id);
+    setShowForm(false);
+    setError(null);
+  };
+
+  const handleCreate = async () => {
+    if (!form.name.trim()) return setError("Give your automation a name.");
+    if (!form.reply_message.trim()) return setError("Add a reply message.");
+    if (form.trigger_type === "keyword" && !form.trigger_keyword.trim()) return setError("Add a trigger keyword.");
+    setSaving(true); setError(null);
+    try {
+      const res = await fetch("/api/whatsapp/automations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAutomations((prev) => [data.automation, ...prev]);
+      resetForm();
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleEdit = async (id?: string) => {
+    if (!id) return;
+    if (!form.name.trim()) return setError("Give your automation a name.");
+    if (!form.reply_message.trim()) return setError("Add a reply message.");
+    if (form.trigger_type === "keyword" && !form.trigger_keyword.trim()) return setError("Add a trigger keyword.");
+    setSaving(true); setError(null);
+    try {
+      const res = await fetch("/api/whatsapp/automations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...form }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAutomations(prev => prev.map(a => a.id === id ? data.automation : a));
+      resetForm();
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const handleToggle = async (auto: Automation) => {
+    setTogglingId(auto.id);
+    try {
+      const res = await fetch("/api/whatsapp/automations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: auto.id, is_active: !auto.is_active }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAutomations(prev => prev.map(a => a.id === auto.id ? data.automation : a));
+    } catch (e: any) { setError(e.message); }
+    setTogglingId(null);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this automation?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/whatsapp/automations?id=${id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete.");
+      setAutomations(prev => prev.filter(a => a.id !== id));
+    } catch (e: any) { setError(e.message); }
+    setDeletingId(null);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -193,7 +207,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
         </div>
       )}
 
-      {showForm && <FormPanel isEdit={false} />}
+      {showForm && <FormPanel isEdit={false} form={form} setForm={setForm} error={error} saving={saving} onSubmit={handleCreate} onCancel={resetForm} />}
 
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
         {automations.length > 0 ? (
@@ -202,7 +216,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
               <div key={auto.id}>
                 {editingId === auto.id ? (
                   <div className="p-4">
-                    <FormPanel isEdit={true} id={auto.id} />
+                    <FormPanel isEdit={true} id={auto.id} form={form} setForm={setForm} error={error} saving={saving} onSubmit={handleEdit} onCancel={resetForm} />
                   </div>
                 ) : (
                   <div className="p-5 md:p-6 flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors">

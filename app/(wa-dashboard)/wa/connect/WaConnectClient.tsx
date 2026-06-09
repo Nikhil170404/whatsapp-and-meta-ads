@@ -128,14 +128,14 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
         body: JSON.stringify({ action: "set_billing_type", billing_type: billingType }),
       });
       if (billingType === "managed") {
-        router.push("/wa/wallet");
+        window.location.href = "/wa/wallet";
       } else {
         setBillingStep("done");
       }
     } catch {
       // Still proceed even if the API call fails
       if (billingType === "managed") {
-        router.push("/wa/wallet");
+        window.location.href = "/wa/wallet";
       } else {
         setBillingStep("done");
       }
@@ -234,7 +234,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
                   Add payment method
                 </button>
                 <button
-                  onClick={() => { setShowSuccessModal(false); router.push("/wa"); }}
+                  onClick={() => { window.location.href = "/wa"; }}
                   className="w-full py-3 bg-slate-900 hover:bg-slate-800 transition-colors text-white font-semibold rounded-xl text-sm"
                 >
                   Finish
