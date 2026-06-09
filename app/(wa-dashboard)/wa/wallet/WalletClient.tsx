@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowUpCircle, ArrowDownCircle, AlertTriangle, ExternalLink, Info, Loader2 } from "lucide-react";
 
 declare global {
@@ -55,6 +55,7 @@ export function WalletClient({
   const [billingType, setBillingType] = useState(initialBillingType);
   const [selectedAmount, setSelectedAmount] = useState<number | null>(500);
   const [customAmount, setCustomAmount] = useState("");
+  const customInputRef = useRef<HTMLInputElement>(null);
   const [walletBalance, setWalletBalance] = useState(wallet.balance_paise);
   const [isLoading, setIsLoading] = useState(false);
   const [billingLoading, setBillingLoading] = useState(false);
@@ -91,7 +92,8 @@ export function WalletClient({
   };
 
   const getTopUpAmount = (): number => {
-    if (customAmount && Number(customAmount) > 0) return Number(customAmount);
+    const custom = parseInt(customAmount, 10);
+    if (!isNaN(custom) && custom > 0) return custom;
     return selectedAmount || 0;
   };
 
@@ -307,7 +309,11 @@ export function WalletClient({
                 {PRESET_AMOUNTS_INR.map((amt) => (
                   <button
                     key={amt}
-                    onClick={() => { setSelectedAmount(amt); setCustomAmount(""); }}
+                    onClick={() => {
+                      setSelectedAmount(amt);
+                      setCustomAmount("");
+                      if (customInputRef.current) customInputRef.current.value = "";
+                    }}
                     className={`px-5 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
                       selectedAmount === amt && !customAmount
                         ? "bg-[#25D366] text-white shadow-md shadow-[#25D366]/25"
@@ -326,11 +332,17 @@ export function WalletClient({
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold text-sm">₹</span>
                 <input
-                  type="number"
-                  min="1"
+                  ref={customInputRef}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Enter amount"
                   value={customAmount}
-                  onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(null); }}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, "");
+                    setCustomAmount(val);
+                    setSelectedAmount(null);
+                  }}
                   className="w-full pl-8 pr-4 py-3 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366] transition-all"
                 />
               </div>
