@@ -41,8 +41,11 @@ export async function POST() {
 
     const { ad_account_id, access_token } = connection;
 
+    // Meta requires act_ prefix on ad account IDs
+    const accountId = ad_account_id.startsWith("act_") ? ad_account_id : `act_${ad_account_id}`;
+
     // Fetch campaigns from Meta Graph API
-    const url = `https://graph.facebook.com/v21.0/${ad_account_id}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time,insights{spend,impressions,clicks,ctr}&access_token=${access_token}`;
+    const url = `https://graph.facebook.com/v25.0/${accountId}/campaigns?fields=id,name,status,objective,daily_budget,lifetime_budget,start_time,stop_time&access_token=${access_token}`;
     const res = await fetch(url);
     const apiData = await res.json();
 
