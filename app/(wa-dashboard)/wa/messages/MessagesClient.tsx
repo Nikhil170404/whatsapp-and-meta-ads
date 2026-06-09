@@ -164,13 +164,13 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
           <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
             {sortedPhones.length === 0 ? (
               <div className="p-5 space-y-4">
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4">
                   <div className="flex items-start gap-2 mb-2">
-                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs font-bold text-amber-700">Webhook not set up yet</p>
+                    <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-slate-600">No conversations yet</p>
                   </div>
-                  <p className="text-xs text-amber-600 font-medium leading-relaxed">
-                    Messages appear here once your webhook is configured in Meta Dashboard.
+                  <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                    Messages will appear here once customers message your WhatsApp Business number.
                   </p>
                 </div>
               </div>
