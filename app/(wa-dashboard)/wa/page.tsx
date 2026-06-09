@@ -30,7 +30,7 @@ export default async function WaOverviewPage() {
 
   const isConnected = connection?.status === "active";
   const isTokenExpired = connection?.status === "expired";
-  const activeAutomations = automations?.filter((a) => a.is_active) ?? [];
+  const activeAutomations = automations?.filter((a: any) => a.is_active) ?? [];
   const allAutomations = automations ?? [];
   const msgs = recentMessages ?? [];
 
