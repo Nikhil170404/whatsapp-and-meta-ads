@@ -66,10 +66,15 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
 
     window.FB.login((response: any) => {
       if (response.authResponse) {
+        // On mobile, postMessage may not have fired so wabaIdRef could be null.
+        // Backend will auto-lookup WABA from the token in that case.
         exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
       } else {
         setIsLoading(false);
-        setError("User cancelled login or did not fully authorize.");
+        // On mobile the tab closes without a proper cancel — treat null authResponse as cancel
+        if (response.status !== 'connected') {
+          setError("Setup cancelled or not completed. Please try again.");
+        }
       }
     }, {
       config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID,

@@ -67,13 +67,34 @@ export async function POST(req: Request) {
       console.warn("Could not exchange for long-lived token, using short-lived:", err);
     }
 
-    // 2. Fetch Display Phone Number
+    // 2. If wabaId/phoneNumberId are missing (mobile — postMessage lost), look them up from the token
+    let resolvedWabaId = wabaId || null;
+    let resolvedPhoneNumberId = phoneNumberId || null;
+
+    if (!resolvedWabaId || !resolvedPhoneNumberId) {
+      try {
+        const wabaRes = await fetch(
+          `${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`
+        );
+        const wabaData = await wabaRes.json();
+        const firstWaba = wabaData?.data?.[0];
+        if (firstWaba) {
+          if (!resolvedWabaId) resolvedWabaId = firstWaba.id;
+          const firstPhone = firstWaba?.phone_numbers?.data?.[0];
+          if (firstPhone && !resolvedPhoneNumberId) resolvedPhoneNumberId = firstPhone.id;
+        }
+      } catch (err) {
+        console.warn("Could not auto-lookup WABA info:", err);
+      }
+    }
+
+    // 3. Fetch Display Phone Number
     let phoneNumber = "Verified Number";
     let displayName = "WhatsApp Business Account";
-    
-    if (phoneNumberId) {
+
+    if (resolvedPhoneNumberId) {
       try {
-        const waInfo = await getPhoneNumberInfo(phoneNumberId, finalToken);
+        const waInfo = await getPhoneNumberInfo(resolvedPhoneNumberId, finalToken);
         if (waInfo.display_phone_number) phoneNumber = waInfo.display_phone_number;
         if (waInfo.verified_name) displayName = waInfo.verified_name;
       } catch (err) {
@@ -81,9 +102,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Subscribe App to WABA Webhooks
-    if (wabaId) {
-      await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
+    // 4. Subscribe App to WABA Webhooks
+    if (resolvedWabaId) {
+      await fetch(`${WA_API_URL}/${resolvedWabaId}/subscribed_apps`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${finalToken}`,
@@ -94,13 +115,13 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseAdmin() as any;
 
-    // 4. Save connection to DB
+    // 5. Save connection to DB
     const { error: dbError } = await supabase
       .from("wa_connections")
       .upsert({
         user_id: session.id,
-        phone_number_id: phoneNumberId || "unknown",
-        waba_id: wabaId || "unknown",
+        phone_number_id: resolvedPhoneNumberId || "unknown",
+        waba_id: resolvedWabaId || "unknown",
         phone_number: phoneNumber,
         display_name: displayName,
         access_token: finalToken,
