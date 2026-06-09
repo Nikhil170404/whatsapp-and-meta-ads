@@ -255,7 +255,7 @@ export function WaSidebar({ user }: SidebarProps) {
         </nav>
 
         {/* User info in more sheet */}
-        <div className="p-6 border-t border-slate-50 bg-slate-50/30">
+        <div className="px-6 pt-6 pb-[calc(var(--tab-bar-height,64px)+env(safe-area-inset-bottom,8px)+8px)] border-t border-slate-50 bg-slate-50/30">
           <div className="flex items-center gap-4 mb-4">
             <SafeImage
               src={user.profile_picture_url}
