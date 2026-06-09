@@ -38,7 +38,7 @@ function FormPanel({ isEdit, id, form, setForm, error, saving, onSubmit, onCance
     <div className="bg-white rounded-[2rem] border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-black text-slate-900">{isEdit ? "Edit Automation" : "New Automation"}</h2>
-        <button onClick={resetForm} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X className="w-5 h-5" /></button>
+        <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors"><X className="w-5 h-5" /></button>
       </div>
       <div className="space-y-5">
         <div>
