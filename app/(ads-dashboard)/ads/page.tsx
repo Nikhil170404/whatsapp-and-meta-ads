@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth/session";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { BarChart3, Zap, Link2, AlertCircle, ArrowUpRight, Activity, TrendingUp, Clock, ExternalLink } from "lucide-react";
@@ -9,18 +8,7 @@ export default async function AdsOverviewPage() {
   const session = await getSession();
   if (!session) redirect("/signin");
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-      },
-    }
-  );
+  const supabase = getSupabaseAdmin() as any;
 
   const { data: connection } = await supabase
     .from("ad_connections")
