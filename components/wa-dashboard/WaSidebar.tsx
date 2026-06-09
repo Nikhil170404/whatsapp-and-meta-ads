@@ -35,6 +35,7 @@ const navigation = [
   { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
   { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
   { name: "Contacts", href: "/wa/contacts", icon: Users },
+  { name: "Team", href: "/wa/team", icon: Users },
   { name: "Templates", href: "/wa/templates", icon: FileText },
   { name: "Connect", href: "/wa/connect", icon: Link2 },
   { name: "Billing", href: "/wa/billing", icon: CreditCard },
@@ -218,6 +219,7 @@ export function WaSidebar({ user }: SidebarProps) {
           {[
             { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
             { name: "Contacts", href: "/wa/contacts", icon: Users },
+            { name: "Team", href: "/wa/team", icon: Users },
             { name: "Templates", href: "/wa/templates", icon: FileText },
             { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
             { name: "Wallet", href: "/wa/wallet", icon: Coins },
