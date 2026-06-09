@@ -181,7 +181,14 @@ export async function GET(req: Request) {
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);
 
-    return NextResponse.redirect(`${appUrl}/wa`);
+    // Check if WhatsApp was auto-connected; if not, send user to connect page
+    const { data: waConn } = await (supabase.from("wa_connections") as any)
+      .select("status")
+      .eq("user_id", user.id)
+      .single();
+
+    const waConnected = waConn?.status === "active";
+    return NextResponse.redirect(waConnected ? `${appUrl}/wa` : `${appUrl}/wa/connect`);
   } catch (err) {
     console.error("Internal OAuth Handler Error:", err);
     return NextResponse.redirect(`${appUrl}/signin?error=Internal+server+error`);
