@@ -60,9 +60,10 @@ export async function POST(req: Request) {
     const waNum = whatsapp_number.replace(/\D/g, "");
     const openingMsg = opening_message?.trim() || "Hi, I saw your ad and I'm interested!";
     const targetCountries: string[] = countries?.length ? countries : ["IN"];
+    const accountId = conn.ad_account_id.startsWith("act_") ? conn.ad_account_id : `act_${conn.ad_account_id}`;
 
     // ── Step 1: Campaign ──────────────────────────────────────────────────────
-    const campaignRes = await fetch(`${FB_API}/${conn.ad_account_id}/campaigns`, {
+    const campaignRes = await fetch(`${FB_API}/${accountId}/campaigns`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
       adsetBody.promoted_object = { whatsapp_phone_number_id: waConn.phone_number_id };
     }
 
-    const adsetRes = await fetch(`${FB_API}/${conn.ad_account_id}/adsets`, {
+    const adsetRes = await fetch(`${FB_API}/${accountId}/adsets`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(adsetBody),
@@ -112,7 +113,7 @@ export async function POST(req: Request) {
 
     // ── Step 3: Creative ──────────────────────────────────────────────────────
     const waLink = `https://wa.me/${waNum}?text=${encodeURIComponent(openingMsg)}`;
-    const creativeRes = await fetch(`${FB_API}/${conn.ad_account_id}/adcreatives`, {
+    const creativeRes = await fetch(`${FB_API}/${accountId}/adcreatives`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -142,7 +143,7 @@ export async function POST(req: Request) {
     const metaCreativeId: string = creativeJson.id;
 
     // ── Step 4: Ad ────────────────────────────────────────────────────────────
-    const adRes = await fetch(`${FB_API}/${conn.ad_account_id}/ads`, {
+    const adRes = await fetch(`${FB_API}/${accountId}/ads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
