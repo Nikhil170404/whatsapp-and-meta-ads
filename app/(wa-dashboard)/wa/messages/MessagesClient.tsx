@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2 } from "lucide-react";
+import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2, UserCheck, ChevronDown, UserX } from "lucide-react";
 import Link from "next/link";
 
 interface Message {
@@ -20,6 +20,13 @@ interface Conversation {
   lastMessage: Message;
 }
 
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+}
+
 const QUICK_REPLIES = [
   { label: "👋 Hi", text: "Hi! How can I help you today?" },
   { label: "✅ Thanks", text: "Thank you for reaching out! We'll get back to you shortly." },
@@ -29,7 +36,7 @@ const QUICK_REPLIES = [
   { label: "❌ Unavail", text: "This item is currently unavailable. We'll notify you when it's back in stock." },
 ];
 
-export function MessagesClient({ initialMessages }: { initialMessages: Message[] }) {
+export function MessagesClient({ initialMessages, teamMembers = [] }: { initialMessages: Message[]; teamMembers?: TeamMember[] }) {
   const [messages, setMessages] = useState(initialMessages);
   const [search, setSearch] = useState("");
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
@@ -38,6 +45,9 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [assignedMembers, setAssignedMembers] = useState<Record<string, string | null>>({});
+  const [showAssignDropdown, setShowAssignDropdown] = useState(false);
+  const [assigning, setAssigning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,6 +89,16 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedPhone, activeMessages.length]);
+
+  useEffect(() => {
+    if (!showAssignDropdown) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (!target.closest("[data-assign-dropdown]")) setShowAssignDropdown(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showAssignDropdown]);
 
   const selectConversation = (phone: string) => {
     setSelectedPhone(phone);
@@ -132,6 +152,25 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
       handleSend();
     }
   };
+
+  const handleAssign = async (memberId: string | null) => {
+    if (!selectedPhone) return;
+    setAssigning(true);
+    setShowAssignDropdown(false);
+    try {
+      await fetch(`/api/whatsapp/conversations/${selectedPhone}/assign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ member_id: memberId }),
+      });
+      setAssignedMembers((prev) => ({ ...prev, [selectedPhone]: memberId }));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const currentAssignedId = selectedPhone ? (assignedMembers[selectedPhone] ?? null) : null;
+  const currentAssignedMember = teamMembers.find((m) => m.id === currentAssignedId) ?? null;
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -235,6 +274,65 @@ export function MessagesClient({ initialMessages }: { initialMessages: Message[]
                   <h3 className="font-bold text-slate-900 text-sm">{activeConvo.phone}</h3>
                   <p className="text-xs text-slate-400">{activeConvo.messages.length} messages</p>
                 </div>
+
+                {/* Assign to agent */}
+                {teamMembers.length > 0 && (
+                  <div className="relative shrink-0" data-assign-dropdown>
+                    <button
+                      onClick={() => setShowAssignDropdown((v) => !v)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-600 transition-all"
+                    >
+                      {assigning ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <UserCheck className="w-3.5 h-3.5 text-[#25D366]" />
+                      )}
+                      <span className="hidden sm:inline max-w-[80px] truncate">
+                        {currentAssignedMember ? currentAssignedMember.name : "Assign"}
+                      </span>
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                    </button>
+
+                    {showAssignDropdown && (
+                      <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-2xl border border-slate-100 shadow-lg z-20 overflow-hidden">
+                        <div className="px-3 py-2 border-b border-slate-50">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Assign to agent</p>
+                        </div>
+                        <div className="py-1 max-h-48 overflow-y-auto">
+                          {teamMembers.map((member) => (
+                            <button
+                              key={member.id}
+                              onClick={() => handleAssign(member.id)}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors ${currentAssignedId === member.id ? "bg-[#25D366]/5" : ""}`}
+                            >
+                              <div className="w-7 h-7 rounded-lg bg-[#25D366]/10 flex items-center justify-center text-[#25D366] font-bold text-xs shrink-0">
+                                {member.name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-800 truncate">{member.name}</p>
+                                <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
+                              </div>
+                              {currentAssignedId === member.id && (
+                                <div className="w-2 h-2 rounded-full bg-[#25D366] shrink-0" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        {currentAssignedId && (
+                          <div className="border-t border-slate-50 py-1">
+                            <button
+                              onClick={() => handleAssign(null)}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-rose-50 transition-colors text-rose-500"
+                            >
+                              <UserX className="w-4 h-4 shrink-0" />
+                              <span className="text-xs font-bold">Unassign</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Messages */}
