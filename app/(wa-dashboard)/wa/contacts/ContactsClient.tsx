@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
-import { Users, Search, Plus, Tag, MessageSquare, Phone, X, Loader2, UserPlus, Download, Upload, Trash2, CheckSquare, Square, Filter } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Users, Search, Plus, Tag, MessageSquare, Phone, X, Loader2, UserPlus, Download, Upload, Trash2, CheckSquare, Square, Filter, Send } from "lucide-react";
 
 interface Contact {
   id: string;
@@ -13,6 +14,7 @@ interface Contact {
 }
 
 export function ContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
+  const router = useRouter();
   const [contacts, setContacts] = useState(initialContacts);
   const [search, setSearch] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
@@ -285,8 +287,18 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between p-4 bg-[#25D366]/5 border border-[#25D366]/20 rounded-2xl">
           <p className="text-sm font-bold text-slate-700">{selectedIds.size} selected</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Deselect</button>
+            <button
+              onClick={() => {
+                const ids = Array.from(selectedIds).join(",");
+                router.push(`/wa/broadcasts?contacts=${encodeURIComponent(ids)}`);
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:bg-[#1DA851] transition-all shadow-sm shadow-[#25D366]/20"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Broadcast
+            </button>
             <button onClick={handleDeleteSelected} disabled={deleting}
               className="flex items-center gap-1.5 px-4 py-2 bg-rose-500 text-white rounded-xl font-bold text-xs hover:bg-rose-600 transition-all disabled:opacity-60">
               {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}

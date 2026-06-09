@@ -182,13 +182,25 @@ export async function GET(req: Request) {
     await setSessionCookie(sessionToken);
 
     // Check if WhatsApp was auto-connected; if not, send user to connect page
-    const { data: waConn } = await (supabase.from("wa_connections") as any)
-      .select("status")
-      .eq("user_id", user.id)
-      .single();
+    const [{ data: waConn }, { data: waAutomations }, { count: waContactCount }] = await Promise.all([
+      (supabase.from("wa_connections") as any).select("status").eq("user_id", user.id).single(),
+      (supabase.from("wa_automations") as any).select("id").eq("user_id", user.id).limit(1),
+      (supabase.from("wa_contacts") as any).select("*", { count: "exact", head: true }).eq("user_id", user.id),
+    ]);
 
     const waConnected = waConn?.status === "active";
-    return NextResponse.redirect(waConnected ? `${appUrl}/wa` : `${appUrl}/wa/connect`);
+    const hasAutomations = (waAutomations?.length ?? 0) > 0;
+    const hasContacts = (waContactCount ?? 0) > 0;
+
+    let redirectPath: string;
+    if (!waConnected) {
+      redirectPath = `${appUrl}/wa/connect`;
+    } else if (!hasAutomations && !hasContacts) {
+      redirectPath = `${appUrl}/wa/setup`;
+    } else {
+      redirectPath = `${appUrl}/wa`;
+    }
+    return NextResponse.redirect(redirectPath);
   } catch (err) {
     console.error("Internal OAuth Handler Error:", err);
     return NextResponse.redirect(`${appUrl}/signin?error=Internal+server+error`);

@@ -28,12 +28,11 @@ interface TeamMember {
 }
 
 const QUICK_REPLIES = [
-  { label: "👋 Hi", text: "Hi! How can I help you today?" },
-  { label: "✅ Thanks", text: "Thank you for reaching out! We'll get back to you shortly." },
-  { label: "📦 Order", text: "Your order is being processed. You'll receive an update soon." },
-  { label: "💰 Price", text: "For pricing details, please visit our website or reply with your requirements." },
-  { label: "🕐 Soon", text: "Our team will contact you within 24 hours. Thank you for your patience!" },
-  { label: "❌ Unavail", text: "This item is currently unavailable. We'll notify you when it's back in stock." },
+  "👋 Hi! How can I help you today?",
+  "✅ Sure, I'll check and get back to you!",
+  "⏱ Please give us 30 minutes to respond.",
+  "📞 Can we call you to discuss further?",
+  "🙏 Thank you for contacting us!",
 ];
 
 export function MessagesClient({ initialMessages, teamMembers = [] }: { initialMessages: Message[]; teamMembers?: TeamMember[] }) {
@@ -361,14 +360,14 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
               <div className="bg-white border-t border-slate-100 shrink-0">
                 {/* Quick replies */}
                 {showQuickReplies && (
-                  <div className="px-4 py-2 border-b border-slate-50 flex gap-2 overflow-x-auto">
-                    {QUICK_REPLIES.map((qr) => (
+                  <div className="px-4 py-2 border-t border-slate-100 flex gap-2 overflow-x-auto scrollbar-hide">
+                    {QUICK_REPLIES.map((reply, i) => (
                       <button
-                        key={qr.label}
-                        onClick={() => { setInput(qr.text); setShowQuickReplies(false); inputRef.current?.focus(); }}
-                        className="shrink-0 px-3 py-1.5 bg-[#25D366]/10 text-[#25D366] rounded-xl text-xs font-bold hover:bg-[#25D366]/20 transition-colors whitespace-nowrap"
+                        key={i}
+                        onClick={() => { setInput(reply); setShowQuickReplies(false); }}
+                        className="shrink-0 px-3 py-1.5 bg-slate-100 hover:bg-[#25D366]/10 text-slate-700 text-xs font-medium rounded-full transition-colors whitespace-nowrap"
                       >
-                        {qr.label}
+                        {reply}
                       </button>
                     ))}
                   </div>
