@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/auth/session";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 import { MessagesClient } from "./MessagesClient";
 
@@ -8,12 +7,7 @@ export default async function WaMessagesPage() {
   const session = await getSession();
   if (!session) redirect("/signin");
 
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { get: (n: string) => cookieStore.get(n)?.value } }
-  );
+  const supabase = getSupabaseAdmin() as any;
 
   const { data: messages } = await supabase
     .from("wa_messages")
