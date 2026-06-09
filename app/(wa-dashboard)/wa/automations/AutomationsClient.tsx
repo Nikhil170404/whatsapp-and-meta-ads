@@ -3,6 +3,57 @@
 import { useState } from "react";
 import { Plus, Zap, Trash2, Power, X, Loader2, Edit2, Check } from "lucide-react";
 
+const STARTER_TEMPLATES = [
+  {
+    id: "price",
+    label: "Price Inquiry",
+    emoji: "💰",
+    trigger_keyword: "price",
+    reply_message: "Hi! Thanks for your interest. Our prices start from ₹499. Reply with 'catalog' to see all products, or call us at our number for a custom quote!",
+    color: "bg-emerald-50 border-emerald-200 text-emerald-700",
+  },
+  {
+    id: "hours",
+    label: "Business Hours",
+    emoji: "🕐",
+    trigger_keyword: "hours",
+    reply_message: "We're open Monday–Saturday, 10 AM to 7 PM IST. Sundays we're closed. Feel free to message anytime and we'll get back to you!",
+    color: "bg-blue-50 border-blue-200 text-blue-700",
+  },
+  {
+    id: "location",
+    label: "Location / Address",
+    emoji: "📍",
+    trigger_keyword: "location",
+    reply_message: "We're located at [Your Address Here]. You can find us on Google Maps. Need directions? Just reply 'directions' and we'll send you the link!",
+    color: "bg-amber-50 border-amber-200 text-amber-700",
+  },
+  {
+    id: "human",
+    label: "Talk to Human",
+    emoji: "👋",
+    trigger_keyword: "human",
+    reply_message: "Sure! A team member will connect with you shortly. Our response time is usually within 30 minutes during business hours. Thank you for your patience!",
+    color: "bg-violet-50 border-violet-200 text-violet-700",
+  },
+  {
+    id: "catalog",
+    label: "Product Catalog",
+    emoji: "📋",
+    trigger_keyword: "catalog",
+    reply_message: "Here's our product catalog! Check out our latest offerings at [your-website.com/catalog]. Want a specific product? Just type its name and we'll share details!",
+    color: "bg-rose-50 border-rose-200 text-rose-700",
+  },
+  {
+    id: "order",
+    label: "Order Status",
+    emoji: "📦",
+    trigger_keyword: "order",
+    reply_message: "To check your order status, please share your Order ID (e.g., #12345). Our team will update you within 1 hour during business hours!",
+    color: "bg-orange-50 border-orange-200 text-orange-700",
+  },
+];
+
 interface Automation {
   id: string;
   name: string;
@@ -104,11 +155,35 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activatingTemplate, setActivatingTemplate] = useState<string | null>(null);
 
   const emptyForm = { name: "", trigger_type: "keyword", trigger_keyword: "", reply_message: "" };
   const [form, setForm] = useState(emptyForm);
 
   const resetForm = () => { setForm(emptyForm); setError(null); setShowForm(false); setEditingId(null); };
+
+  const activateTemplate = async (template: typeof STARTER_TEMPLATES[0]) => {
+    setActivatingTemplate(template.id);
+    try {
+      const res = await fetch("/api/whatsapp/automations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: template.label,
+          trigger_type: "keyword",
+          trigger_keyword: template.trigger_keyword,
+          reply_message: template.reply_message,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setAutomations((prev) => [data.automation, ...prev]);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setActivatingTemplate(null);
+    }
+  };
 
   const startEdit = (auto: Automation) => {
     setForm({ name: auto.name, trigger_type: auto.trigger_type, trigger_keyword: auto.trigger_keyword ?? "", reply_message: auto.reply_message });
@@ -208,6 +283,36 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
       )}
 
       {showForm && <FormPanel isEdit={false} form={form} setForm={setForm} error={error} saving={saving} onSubmit={handleCreate} onCancel={resetForm} />}
+
+      {automations.length < 3 && (
+        <div className="mb-6">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">⚡ Quick Start Templates</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {STARTER_TEMPLATES.map((t) => {
+              const alreadyAdded = automations.some(a => a.trigger_keyword === t.trigger_keyword);
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => !alreadyAdded && activateTemplate(t)}
+                  disabled={alreadyAdded || activatingTemplate === t.id}
+                  className={`${t.color} border rounded-2xl p-4 text-left transition-all active:scale-95 disabled:opacity-60`}
+                >
+                  <div className="text-2xl mb-2">{t.emoji}</div>
+                  <p className="text-sm font-bold">{t.label}</p>
+                  <p className="text-xs mt-1 opacity-70">Keyword: {t.trigger_keyword}</p>
+                  {alreadyAdded ? (
+                    <p className="text-xs font-bold mt-2 opacity-60">✓ Added</p>
+                  ) : activatingTemplate === t.id ? (
+                    <p className="text-xs font-bold mt-2">Adding…</p>
+                  ) : (
+                    <p className="text-xs font-bold mt-2">+ Add in 1 tap</p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
         {automations.length > 0 ? (
