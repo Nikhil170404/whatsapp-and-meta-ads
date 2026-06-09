@@ -33,6 +33,9 @@ const envSchema = z.object({
     UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
     QSTASH_URL: z.string().url().optional(),
     QSTASH_TOKEN: z.string().optional(),
+
+    // Cron
+    CRON_SECRET: z.string().optional(),
 });
 
 // Parse and validate
@@ -58,6 +61,7 @@ const processEnv = {
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     QSTASH_URL: process.env.QSTASH_URL,
     QSTASH_TOKEN: process.env.QSTASH_TOKEN,
+    CRON_SECRET: process.env.CRON_SECRET,
 };
 
 const parsed = envSchema.safeParse(processEnv);

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { name, template_id, contact_ids } = body;
+    const { name, template_id, contact_ids, scheduled_at } = body;
 
     if (!name || !template_id || !contact_ids?.length) {
       return NextResponse.json({ error: "Name, template, and contacts are required" }, { status: 400 });
@@ -64,13 +64,15 @@ export async function POST(req: Request) {
     }
 
     // Create broadcast
+    const isScheduled = scheduled_at && new Date(scheduled_at) > new Date();
     const { data: broadcast, error: bcError } = await supabase
       .from("wa_broadcasts")
       .insert({
         user_id: session.id,
         name,
         template_id,
-        status: "draft",
+        status: isScheduled ? "scheduled" : "draft",
+        scheduled_at: scheduled_at || null,
         total_recipients: contact_ids.length,
       })
       .select()
@@ -91,7 +93,7 @@ export async function POST(req: Request) {
 
     if (recipError) throw recipError;
 
-    return NextResponse.json({ broadcast });
+    return NextResponse.json({ broadcast, scheduled: !!isScheduled });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

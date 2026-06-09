@@ -193,6 +193,20 @@ export default async function WaOverviewPage() {
         ))}
       </div>
 
+      {/* ── Mobile Quick Send ── */}
+      <div className="grid grid-cols-2 gap-3 md:hidden">
+        <Link href="/wa/broadcasts" className="bg-[#25D366] rounded-2xl p-5 text-white active:scale-95 transition-all">
+          <Send className="w-6 h-6 mb-2" />
+          <p className="font-black text-sm">New Broadcast</p>
+          <p className="text-xs opacity-80 mt-0.5">Send to all contacts</p>
+        </Link>
+        <Link href="/wa/automations" className="bg-violet-600 rounded-2xl p-5 text-white active:scale-95 transition-all">
+          <Zap className="w-6 h-6 mb-2" />
+          <p className="font-black text-sm">Add Automation</p>
+          <p className="text-xs opacity-80 mt-0.5">Auto-reply keywords</p>
+        </Link>
+      </div>
+
       {/* ── Quick actions ── */}
       <div>
         <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Quick Actions</h2>

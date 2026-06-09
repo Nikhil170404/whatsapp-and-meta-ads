@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
-import { sendTemplateMessage } from "@/lib/whatsapp/service";
+import { sendTemplateMessage, sendTextMessage } from "@/lib/whatsapp/service";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const cronUserId = req.headers.get("x-cron-user-id");
+    const userId = session?.id || cronUserId;
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { id: broadcastId } = await params;
 
@@ -20,7 +22,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       .from("wa_broadcasts")
       .select("*")
       .eq("id", broadcastId)
-      .eq("user_id", session.id)
+      .eq("user_id", userId)
       .single();
 
     if (!broadcast) return NextResponse.json({ error: "Broadcast not found" }, { status: 404 });
@@ -31,14 +33,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: conn } = await supabase
       .from("wa_connections")
       .select("phone_number_id, access_token, billing_type, waba_id")
-      .eq("user_id", session.id)
+      .eq("user_id", userId)
       .single();
 
     if (!conn) return NextResponse.json({ error: "WhatsApp not connected" }, { status: 400 });
 
     const { data: template } = await supabase
       .from("wa_templates")
-      .select("name, language, status")
+      .select("name, language, status, body_text")
       .eq("id", broadcast.template_id)
       .single();
 
@@ -61,7 +63,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const { data: wallet } = await supabase
         .from("wa_wallet")
         .select("balance_paise")
-        .eq("user_id", session.id)
+        .eq("user_id", userId)
         .single();
       if ((wallet?.balance_paise || 0) < needed) {
         const neededRs = (needed / 100).toFixed(2);
@@ -77,11 +79,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const contactIds = recipients.map((r: any) => r.contact_id);
     const { data: contacts } = await supabase
       .from("wa_contacts")
-      .select("id, phone_number")
+      .select("id, phone_number, display_name")
       .in("id", contactIds);
 
     const phoneMap: Record<string, string> = {};
-    (contacts || []).forEach((c: any) => { phoneMap[c.id] = c.phone_number; });
+    const nameMap: Record<string, string> = {};
+    (contacts || []).forEach((c: any) => {
+      phoneMap[c.id] = c.phone_number;
+      nameMap[c.id] = c.display_name || c.phone_number;
+    });
 
     // Mark as sending
     await supabase
@@ -104,13 +110,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       try {
-        const result = await sendTemplateMessage(
-          conn.phone_number_id,
-          phone,
-          template.name,
-          template.language || "en_US",
-          conn.access_token
-        );
+        const hasVariables = /\{\{/.test(template.body_text || "");
+        let result: any;
+        if (hasVariables && template.body_text) {
+          const contactName = nameMap[recipient.contact_id] || phone;
+          const personalizedBody = template.body_text
+            .replace(/\{\{name\}\}/gi, contactName)
+            .replace(/\{\{contact_name\}\}/gi, contactName)
+            .replace(/\{\{phone\}\}/gi, phone)
+            .replace(/\{\{phone_number\}\}/gi, phone);
+          result = await sendTextMessage(
+            conn.phone_number_id,
+            phone,
+            personalizedBody,
+            conn.access_token
+          );
+        } else {
+          result = await sendTemplateMessage(
+            conn.phone_number_id,
+            phone,
+            template.name,
+            template.language || "en_US",
+            conn.access_token
+          );
+        }
 
         await supabase
           .from("wa_broadcast_recipients")
@@ -121,7 +144,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         // Atomically deduct wallet — stops if balance runs out mid-broadcast
         if (conn.billing_type === "managed") {
           const { data: newBal, error: deductErr } = await supabase.rpc("deduct_wallet_balance", {
-            p_user_id: session.id,
+            p_user_id: userId,
             p_amount: 95,
           });
           if (deductErr) {
@@ -131,7 +154,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             break;
           }
           await supabase.from("wa_wallet_transactions").insert({
-            user_id: session.id,
+            user_id: userId,
             type: "debit",
             amount_paise: 95,
             balance_after_paise: newBal,

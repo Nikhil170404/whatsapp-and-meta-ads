@@ -268,6 +268,23 @@ export function BroadcastsClient({
                       <p className="text-[10px] text-slate-400 text-right mt-1">12:00 PM ✓✓</p>
                     </div>
                   </div>
+                  {selectedTemplate.body_text && (
+                    <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Preview</p>
+                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
+                        {selectedTemplate.body_text
+                          .replace(/\{\{name\}\}/gi, "John Doe")
+                          .replace(/\{\{contact_name\}\}/gi, "John Doe")
+                          .replace(/\{\{phone\}\}/gi, "+91 98765 43210")
+                          .replace(/\{\{phone_number\}\}/gi, "+91 98765 43210")}
+                      </p>
+                      {/\{\{/.test(selectedTemplate.body_text) && (
+                        <p className="text-xs text-violet-600 font-semibold mt-2">
+                          ✓ Variables will be personalized per contact automatically
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
