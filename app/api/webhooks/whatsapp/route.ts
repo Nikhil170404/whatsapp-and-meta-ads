@@ -70,8 +70,10 @@ export async function POST(req: Request) {
               // Auto-refresh token if expiring within 7 days
               const validToken = await refreshWaTokenIfNeeded(supabase, { ...connection, phone_number_id: phoneNumberId });
 
-              // Save message to DB
-              await supabase.from("wa_messages").insert({
+              // Save message to DB. wa_message_id is UNIQUE, so a duplicate
+              // insert means Meta re-delivered this event — skip the whole
+              // automation flow to avoid charging and replying twice.
+              const { error: insertErr } = await supabase.from("wa_messages").insert({
                 user_id: connection.user_id,
                 wa_message_id: message.id,
                 from_phone: contact,
@@ -81,6 +83,11 @@ export async function POST(req: Request) {
                 content: content,
                 status: "delivered",
               });
+              if (insertErr) {
+                // 23505 = unique violation = already processed this message
+                if (insertErr.code === "23505") continue;
+                console.error("Failed to save inbound message:", insertErr);
+              }
 
               // Only check automations for text messages
               if (message.type !== "text") continue;
@@ -176,6 +183,23 @@ export async function POST(req: Request) {
 
               } catch (error: any) {
                 console.error("Failed to send WA auto-reply:", error);
+
+                // Refund the managed-billing deduction — the message never sent,
+                // so the user must not be charged for it.
+                if (connection.billing_type === "managed" && walletNewBal !== null) {
+                  const { data: w } = await supabase
+                    .from("wa_wallet")
+                    .select("balance_paise, total_spent_paise")
+                    .eq("user_id", connection.user_id)
+                    .single();
+                  if (w) {
+                    await supabase.from("wa_wallet").update({
+                      balance_paise: (w.balance_paise as number) + 95,
+                      total_spent_paise: Math.max(0, (w.total_spent_paise as number) - 95),
+                      updated_at: new Date().toISOString(),
+                    }).eq("user_id", connection.user_id);
+                  }
+                }
 
                 // Parse the Meta error message for a clean display string
                 let errorMsg = error?.message || "Unknown error sending reply";

@@ -90,6 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: contacts } = await supabase
       .from("wa_contacts")
       .select("id, phone_number, display_name")
+      .eq("user_id", userId)
       .in("id", contactIds);
 
     const phoneMap: Record<string, string> = {};
