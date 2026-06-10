@@ -124,14 +124,13 @@ export async function POST(req: Request) {
     }
 
     if (action === "verify_payment") {
-      const { order_id, payment_id, signature, amount_inr } = body as {
+      const { order_id, payment_id, signature } = body as {
         order_id: string;
         payment_id: string;
         signature: string;
-        amount_inr: number;
       };
 
-      if (!order_id || !payment_id || !signature || !amount_inr) {
+      if (!order_id || !payment_id || !signature) {
         return NextResponse.json({ error: "Missing payment details" }, { status: 400 });
       }
 
@@ -156,7 +155,25 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, balance_paise: existingTxn.balance_after_paise });
       }
 
-      const amount_paise = Math.round(amount_inr * 100);
+      // Credit only the amount Razorpay actually captured — never an amount
+      // supplied by the client. The signature proves the payment is genuine but
+      // says nothing about how much was paid, so we read it from Razorpay and
+      // confirm the payment belongs to this order and succeeded.
+      const { razorpay } = await import("@/lib/razorpay");
+      const payment = await razorpay.payments.fetch(payment_id);
+
+      if (payment.order_id !== order_id) {
+        return NextResponse.json({ error: "Payment does not match order" }, { status: 400 });
+      }
+      if (payment.status !== "captured" && payment.status !== "authorized") {
+        return NextResponse.json({ error: "Payment not completed" }, { status: 400 });
+      }
+
+      const amount_paise = Number(payment.amount);
+      if (!Number.isFinite(amount_paise) || amount_paise <= 0) {
+        return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
+      }
+      const amount_inr = amount_paise / 100;
 
       const { data: currentWallet, error: walletFetchErr } = await supabase
         .from("wa_wallet")

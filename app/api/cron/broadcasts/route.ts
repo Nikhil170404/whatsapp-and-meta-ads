@@ -28,12 +28,14 @@ export async function GET(req: Request) {
         .update({ status: "draft" })
         .eq("id", broadcast.id);
 
-      // Trigger send internally
+      // Trigger send internally. The send route only honours x-cron-user-id
+      // when the CRON_SECRET is also forwarded, so pass it through here.
       const baseUrl = process.env.APP_URL || "https://replykaro.in";
       await fetch(`${baseUrl}/api/whatsapp/broadcasts/${broadcast.id}/send`, {
         method: "POST",
         headers: {
           "x-cron-user-id": broadcast.user_id,
+          "Authorization": `Bearer ${process.env.CRON_SECRET}`,
           "Content-Type": "application/json",
         },
       });

@@ -81,12 +81,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true });
       } catch (sendErr: any) {
-        // Refund the deduction if send failed
-        await supabase.from("wa_wallet").update({
-          balance_paise: (newBalance as number) + 95,
-          total_spent_paise: supabase.rpc ? undefined : undefined,
-        }).eq("user_id", session.id);
-        // Simpler refund: just add back directly
+        // Refund the deduction once if the send failed.
         const { data: w } = await supabase.from("wa_wallet").select("balance_paise, total_spent_paise").eq("user_id", session.id).single();
         if (w) {
           await supabase.from("wa_wallet").update({
