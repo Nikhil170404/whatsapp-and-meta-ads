@@ -73,7 +73,7 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Team Inbox</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
@@ -87,7 +87,7 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
               setInviteError(null);
               setInviteSuccess(false);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-2xl font-bold text-sm hover:bg-[#1DA851] transition-all active:scale-95 shadow-md shadow-[#25D366]/20"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-2xl font-bold text-sm hover:bg-[#1DA851] transition-all active:scale-95 shadow-md shadow-[#25D366]/20 shrink-0"
           >
             <UserPlus className="w-4 h-4" />
             Invite Member

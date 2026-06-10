@@ -143,7 +143,7 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Message Templates</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">Create WhatsApp-approved templates for broadcasts and automations.</p>
@@ -151,17 +151,17 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => { setShowLibrary(!showLibrary); setShowForm(false); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
           >
             <FileText className="w-4 h-4" />
-            Template Library
+            <span className="whitespace-nowrap">Template Library</span>
           </button>
           <button
             onClick={() => { setShowForm(true); setShowLibrary(false); }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-lg shadow-[#25D366]/20"
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-lg shadow-[#25D366]/20"
           >
             <Plus className="w-4 h-4" />
-            New Template
+            <span className="whitespace-nowrap">New Template</span>
           </button>
         </div>
       </div>

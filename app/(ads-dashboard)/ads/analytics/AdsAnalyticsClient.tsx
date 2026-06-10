@@ -51,13 +51,13 @@ export function AdsAnalyticsClient({ campaigns, automations, isConnected }: Prop
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Ads Analytics</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">Performance overview of your Meta ad campaigns.</p>
         </div>
         <Link href="/ads/campaigns"
-          className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm">
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm shrink-0">
           <RefreshCw className="w-4 h-4" /> Sync Campaigns
         </Link>
       </div>
