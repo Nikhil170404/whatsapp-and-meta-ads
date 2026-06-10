@@ -260,13 +260,13 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Automations</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">Auto-reply to incoming messages based on keywords or triggers.</p>
         </div>
         <button onClick={() => { setShowForm(true); setEditingId(null); setForm(emptyForm); }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-lg shadow-[#25D366]/20 shrink-0">
+          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-lg shadow-[#25D366]/20 shrink-0">
           <Plus className="w-4 h-4" /> New Automation
         </button>
       </div>
