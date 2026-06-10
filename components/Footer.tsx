@@ -38,25 +38,24 @@ export function Footer() {
             </div>
 
             <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">WhatsApp vs Others</p>
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Resources</p>
               <div className="flex flex-col gap-4">
-                <Link href="/alternatives/wati" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs WATI</Link>
-                <Link href="/alternatives/interakt" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs Interakt</Link>
-                <Link href="/alternatives/aisensy" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs AiSensy</Link>
-                <Link href="/alternatives/manychat" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">vs ManyChat</Link>
+                <Link href="/#features" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Features</Link>
+                <Link href="/#pricing" className="text-sm font-black text-[#25D366] hover:text-[#25D366] transition-colors flex items-center gap-2 italic">
+                  Pricing Plans
+                  <Sparkles className="h-3 w-3" />
+                </Link>
+                <Link href="/#faq" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">FAQ</Link>
+                <Link href="/signin" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Sign In</Link>
               </div>
             </div>
 
             <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Resources</p>
+              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Legal</p>
               <div className="flex flex-col gap-4">
-                <Link href="/whatsapp#features" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Features</Link>
-                <Link href="/whatsapp#pricing" className="text-sm font-black text-[#25D366] hover:text-[#25D366] transition-colors flex items-center gap-2 italic">
-                  Pricing Plans
-                  <Sparkles className="h-3 w-3" />
-                </Link>
                 <Link href="/privacy" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Privacy Policy</Link>
                 <Link href="/terms" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Terms of Service</Link>
+                <Link href="/data-deletion" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Data Deletion</Link>
               </div>
             </div>
 
@@ -67,7 +66,7 @@ export function Footer() {
                   Meta Official API
                   <ShieldCheck className="h-3 w-3" />
                 </div>
-                <Link href="/about" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">About Us</Link>
+                <a href="mailto:hello@replykaro.in" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">hello@replykaro.in</a>
                 <a href="https://x.com/HelloReplykaro" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors flex items-center gap-2">
                   Follow on X
                   <ArrowRight className="h-3 w-3" />

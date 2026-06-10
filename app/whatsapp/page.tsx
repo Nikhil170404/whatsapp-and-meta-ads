@@ -12,10 +12,11 @@ import { Footer } from "@/components/Footer";
 
 interface Plan {
   name: string;
-  price: string;
-  yearlyPrice: string;
-  usdPrice: string;
-  usdYearlyPrice: string;
+  // All prices are per-month. Yearly = discounted per-month rate billed annually (20% off).
+  monthly: string;
+  yearly: string;
+  usdMonthly: string;
+  usdYearly: string;
   badge: string;
   description: string;
   popular: boolean;
@@ -27,30 +28,30 @@ interface Plan {
 const plans: Plan[] = [
   {
     name: "Free Starter",
-    price: "0",
-    yearlyPrice: "0",
-    usdPrice: "0",
-    usdYearlyPrice: "0",
+    monthly: "0",
+    yearly: "0",
+    usdMonthly: "0",
+    usdYearly: "0",
     badge: "FREE",
-    description: "Test the waters risk-free",
+    description: "Try before you buy",
     popular: false,
     cta: "Start Free Forever",
     features: [
       "1 WhatsApp Number",
       "3 Active Automations",
-      "100 Contacts Limit",
-      "Keyword Auto-Replies",
-      "Contact Management",
-      "Email Support (72h)",
+      "100 Contacts",
+      "Keyword & Any Message Triggers",
+      "Message Inbox",
+      "Community Support",
     ],
-    limits: ["Meta charges billed directly", "No Broadcasts", "No Meta Ads Sync"],
+    limits: ["No Template Broadcasts", "No Meta Ads Integration"],
   },
   {
     name: "Growth Plan",
-    price: "999",
-    yearlyPrice: "9588",
-    usdPrice: "$12",
-    usdYearlyPrice: "$96",
+    monthly: "999",
+    yearly: "799",
+    usdMonthly: "12",
+    usdYearly: "8",
     badge: "Most Popular",
     description: "Perfect for growing businesses",
     popular: true,
@@ -60,18 +61,18 @@ const plans: Plan[] = [
       "Unlimited Contacts",
       "Template Broadcasts",
       "Contact CRM + Labels",
-      "Meta Ads Integration 🚀",
+      "Meta Ads Sync",
       "Welcome Message Trigger",
       "Email Support (48h)",
     ],
-    limits: ["Meta charges billed directly"],
+    limits: [],
   },
   {
     name: "Pro Plan",
-    price: "1999",
-    yearlyPrice: "19188",
-    usdPrice: "$24",
-    usdYearlyPrice: "$240",
+    monthly: "1999",
+    yearly: "1599",
+    usdMonthly: "24",
+    usdYearly: "20",
     badge: "Best Value",
     description: "For serious businesses & agencies",
     popular: false,
@@ -81,11 +82,11 @@ const plans: Plan[] = [
       "Unlimited Contacts",
       "Priority Broadcast Queue",
       "Advanced CRM + Segments",
-      "Full Meta Ads Automation 💎",
+      "Full Meta Ads Automation",
       "Detailed Analytics",
       "Priority Support (12h)",
     ],
-    limits: ["Meta charges billed directly"],
+    limits: [],
   },
 ];
 
@@ -138,7 +139,7 @@ const faqs = [
   },
   {
     q: "How is this better than WATI or Interakt?",
-    a: "ReplyKaro starts at ₹499/month vs ₹999+ for competitors. We offer the same official API, same features, but at a lower platform cost. Plus, we include Meta Ads integration that competitors don't offer."
+    a: "ReplyKaro starts free, with paid plans from ₹999/month vs ₹2,499/month for WATI. We offer the same official API and same features at a fraction of the cost. Plus, we include Meta Ads integration that competitors don't offer."
   },
 ];
 
@@ -172,7 +173,7 @@ export default function WhatsAppLandingPage() {
 
           <h1 className="text-5xl md:text-8xl font-black text-slate-900 tracking-tighter mb-8 leading-[0.9] animate-in fade-in slide-in-from-bottom-8 duration-1000">
             WhatsApp Automation.<br />
-            <span className="text-[#25D366]">10x Cheaper.</span>
+            <span className="text-[#25D366]">60% Cheaper.</span>
           </h1>
 
           <p className="text-lg md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium mb-12 leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200">
@@ -220,7 +221,7 @@ export default function WhatsAppLandingPage() {
               {/* Auto-reply */}
               <div className="flex gap-3 justify-end">
                 <div className="wa-bubble-out px-4 py-3 max-w-[75%]">
-                  <p className="text-sm">Hey! 👋 Thanks for reaching out! Our starter plan is just ₹499/mo. Here's the full pricing: replykaro.in/pricing</p>
+                  <p className="text-sm">Hey! 👋 Thanks for reaching out! Our plans start at ₹999/mo. Here's the full pricing: replykaro.in/pricing</p>
                   <p className="text-[10px] text-white/60 mt-1 text-right">10:31 AM ✓✓</p>
                 </div>
               </div>
@@ -240,7 +241,7 @@ export default function WhatsAppLandingPage() {
             {[
               { label: "Active Businesses", value: "2,500+", icon: Globe },
               { label: "Messages Daily", value: "1.2M+", icon: MessageSquare },
-              { label: "Cheaper than WATI", value: "10x", icon: Sparkles },
+              { label: "Cheaper than WATI", value: "60%", icon: Sparkles },
               { label: "Uptime SLA", value: "99.9%", icon: Shield },
             ].map((stat, i) => (
               <div key={i} className="text-center group">
@@ -316,7 +317,7 @@ export default function WhatsAppLandingPage() {
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#25D366]/10 text-[#25D366] font-bold text-sm mb-6 border border-[#25D366]/20">
               <Sparkles className="w-4 h-4" />
-              10x cheaper than competitors
+              60% cheaper than WATI
             </div>
             <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter mb-6">
               Simple, honest <span className="text-[#25D366]">pricing</span>.
@@ -335,7 +336,7 @@ export default function WhatsAppLandingPage() {
                 onClick={() => setIsYearly(true)}
                 className={`px-6 py-2.5 rounded-xl text-sm font-black uppercase tracking-wider transition-all ${isYearly ? 'bg-white shadow-md text-slate-900' : 'text-slate-500'}`}
               >
-                Yearly <span className="text-[#25D366] text-[10px]">SAVE 16%</span>
+                Yearly <span className="text-[#25D366] text-[10px]">SAVE 20%</span>
               </button>
             </div>
           </div>
@@ -360,13 +361,13 @@ export default function WhatsAppLandingPage() {
                 <div className="mb-6">
                   <div className="flex items-baseline gap-1">
                     <span className="text-5xl font-black text-slate-900">
-                      {currencySymbol}{isInternational ? (isYearly ? plan.usdYearlyPrice.replace('$', '') : plan.usdPrice.replace('$', '')) : (isYearly ? (plan.yearlyPrice ? (parseInt(plan.yearlyPrice) / 12).toFixed(0) : plan.price) : plan.price)}
+                      {currencySymbol}{isInternational ? (isYearly ? plan.usdYearly : plan.usdMonthly) : (isYearly ? plan.yearly : plan.monthly)}
                     </span>
                     <span className="text-slate-400 font-bold text-sm">/mo</span>
                   </div>
-                  {isYearly && plan.price !== "0" && (
+                  {isYearly && plan.monthly !== "0" && (
                     <p className="text-xs text-[#25D366] font-bold mt-1">
-                      billed yearly ({currencySymbol}{isInternational ? plan.usdYearlyPrice.replace('$', '') : plan.yearlyPrice})
+                      billed yearly ({currencySymbol}{(parseInt(isInternational ? plan.usdYearly : plan.yearly) * 12).toLocaleString("en-IN")})
                     </p>
                   )}
                   <p className="text-[10px] text-slate-400 font-bold mt-3 border-t border-slate-100 pt-3">

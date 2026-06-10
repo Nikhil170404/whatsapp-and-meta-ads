@@ -48,7 +48,7 @@ export function Navigation({ }: NavigationProps) {
     const navLinks = [
         { name: "WhatsApp", href: "/whatsapp" },
         { name: "Meta Ads", href: "/meta-ads" },
-        { name: "Pricing", href: "/whatsapp#pricing" },
+        { name: "Pricing", href: "/#pricing" },
     ];
 
     return (

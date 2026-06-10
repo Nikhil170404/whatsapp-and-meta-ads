@@ -91,10 +91,18 @@ function SignInContent() {
                     By continuing, you agree to our{" "}
                     <Link href="/terms" className="text-[#1877F2] hover:underline">
                         Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-[#1877F2] hover:underline">
+                        Privacy Policy
                     </Link>
                     .
                 </p>
             </div>
+
+            <Link href="/" className="mt-6 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">
+                ← Back to home
+            </Link>
         </div>
     );
 }

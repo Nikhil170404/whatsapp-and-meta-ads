@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 
 export default function GenericAlternativePage({ competitor = "Competitor" }) {
   const features = [
-    { name: "Starting Price", replykaro: "₹99/mo ($3)", competitor: "Higher Pricing", win: true },
+    { name: "Starting Price", replykaro: "₹999/mo ($12)", competitor: "Higher Pricing", win: true },
     { name: "Free Forever Plan", replykaro: true, competitor: false, detail: "ReplyKaro offers a truly free forever tier." },
     { name: "Comment-to-DM", replykaro: "⚡ Sub-second", competitor: "Standard", win: true },
     { name: "Story Mention Rewards", replykaro: true, competitor: false, detail: "Automated loyalty points for story tags." },
@@ -33,7 +33,7 @@ export default function GenericAlternativePage({ competitor = "Competitor" }) {
       <section className="pt-32 pb-24 px-4 relative bg-slate-50/50 text-center">
         <Badge className="bg-primary/10 text-primary border-none px-6 py-2 rounded-full mb-8 uppercase tracking-[0.4em] text-[10px] font-black italic">Top {competitor} Alternative 2026</Badge>
         <h1 className="text-6xl md:text-9xl font-black text-slate-900 tracking-tighter leading-[0.85] mb-12">Upgrade Your <br /><span className="text-primary italic">Engagement.</span></h1>
-        <p className="text-slate-500 text-xl md:text-3xl font-bold max-w-4xl mx-auto mb-12">Stop overpaying for basic automation. Get the full native engine for <strong className="text-slate-900">₹99/mo ($3/mo)</strong>.</p>
+        <p className="text-slate-500 text-xl md:text-3xl font-bold max-w-4xl mx-auto mb-12">Stop overpaying for basic automation. Get the full native engine for <strong className="text-slate-900">₹999/mo ($12/mo)</strong>.</p>
         <Link href="/signin"><Button className="h-20 px-16 rounded-[2.5rem] bg-primary text-white font-black uppercase tracking-widest shadow-2xl shadow-primary/30 flex items-center gap-4 mx-auto text-lg">Start Free Forever <Zap className="h-6 w-6" /></Button></Link>
       </section>
 
