@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   MessageSquare, Zap, Users, Send, CheckCircle2,
-  ArrowUpRight, FileText, ChevronRight, AlertTriangle,
+  ArrowUpRight, ArrowDownLeft, FileText, ChevronRight, AlertTriangle,
   Plus, Power, BarChart3
 } from "lucide-react";
+import { RelativeTime } from "@/components/ui/relative-time";
 
 export default async function WaOverviewPage() {
   const session = await getSession();
@@ -259,24 +260,28 @@ export default async function WaOverviewPage() {
         <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
           {msgs.length > 0 ? (
             <div className="divide-y divide-slate-50">
-              {msgs.map((msg: any) => (
+              {msgs.map((msg: any) => {
+                const isOutbound = msg.direction === "outbound";
+                return (
                 <Link key={msg.id} href="/wa/messages">
                   <div className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${msg.direction === "outbound" ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-500"}`}>
-                      <MessageSquare className="w-4 h-4" />
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isOutbound ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-500"}`}>
+                      {isOutbound ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-900 truncate">
-                        {msg.direction === "outbound" ? `→ ${msg.to_phone}` : `← ${msg.from_phone}`}
+                        <span className={`font-medium ${isOutbound ? "text-[#25D366]" : "text-slate-400"}`}>
+                          {isOutbound ? "Sent to " : "From "}
+                        </span>
+                        {isOutbound ? msg.to_phone : msg.from_phone}
                       </p>
                       <p className="text-xs text-slate-400 truncate font-medium">{msg.content}</p>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-bold shrink-0">
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </p>
+                    <RelativeTime date={msg.created_at} className="text-[10px] text-slate-400 font-bold shrink-0" />
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="p-10 text-center">

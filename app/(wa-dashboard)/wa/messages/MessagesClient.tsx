@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2, UserCheck, ChevronDown, UserX } from "lucide-react";
 import Link from "next/link";
+import { RelativeTime } from "@/components/ui/relative-time";
 
 interface Message {
   id: string;
@@ -229,9 +230,7 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-0.5 gap-2">
                           <p className={`font-bold text-sm truncate ${isActive ? "text-[#25D366]" : "text-slate-900"}`}>{phone}</p>
-                          <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">
-                            {new Date(convo.lastMessage.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                          </span>
+                          <RelativeTime date={convo.lastMessage.created_at} className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0" />
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-1">{convo.lastMessage.content}</p>
                         <div className="flex items-center gap-1.5 mt-1">
