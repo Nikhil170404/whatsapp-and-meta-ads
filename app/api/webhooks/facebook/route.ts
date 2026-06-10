@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { sendTextMessage } from "@/lib/whatsapp/service";
+import { verifyMetaSignature } from "@/lib/meta-signature";
 
 const FB_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -20,7 +21,13 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+
+    if (!verifyMetaSignature(rawBody, req.headers.get("x-hub-signature-256"))) {
+      return new NextResponse("Invalid signature", { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
 
     if (body.object !== "page" && body.object !== "instagram") {
       return NextResponse.json({ ok: true });

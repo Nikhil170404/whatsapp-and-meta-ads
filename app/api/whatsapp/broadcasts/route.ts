@@ -39,6 +39,29 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseAdmin() as any;
 
+    // Verify the template and every contact belong to this user, so a caller
+    // can't broadcast to (or through) another user's data by passing foreign IDs.
+    const { data: ownedTemplate } = await supabase
+      .from("wa_templates")
+      .select("id")
+      .eq("id", template_id)
+      .eq("user_id", session.id)
+      .maybeSingle();
+    if (!ownedTemplate) {
+      return NextResponse.json({ error: "Template not found" }, { status: 404 });
+    }
+
+    const uniqueContactIds: string[] = Array.from(new Set(contact_ids));
+    const { data: ownedContacts } = await supabase
+      .from("wa_contacts")
+      .select("id")
+      .eq("user_id", session.id)
+      .in("id", uniqueContactIds);
+    const ownedIds = new Set((ownedContacts ?? []).map((c: any) => c.id));
+    if (ownedIds.size !== uniqueContactIds.length) {
+      return NextResponse.json({ error: "One or more contacts are invalid" }, { status: 400 });
+    }
+
     // For managed billing: verify wallet has enough for all recipients
     const { data: conn } = await supabase
       .from("wa_connections")
@@ -46,7 +69,7 @@ export async function POST(req: Request) {
       .eq("user_id", session.id)
       .maybeSingle();
     if (conn?.billing_type === "managed") {
-      const needed = contact_ids.length * 95;
+      const needed = uniqueContactIds.length * 95;
       const { data: wallet } = await supabase
         .from("wa_wallet")
         .select("balance_paise")
@@ -73,7 +96,7 @@ export async function POST(req: Request) {
         template_id,
         status: isScheduled ? "scheduled" : "draft",
         scheduled_at: scheduled_at || null,
-        total_recipients: contact_ids.length,
+        total_recipients: uniqueContactIds.length,
       })
       .select()
       .single();
@@ -81,7 +104,7 @@ export async function POST(req: Request) {
     if (bcError) throw bcError;
 
     // Create recipient entries
-    const recipients = contact_ids.map((cid: string) => ({
+    const recipients = uniqueContactIds.map((cid: string) => ({
       broadcast_id: broadcast.id,
       contact_id: cid,
       status: "pending",

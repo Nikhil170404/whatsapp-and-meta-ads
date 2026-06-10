@@ -11,26 +11,28 @@ export async function POST(req: Request) {
         }
 
         const [encoded_sig, payload] = signed_request.split(".");
-        const secret = process.env.FACEBOOK_APP_SECRET!;
-
-        // Decode data
-        const data = JSON.parse(Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
-
-        // Verify signature
-        const expected_sig = crypto
-            .createHmac("sha256", secret)
-            .update(payload)
-            .digest("base64")
-            .replace(/-/g, "+")
-            .replace(/_/g, "/")
-            .replace(/=/g, "");
-
-        if (encoded_sig !== expected_sig && encoded_sig + "=" !== expected_sig) {
-            // Note: Sig verification can be tricky with base64 padding, 
-            // for development we log but allow if needed, or strictly verify.
-            console.log("Signature verification failed (optional check depending on strictness)");
+        const secret = process.env.FACEBOOK_APP_SECRET;
+        if (!secret) {
+            console.error("FACEBOOK_APP_SECRET not configured for deletion callback");
+            return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+        }
+        if (!encoded_sig || !payload) {
+            return NextResponse.json({ error: "Malformed signed_request" }, { status: 400 });
         }
 
+        // Verify Facebook's signed_request: HMAC-SHA256 of the payload string,
+        // compared as raw bytes against the base64url-decoded signature.
+        const expectedSig = crypto.createHmac("sha256", secret).update(payload).digest();
+        const providedSig = Buffer.from(encoded_sig.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+        if (
+            expectedSig.length !== providedSig.length ||
+            !crypto.timingSafeEqual(expectedSig, providedSig)
+        ) {
+            return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+        }
+
+        // Decode data only after the signature is confirmed valid
+        const data = JSON.parse(Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
         const userId = data.user_id;
         console.log(`Data deletion request received for user: ${userId}`);
 

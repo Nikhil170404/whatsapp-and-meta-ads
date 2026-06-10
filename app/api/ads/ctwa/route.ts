@@ -233,7 +233,8 @@ export async function PATCH(req: Request) {
     await supabase
       .from("ctwa_campaigns")
       .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", session.id);
 
     return NextResponse.json({ success: true, status });
   } catch (error: any) {
@@ -277,7 +278,7 @@ export async function DELETE(req: Request) {
       }).catch(() => {});
     }
 
-    await supabase.from("ctwa_campaigns").delete().eq("id", id);
+    await supabase.from("ctwa_campaigns").delete().eq("id", id).eq("user_id", session.id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

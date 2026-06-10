@@ -12,6 +12,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ phone: 
   const { phone } = await params;
   const { member_id } = await req.json();
   const supabase = getSupabaseAdmin() as any;
+
+  // If assigning to a team member, confirm that member belongs to this owner's
+  // team so a conversation can't be assigned to someone else's member.
+  if (member_id) {
+    const { data: member } = await supabase
+      .from("team_members")
+      .select("id")
+      .eq("id", member_id)
+      .eq("owner_user_id", session.id)
+      .maybeSingle();
+    if (!member) {
+      return NextResponse.json({ error: "Team member not found" }, { status: 404 });
+    }
+  }
+
   await supabase.from("wa_conversations").upsert({
     user_id: session.id,
     phone,

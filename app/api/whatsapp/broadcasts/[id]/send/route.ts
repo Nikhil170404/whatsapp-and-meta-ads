@@ -7,7 +7,17 @@ import { checkRateLimit } from "@/lib/rate-limit-middleware";
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await getSession();
-    const cronUserId = req.headers.get("x-cron-user-id");
+
+    // Internal cron calls may act on behalf of a user, but ONLY when they
+    // present the shared CRON_SECRET. Without it, the x-cron-user-id header is
+    // ignored so it can't be used to trigger another user's paid broadcasts.
+    let cronUserId: string | null = null;
+    const cronAuth = req.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && cronAuth === `Bearer ${cronSecret}`) {
+      cronUserId = req.headers.get("x-cron-user-id");
+    }
+
     const userId = session?.id || cronUserId;
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -80,6 +90,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const { data: contacts } = await supabase
       .from("wa_contacts")
       .select("id, phone_number, display_name")
+      .eq("user_id", userId)
       .in("id", contactIds);
 
     const phoneMap: Record<string, string> = {};
