@@ -34,6 +34,9 @@ export default async function WaOverviewPage() {
   const allAutomations = automations ?? [];
   const msgs = recentMessages ?? [];
 
+  const setupDone = [isConnected, allAutomations.length > 0, (contactCount ?? 0) > 0].filter(Boolean).length;
+  const setupComplete = setupDone === 3;
+
   return (
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
@@ -73,25 +76,38 @@ export default async function WaOverviewPage() {
         </Link>
       </div>
 
-      {/* ── Connect prompt (if not connected) ── */}
-      {!isConnected && !isTokenExpired && (
-        <div className="bg-gradient-to-br from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 rounded-[1.5rem] p-5 md:p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-[#25D366] flex items-center justify-center shrink-0">
-              <MessageSquare className="w-6 h-6 text-white fill-current" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-base font-black text-slate-900 mb-1">Connect WhatsApp first</p>
-              <p className="text-sm text-slate-500 font-medium mb-4">Link your WhatsApp Business Account to enable automations, broadcasts, and messages.</p>
-              <Link
-                href="/wa/connect"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-md shadow-[#25D366]/15"
-              >
-                Connect WhatsApp <ArrowUpRight className="w-4 h-4" />
-              </Link>
+      {/* ── Setup guide (until all 3 steps are done) ── */}
+      {!setupComplete && !isTokenExpired && (
+        <Link href="/wa/setup" className="block">
+          <div className="bg-gradient-to-br from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 rounded-[1.5rem] p-5 md:p-6 hover:shadow-md transition-all group">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#25D366] flex items-center justify-center shrink-0">
+                <MessageSquare className="w-6 h-6 text-white fill-current" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <p className="text-base font-black text-slate-900">
+                    {setupDone === 0 ? "Let's get you set up" : "Finish your setup"}
+                  </p>
+                  <span className="text-xs font-black text-[#25D366] shrink-0">{setupDone}/3 done</span>
+                </div>
+                <p className="text-sm text-slate-500 font-medium mb-3">
+                  {!isConnected
+                    ? "Connect WhatsApp, add an automation, and add a contact — 5 minutes total."
+                    : allAutomations.length === 0
+                      ? "WhatsApp is connected. Next: create your first automation."
+                      : "Almost there! Add your first contact to start broadcasting."}
+                </p>
+                <div className="w-full h-2 bg-white rounded-full overflow-hidden mb-3">
+                  <div className="h-full bg-[#25D366] rounded-full transition-all" style={{ width: `${Math.round((setupDone / 3) * 100)}%` }} />
+                </div>
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm group-hover:bg-[#1DA851] transition-all shadow-md shadow-[#25D366]/15">
+                  Open Setup Guide <ArrowUpRight className="w-4 h-4" />
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        </Link>
       )}
 
       {/* ── Automations section ── */}
