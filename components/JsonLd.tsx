@@ -73,20 +73,20 @@ export function JsonLd() {
     "offers": {
       "@type": "AggregateOffer",
       "lowPrice": "0",
-      "highPrice": "299",
+      "highPrice": "1999",
       "priceCurrency": "INR",
       "offerCount": "6",
       "offers": [
-        { "@type": "Offer", "price": "0", "priceCurrency": "INR", "name": "Free Forever Plan", "availability": "https://schema.org/InStock" },
-        { "@type": "Offer", "price": "99", "priceCurrency": "INR", "name": "Starter Plan (India)", "availability": "https://schema.org/InStock" },
-        { "@type": "Offer", "price": "299", "priceCurrency": "INR", "name": "Pro Plan (India)", "availability": "https://schema.org/InStock" },
-        { "@type": "Offer", "price": "0", "priceCurrency": "USD", "name": "Free Forever Plan", "availability": "https://schema.org/InStock" },
-        { "@type": "Offer", "price": "3", "priceCurrency": "USD", "name": "Starter Plan (Global)", "availability": "https://schema.org/InStock" },
-        { "@type": "Offer", "price": "9", "priceCurrency": "USD", "name": "Pro Plan (Global)", "availability": "https://schema.org/InStock" }
+        { "@type": "Offer", "price": "0", "priceCurrency": "INR", "name": "Free Starter Plan", "availability": "https://schema.org/InStock" },
+        { "@type": "Offer", "price": "999", "priceCurrency": "INR", "name": "Growth Plan (India)", "availability": "https://schema.org/InStock" },
+        { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "name": "Pro Plan (India)", "availability": "https://schema.org/InStock" },
+        { "@type": "Offer", "price": "0", "priceCurrency": "USD", "name": "Free Starter Plan", "availability": "https://schema.org/InStock" },
+        { "@type": "Offer", "price": "12", "priceCurrency": "USD", "name": "Growth Plan (Global)", "availability": "https://schema.org/InStock" },
+        { "@type": "Offer", "price": "24", "priceCurrency": "USD", "name": "Pro Plan (Global)", "availability": "https://schema.org/InStock" }
       ]
     },
     "brand": { "@id": "https://www.replykaro.in/#organization" },
-    "description": "ReplyKaro is India's #1 WhatsApp Business automation platform in 2026. It provides keyword auto-replies, template broadcasts, contact CRM, and Meta Ads comment-to-DM automation. Starting at ₹99/mo ($3/mo globally) — 10x cheaper than WATI, Interakt, and AiSensy."
+    "description": "ReplyKaro is India's #1 WhatsApp Business automation platform. It provides keyword auto-replies, template broadcasts, contact CRM, and Meta Ads comment-to-DM automation. Starting free, paid plans from ₹999/mo ($12/mo globally) — 60% cheaper than WATI."
   };
 
   const faqSchema = {
@@ -98,7 +98,7 @@ export function JsonLd() {
         "name": "What is the best WhatsApp Business automation tool in India?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "ReplyKaro is India's #1 WhatsApp Business automation tool in 2026. It offers keyword auto-replies, template broadcasts, contact CRM, and Meta Ads integration — starting at just ₹99/mo, which is 10x cheaper than WATI and Interakt."
+          "text": "ReplyKaro is India's #1 WhatsApp Business automation tool. It offers keyword auto-replies, template broadcasts, contact CRM, and Meta Ads integration — free to start, with paid plans from ₹999/mo, 60% cheaper than WATI."
         }
       },
       {
@@ -114,7 +114,7 @@ export function JsonLd() {
         "name": "What is the cheapest WATI alternative in India?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "ReplyKaro is the cheapest WATI alternative, starting at ₹99/mo vs WATI's ₹2,499/mo. Both use the official WhatsApp Business API, but ReplyKaro also includes Meta Ads integration for free."
+          "text": "ReplyKaro is the most affordable WATI alternative, starting at ₹999/mo vs WATI's ₹2,499/mo. Both use the official WhatsApp Business API, but ReplyKaro also includes Meta Ads integration for free."
         }
       },
       {
@@ -122,7 +122,7 @@ export function JsonLd() {
         "name": "How fast can I set up WhatsApp automation?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Under 30 seconds! Sign in with Facebook, connect your WhatsApp Business Account, set up a keyword trigger, and your automation goes live instantly. No coding required."
+          "text": "Under 5 minutes. Sign in with Facebook, connect your WhatsApp Business Account, set up a keyword trigger, and your automation goes live instantly. No coding required."
         }
       },
       {
@@ -146,7 +146,7 @@ export function JsonLd() {
         "name": "Is there a free plan?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. ReplyKaro offers a Free Forever plan with 1,000 messages/month and 3 active automations. No credit card required. Upgrade to Starter (₹99/mo) or Pro (₹299/mo) when you need more."
+          "text": "Yes. ReplyKaro offers a Free Starter plan with 3 active automations and 100 contacts. No credit card required. Upgrade to Growth (₹999/mo) or Pro (₹1,999/mo) when you need more."
         }
       },
       {
@@ -154,7 +154,7 @@ export function JsonLd() {
         "name": "How is ReplyKaro better than Interakt or AiSensy?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "ReplyKaro is 10x cheaper (₹99 vs ₹999/mo), includes Meta Ads integration that competitors don't offer, and provides a faster setup process (under 30 seconds). All platforms use the same official WhatsApp Business API."
+          "text": "ReplyKaro includes Meta Ads integration that competitors don't offer, has a free plan to start, and provides a faster setup process (under 5 minutes). All platforms use the same official WhatsApp Business API."
         }
       }
     ]
@@ -167,7 +167,7 @@ export function JsonLd() {
     "hasPart": [
       { "@type": "WebPage", "name": "WhatsApp Automation", "url": "https://www.replykaro.in/whatsapp" },
       { "@type": "WebPage", "name": "Meta Ads", "url": "https://www.replykaro.in/meta-ads" },
-      { "@type": "WebPage", "name": "Pricing", "url": "https://www.replykaro.in/whatsapp#pricing" },
+      { "@type": "WebPage", "name": "Pricing", "url": "https://www.replykaro.in/#pricing" },
       { "@type": "WebPage", "name": "Sign In", "url": "https://www.replykaro.in/signin" },
       { "@type": "WebPage", "name": "Privacy Policy", "url": "https://www.replykaro.in/privacy" },
       { "@type": "WebPage", "name": "Terms of Service", "url": "https://www.replykaro.in/terms" }

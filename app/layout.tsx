@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | ReplyKaro",
   },
   description:
-    "ReplyKaro — India's #1 WhatsApp automation tool. Automate keyword replies, broadcast templates, and Meta Ad comment-to-WhatsApp flows. Scale your business from ₹99/mo ($3/mo).",
+    "ReplyKaro — India's #1 WhatsApp automation tool. Automate keyword replies, broadcast templates, and Meta Ad comment-to-WhatsApp flows. Start free, paid plans from ₹999/mo ($12/mo).",
   alternates: {
     languages: {
       "en-IN": "https://www.replykaro.in",
@@ -64,7 +64,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "ReplyKaro™ — #1 WhatsApp Business & Meta Ads Automation Tool",
-    description: "Automate your WhatsApp Business conversations and Meta Ad replies instantly. Cheapest WhatsApp automation starting from ₹99/mo.",
+    description: "Automate your WhatsApp Business conversations and Meta Ad replies instantly. Start free — paid plans from ₹999/mo.",
     images: ["/opengraph-image"],
     site: "@HelloReplykaro",
     creator: "@HelloReplykaro",
