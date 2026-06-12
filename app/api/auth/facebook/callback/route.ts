@@ -56,8 +56,6 @@ export async function GET(req: Request) {
       user_id: session.id,
       fb_user_id: meData.id,
       ad_account_id: adAccountId || "unknown",
-      page_id: pageId,
-      page_access_token: pageAccessToken,
       access_token: accessToken,
       status: 'active',
       updated_at: new Date().toISOString(),
@@ -66,6 +64,14 @@ export async function GET(req: Request) {
     if (upsertError) {
       console.error("ad_connections upsert failed:", upsertError);
       return NextResponse.redirect(`${env.APP_URL}/ads/connect?error=${encodeURIComponent(upsertError.message)}`);
+    }
+
+    // Save page info separately — these columns may not exist yet in older deployments
+    if (pageId) {
+      await supabase.from("ad_connections")
+        .update({ page_id: pageId, page_access_token: pageAccessToken })
+        .eq("user_id", session.id)
+        .catch(() => {});
     }
 
     return NextResponse.redirect(`${env.APP_URL}/ads/connect`);
