@@ -5,11 +5,13 @@ import { CheckCircle2, ShieldCheck, Link2, Clock, Info } from "lucide-react";
 import Link from "next/link";
 import DisconnectButton from "./DisconnectButton";
 
-export default async function AdsConnectPage() {
+export default async function AdsConnectPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const session = await getSession();
   if (!session) redirect("/signin");
 
   const supabase = getSupabaseAdmin() as any;
+  const params = await searchParams;
+  const errorMsg = params?.error;
 
   const { data: connection } = await supabase
     .from("ad_connections")
@@ -23,6 +25,16 @@ export default async function AdsConnectPage() {
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Connect Meta Ads</h1>
         <p className="text-slate-500 font-medium mt-1">Link your Facebook account to sync campaigns and automate ad comments.</p>
       </div>
+
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex gap-3">
+          <Info className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-red-700">Connection Failed</p>
+            <p className="text-xs text-red-600 font-medium mt-0.5">{decodeURIComponent(errorMsg)}</p>
+          </div>
+        </div>
+      )}
 
       {/* Approval notice */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">

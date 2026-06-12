@@ -23,9 +23,10 @@ export async function GET(req: Request) {
     const tokenRes = await fetch(tokenUrl);
     const tokenData = await tokenRes.json();
 
-    if (!tokenRes.ok) {
+    if (!tokenRes.ok || tokenData.error) {
+      const msg = tokenData.error?.message || "TokenExchangeFailed";
       console.error("Token Exchange Error:", tokenData);
-      return NextResponse.redirect(`${env.APP_URL}/ads/connect?error=TokenExchangeFailed`);
+      return NextResponse.redirect(`${env.APP_URL}/ads/connect?error=${encodeURIComponent(msg)}`);
     }
 
     const accessToken = tokenData.access_token;
