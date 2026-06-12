@@ -41,24 +41,34 @@ export async function GET(req: Request) {
     const adAccountsData = await adAccountsRes.json();
     const pagesData = await pagesRes.json();
 
-    const adAccountId = adAccountsData.data?.[0]?.account_id || "unknown_ad_account";
+    const adAccountId = adAccountsData.data?.[0]?.account_id || null;
     const firstPage = pagesData.data?.[0];
     const pageId = firstPage?.id || null;
     const pageAccessToken = firstPage?.access_token || null;
 
+    if (!meData.id) {
+      return NextResponse.redirect(`${env.APP_URL}/ads/connect?error=${encodeURIComponent("Could not fetch Facebook profile. Please try again.")}`);
+    }
+
     const supabase = getSupabaseAdmin() as any;
 
-    await supabase.from("ad_connections").upsert({
+    const { error: upsertError } = await supabase.from("ad_connections").upsert({
       user_id: session.id,
       fb_user_id: meData.id,
-      ad_account_id: adAccountId,
+      ad_account_id: adAccountId || "unknown",
       page_id: pageId,
       page_access_token: pageAccessToken,
       access_token: accessToken,
       status: 'active',
+      updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
-    return NextResponse.redirect(`${env.APP_URL}/ads`);
+    if (upsertError) {
+      console.error("ad_connections upsert failed:", upsertError);
+      return NextResponse.redirect(`${env.APP_URL}/ads/connect?error=${encodeURIComponent(upsertError.message)}`);
+    }
+
+    return NextResponse.redirect(`${env.APP_URL}/ads/connect`);
   } catch (err) {
     console.error("FB Auth Error:", err);
     return NextResponse.redirect(`${env.APP_URL}/ads/connect?error=InternalError`);
