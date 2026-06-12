@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 import { CheckCircle2, ShieldCheck, Link2, Clock, Info } from "lucide-react";
 import Link from "next/link";
+import DisconnectButton from "./DisconnectButton";
 
 export default async function AdsConnectPage() {
   const session = await getSession();
@@ -69,9 +70,7 @@ export default async function AdsConnectPage() {
           </div>
 
           <div className="mt-8 pt-8 border-t border-slate-100 relative z-10">
-            <button className="px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl hover:bg-rose-100 transition-colors text-sm">
-              Disconnect Account
-            </button>
+            <DisconnectButton />
           </div>
         </div>
       ) : (
