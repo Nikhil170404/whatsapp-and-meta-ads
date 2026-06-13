@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       .eq("status", "active")
       .maybeSingle();
 
-    const token = conn.page_access_token || conn.access_token;
+    const token = conn.access_token || conn.page_access_token;
     const waNum = whatsapp_number.replace(/\D/g, "");
     const openingMsg = opening_message?.trim() || "Hi, I saw your ad and I'm interested!";
     const targetCountries: string[] = countries?.length ? countries : ["IN"];
@@ -223,7 +223,7 @@ export async function PATCH(req: Request) {
 
     if (!conn) return NextResponse.json({ error: "Not connected" }, { status: 400 });
 
-    const token = conn.page_access_token || conn.access_token;
+    const token = conn.access_token || conn.page_access_token;
 
     const res = await fetch(`${FB_API}/${campaign.meta_ad_id}`, {
       method: "POST",
@@ -276,7 +276,7 @@ export async function DELETE(req: Request) {
       .single();
 
     if (conn && campaign.meta_campaign_id) {
-      const token = conn.page_access_token || conn.access_token;
+      const token = conn.access_token || conn.page_access_token;
       await fetch(`${FB_API}/${campaign.meta_campaign_id}`, {
         method: "DELETE",
         body: JSON.stringify({ access_token: token }),
