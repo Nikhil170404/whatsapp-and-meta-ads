@@ -55,6 +55,7 @@ export async function GET(req: Request) {
       page_access_token: pageAccessToken,
       access_token: accessToken,
       status: 'active',
+      updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
     return NextResponse.redirect(`${env.APP_URL}/ads`);

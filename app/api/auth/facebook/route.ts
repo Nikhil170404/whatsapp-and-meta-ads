@@ -5,13 +5,13 @@ export async function GET(req: Request) {
   try {
     const appId = env.NEXT_PUBLIC_FACEBOOK_APP_ID;
     const redirectUri = `${env.APP_URL}/api/auth/facebook/callback`;
-    const scope = "ads_management,ads_read,pages_show_list,pages_read_engagement,pages_manage_ads,public_profile";
+    const scope = "ads_management,ads_read,pages_show_list,pages_read_engagement,public_profile";
 
     if (!appId) {
       return NextResponse.json({ error: "Facebook App ID not configured" }, { status: 500 });
     }
 
-    const authUrl = `https://www.facebook.com/v25.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code`;
+    const authUrl = `https://www.facebook.com/v25.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&response_type=code&auth_type=rerequest`;
 
     return NextResponse.redirect(authUrl);
   } catch (error) {
