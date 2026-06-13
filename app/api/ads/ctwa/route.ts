@@ -76,7 +76,13 @@ export async function POST(req: Request) {
     });
     const campaignJson = await campaignRes.json();
     if (campaignJson.error) {
-      return NextResponse.json({ error: `Campaign: ${campaignJson.error.message}` }, { status: 400 });
+      const msg = campaignJson.error.message as string;
+      if (msg?.toLowerCase().includes("permission") || campaignJson.error.code === 200 || campaignJson.error.code === 10) {
+        return NextResponse.json({
+          error: "Permissions error: your Meta token doesn't have ads_management access. Go to Connect Account and reconnect your Meta Ads account, then try again.",
+        }, { status: 400 });
+      }
+      return NextResponse.json({ error: `Campaign: ${msg}` }, { status: 400 });
     }
     const metaCampaignId: string = campaignJson.id;
 
