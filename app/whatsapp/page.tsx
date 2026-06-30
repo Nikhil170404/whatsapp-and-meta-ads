@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   MessageSquare, Zap, Target, Loader2, CheckCircle2, ArrowRight, ShieldCheck,
   BarChart3, Globe, Users, Send, FileText, Bot, Clock, Shield, ChevronDown,
-  Check, X as XIcon, Star, Sparkles
+  Check, X as XIcon, Star, Sparkles, Gift
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/Footer";
@@ -400,6 +400,25 @@ export default function WhatsAppLandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Cross-sell bundle banner */}
+          <div className="max-w-3xl mx-auto mt-10 flex items-center gap-4 rounded-[2rem] border border-[#25D366]/20 bg-[#25D366]/5 p-5 md:p-6">
+            <div className="w-10 h-10 rounded-2xl bg-[#25D366]/10 flex items-center justify-center shrink-0">
+              <Gift className="w-5 h-5 text-[#25D366]" />
+            </div>
+            <p className="text-sm text-slate-700 font-medium flex-1">
+              Already on{" "}
+              <a
+                href="https://www.replykaro.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-black text-[#25D366] hover:underline"
+              >
+                ReplyKaro Instagram automation
+              </a>
+              ? Bundle both and get ₹199 free wallet credit — manage it from your dashboard.
+            </p>
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee, Gift, Copy, Check, ExternalLink } from "lucide-react";
 
 interface Plan {
   key: string;
@@ -117,6 +117,140 @@ function loadRazorpayScript(): Promise<boolean> {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
+}
+
+function BundleSaveCard() {
+  const [bundleCode, setBundleCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [redeemInput, setRedeemInput] = useState("");
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/billing/bundle-code")
+      .then((res) => res.json())
+      .then((data) => setBundleCode(data.code || null))
+      .catch(() => setBundleCode(null));
+  }, []);
+
+  const handleCopy = async () => {
+    if (!bundleCode) return;
+    try {
+      await navigator.clipboard.writeText(bundleCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable — ignore
+    }
+  };
+
+  const handleRedeem = async () => {
+    const code = redeemInput.trim();
+    if (!code) {
+      setRedeemError("Please enter a bundle code.");
+      return;
+    }
+    setRedeeming(true);
+    setRedeemError(null);
+    setRedeemSuccess(null);
+    try {
+      const res = await fetch("/api/billing/redeem-bundle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to redeem code");
+      setRedeemSuccess(`₹${(data.creditedPaise / 100).toFixed(0)} credited to your wallet!`);
+      setRedeemInput("");
+    } catch (e: any) {
+      setRedeemError(e.message);
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 bg-[#25D366]/10 rounded-2xl flex items-center justify-center shrink-0">
+          <Gift className="w-5 h-5 text-[#25D366]" />
+        </div>
+        <div>
+          <h2 className="text-base font-black text-slate-900">Bundle & Save</h2>
+          <p className="text-xs text-slate-500 font-medium">
+            Using ReplyKaro Instagram automation (replykaro.com) too? Enter your code below for ₹199 free wallet credit.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4 mt-5">
+        {/* Your bundle code */}
+        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Your bundle code</p>
+          <p className="text-[11px] text-slate-500 font-medium mb-3 leading-relaxed">
+            Also using ReplyKaro for Instagram automation? Share this code over there to give them credit, or grab their code below.
+          </p>
+          {bundleCode ? (
+            <div className="flex items-center gap-2">
+              <code className="flex-1 min-w-0 truncate bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-700">
+                {bundleCode}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="shrink-0 w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center hover:bg-slate-700 transition-colors"
+                aria-label="Copy bundle code"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+              <Loader2 className="w-3 h-3 animate-spin" /> Generating your code…
+            </div>
+          )}
+        </div>
+
+        {/* Redeem a code */}
+        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Redeem a code</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={redeemInput}
+              onChange={(e) => setRedeemInput(e.target.value)}
+              placeholder="IG.xxxxxxxx.xxxxxxxx"
+              className="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366] transition-all"
+            />
+            <button
+              onClick={handleRedeem}
+              disabled={redeeming}
+              className="shrink-0 px-4 py-2 bg-[#25D366] hover:bg-[#1DA851] disabled:opacity-50 transition-colors text-white font-bold rounded-xl text-xs flex items-center gap-1.5"
+            >
+              {redeeming ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Redeem"}
+            </button>
+          </div>
+          {redeemSuccess && (
+            <p className="text-xs font-bold text-[#25D366] mt-2">{redeemSuccess}</p>
+          )}
+          {redeemError && (
+            <p className="text-xs font-bold text-rose-600 mt-2">{redeemError}</p>
+          )}
+        </div>
+      </div>
+
+      <a
+        href="https://www.replykaro.com/pricing"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#25D366] hover:underline mt-5"
+      >
+        Explore Instagram automation
+        <ExternalLink className="w-3.5 h-3.5" />
+      </a>
+    </div>
+  );
 }
 
 export function BillingClient({ currentPlan, isOwner, country = "IN" }: { currentPlan: string; isOwner?: boolean; country?: string }) {
@@ -436,6 +570,9 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
           </p>
         </div>
       )}
+
+      {/* Bundle & Save — cross-sell with sister product ReplyKaro Instagram */}
+      <BundleSaveCard />
 
       {/* Help */}
       <div className="bg-slate-50 rounded-2xl p-6 text-center">
