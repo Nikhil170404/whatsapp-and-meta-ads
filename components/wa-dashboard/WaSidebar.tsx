@@ -19,6 +19,7 @@ import {
   MoreHorizontal,
   Home,
   Coins,
+  Code2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -38,6 +39,7 @@ const navigation = [
   { name: "Team", href: "/wa/team", icon: Users },
   { name: "Templates", href: "/wa/templates", icon: FileText },
   { name: "Connect", href: "/wa/connect", icon: Link2 },
+  { name: "Integrate", href: "/wa/integrate", icon: Code2 },
   { name: "Billing", href: "/wa/billing", icon: CreditCard },
   { name: "Wallet", href: "/wa/wallet", icon: Coins },
 ];
@@ -222,6 +224,7 @@ export function WaSidebar({ user }: SidebarProps) {
             { name: "Team", href: "/wa/team", icon: Users },
             { name: "Templates", href: "/wa/templates", icon: FileText },
             { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
+            { name: "Integrate / API", href: "/wa/integrate", icon: Code2 },
             { name: "Wallet", href: "/wa/wallet", icon: Coins },
             { name: "Billing & Plans", href: "/wa/billing", icon: CreditCard },
           ].map((item) => {
