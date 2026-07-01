@@ -70,6 +70,54 @@ export async function POST(req: Request) {
               // Auto-refresh token if expiring within 7 days
               const validToken = await refreshWaTokenIfNeeded(supabase, { ...connection, phone_number_id: phoneNumberId });
 
+              // Handle STOP / opt-out before anything else
+              const stopWords = ["stop", "unsubscribe", "opt out", "optout", "remove me", "cancel subscription", "no messages"];
+              const isOptOut = message.type === "text" && stopWords.some(w => content.toLowerCase().trim() === w || content.toLowerCase().trim().startsWith(w + " "));
+              if (isOptOut) {
+                await supabase.from("wa_contacts").upsert({
+                  user_id: connection.user_id,
+                  phone_number: contact,
+                  is_opted_in: false,
+                  opted_out_at: new Date().toISOString(),
+                }, { onConflict: "user_id,phone_number" });
+                // Send one-time opt-out acknowledgment
+                try {
+                  const validToken = await refreshWaTokenIfNeeded(supabase, { ...connection, phone_number_id: phoneNumberId });
+                  await sendTextMessage(phoneNumberId, contact, "You've been unsubscribed from our messages. Reply START any time to opt back in.", validToken);
+                } catch {}
+                continue;
+              }
+
+              // Handle START / opt back in
+              if (message.type === "text" && ["start", "subscribe", "opt in", "optin", "yes"].includes(content.toLowerCase().trim())) {
+                await supabase.from("wa_contacts").upsert({
+                  user_id: connection.user_id,
+                  phone_number: contact,
+                  is_opted_in: true,
+                  opted_in_at: new Date().toISOString(),
+                  opted_out_at: null,
+                }, { onConflict: "user_id,phone_number" });
+              }
+
+              // Record opt-in when contact messages for the first time
+              await supabase.from("wa_contacts").upsert({
+                user_id: connection.user_id,
+                phone_number: contact,
+                last_message_at: new Date().toISOString(),
+              }, { onConflict: "user_id,phone_number" }).then(async () => {
+                // Set opted_in_at only if not already set (first time contact)
+                const { data: existingContact } = await supabase
+                  .from("wa_contacts")
+                  .select("opted_in_at")
+                  .eq("user_id", connection.user_id)
+                  .eq("phone_number", contact)
+                  .maybeSingle();
+                if (existingContact && !existingContact.opted_in_at) {
+                  await supabase.from("wa_contacts").update({ opted_in_at: new Date().toISOString() })
+                    .eq("user_id", connection.user_id).eq("phone_number", contact);
+                }
+              });
+
               // Save message to DB. wa_message_id is UNIQUE, so a duplicate
               // insert means Meta re-delivered this event — skip the whole
               // automation flow to avoid charging and replying twice.
@@ -89,8 +137,15 @@ export async function POST(req: Request) {
                 console.error("Failed to save inbound message:", insertErr);
               }
 
-              // Only check automations for text messages
+              // Only check automations for text messages and opted-in contacts
               if (message.type !== "text") continue;
+              const { data: contactRow } = await supabase
+                .from("wa_contacts")
+                .select("is_opted_in")
+                .eq("user_id", connection.user_id)
+                .eq("phone_number", contact)
+                .maybeSingle();
+              if (contactRow?.is_opted_in === false) continue;
 
               const { data: automations } = await supabase
                 .from("wa_automations")

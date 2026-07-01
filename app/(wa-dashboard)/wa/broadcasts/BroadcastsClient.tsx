@@ -26,6 +26,8 @@ interface Contact {
   id: string;
   phone_number: string;
   display_name?: string;
+  is_opted_in?: boolean;
+  opted_out_at?: string;
 }
 
 export function BroadcastsClient({
@@ -47,6 +49,7 @@ export function BroadcastsClient({
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
   const [labelFilter, setLabelFilter] = useState("");
+  const [showOptedOut, setShowOptedOut] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -63,7 +66,11 @@ export function BroadcastsClient({
     return Array.from(s).sort();
   }, [contacts]);
 
-  const filteredContacts = contacts.filter(
+  const optedInContacts = contacts.filter(c => c.is_opted_in !== false);
+  const optedOutCount = contacts.length - optedInContacts.length;
+  const contactPool = showOptedOut ? contacts : optedInContacts;
+
+  const filteredContacts = contactPool.filter(
     (c) =>
       (c.phone_number.includes(contactSearch) || (c.display_name ?? "").toLowerCase().includes(contactSearch.toLowerCase())) &&
       (!labelFilter || ((c as any).labels ?? []).includes(labelFilter))
@@ -357,6 +364,25 @@ export function BroadcastsClient({
                 </div>
               ) : (
                 <>
+                  {optedOutCount > 0 && (
+                    <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                      <div>
+                        <p className="text-xs font-bold text-amber-700">
+                          {optedOutCount} contact{optedOutCount > 1 ? "s" : ""} opted out
+                        </p>
+                        <p className="text-[10px] text-amber-600 font-medium mt-0.5">
+                          Meta policy: opted-out contacts cannot receive broadcasts.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowOptedOut(!showOptedOut)}
+                        className="text-xs font-bold text-amber-600 underline shrink-0 ml-3"
+                      >
+                        {showOptedOut ? "Hide opted-out" : "Show all"}
+                      </button>
+                    </div>
+                  )}
+
                   {contactLabels.length > 0 && (
                     <div className="flex gap-2 flex-wrap">
                       <button onClick={() => setLabelFilter("")} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${!labelFilter ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>All</button>
@@ -385,21 +411,25 @@ export function BroadcastsClient({
                     <span className="text-xs text-slate-400">{filteredContacts.length} contacts</span>
                   </div>
                   <div className="max-h-64 overflow-y-auto space-y-1 border border-slate-100 rounded-xl p-1">
-                    {filteredContacts.map((c) => (
+                    {filteredContacts.map((c) => {
+                      const isOptedOut = c.is_opted_in === false;
+                      return (
                       <button
                         key={c.id}
-                        onClick={() => toggleContact(c.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${form.contact_ids.includes(c.id) ? "bg-[#25D366]/10" : "hover:bg-slate-50"}`}
+                        onClick={() => !isOptedOut && toggleContact(c.id)}
+                        disabled={isOptedOut}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${isOptedOut ? "opacity-40 cursor-not-allowed" : form.contact_ids.includes(c.id) ? "bg-[#25D366]/10" : "hover:bg-slate-50"}`}
                       >
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${form.contact_ids.includes(c.id) ? "bg-[#25D366] border-[#25D366]" : "border-slate-300"}`}>
                           {form.contact_ids.includes(c.id) && <CheckCircle2 className="w-3 h-3 text-white" />}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-900 truncate">{c.display_name || c.phone_number}</p>
-                          {c.display_name && <p className="text-xs text-slate-400">{c.phone_number}</p>}
+                          <p className="text-xs text-slate-400">{c.display_name ? c.phone_number : ""}{isOptedOut ? " · opted out" : ""}</p>
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}

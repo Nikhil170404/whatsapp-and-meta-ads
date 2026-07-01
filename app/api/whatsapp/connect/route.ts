@@ -119,7 +119,18 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseAdmin() as any;
 
-    // 5. Save connection to DB
+    // 5a. Store the Facebook user ID so data-deletion callback can find this account
+    try {
+      const meRes = await fetch(`${WA_API_URL}/me?access_token=${finalToken}`);
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        if (meData.id) {
+          await supabase.from("users").update({ facebook_user_id: meData.id }).eq("id", session.id);
+        }
+      }
+    } catch {}
+
+    // 5b. Save connection to DB
     const { error: dbError } = await supabase
       .from("wa_connections")
       .upsert({

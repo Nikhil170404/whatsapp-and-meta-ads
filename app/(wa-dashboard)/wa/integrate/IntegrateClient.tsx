@@ -412,6 +412,37 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
           For high-volume sends, use the Broadcasts feature instead — it handles queuing automatically.
         </p>
       </div>
+
+      {/* Meta Policy Compliance Notice */}
+      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
+        <p className="text-sm font-black text-blue-900">Meta WhatsApp Messaging Policy — Required for API Use</p>
+        <div className="space-y-2 text-xs text-blue-800 font-medium">
+          <p>
+            <span className="font-black">1. Opt-in required.</span> You must obtain explicit consent from each phone number before sending any WhatsApp message via this API.
+            Add a WhatsApp opt-in checkbox on your website, order form, or sign-up page. Store the consent timestamp.
+          </p>
+          <p>
+            <span className="font-black">2. Templates only for outbound messages.</span> If you are initiating a conversation (the customer has not messaged you in the last 24 hours), you must use an approved Meta template. Sending free-text outside the 24-hour window will be rejected by Meta.
+          </p>
+          <p>
+            <span className="font-black">3. Honour opt-outs.</span> If a customer replies <span className="font-mono bg-blue-100 px-1 rounded">STOP</span>, you must never message them again until they re-subscribe. ReplyKaro automatically blocks opted-out contacts from receiving broadcasts.
+          </p>
+          <p>
+            <span className="font-black">4. No prohibited content.</span> Do not send spam, adult content, weapons, gambling promotions, or misleading offers. Your account will be banned by Meta if reports exceed quality thresholds.
+          </p>
+          <p>
+            <span className="font-black">5. Daily limits.</span> New numbers are limited to 1,000 unique recipients per day (Tier 1). This limit is enforced by Meta, not by ReplyKaro.
+          </p>
+        </div>
+        <a
+          href="https://www.whatsapp.com/legal/business-policy/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 underline"
+        >
+          Read the full Meta WhatsApp Business Messaging Policy →
+        </a>
+      </div>
     </div>
   );
 }

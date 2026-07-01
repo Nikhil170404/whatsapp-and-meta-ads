@@ -58,6 +58,11 @@ export async function GET(req: Request) {
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
+    // Store facebook_user_id in users table for GDPR/deletion callback lookup
+    if (meData.id) {
+      await supabase.from("users").update({ facebook_user_id: meData.id }).eq("id", session.id);
+    }
+
     return NextResponse.redirect(`${env.APP_URL}/ads`);
   } catch (err) {
     console.error("FB Auth Error:", err);

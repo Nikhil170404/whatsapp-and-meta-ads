@@ -36,7 +36,8 @@ export async function sendTemplateMessage(
   to: string,
   templateName: string,
   langCode: string = "en_US",
-  accessToken: string
+  accessToken: string,
+  components?: Array<{ type: string; parameters: Array<{ type: string; text: string }> }>
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
@@ -51,6 +52,7 @@ export async function sendTemplateMessage(
       template: {
         name: templateName,
         language: { code: langCode },
+        ...(components && components.length > 0 ? { components } : {}),
       },
     }),
   });

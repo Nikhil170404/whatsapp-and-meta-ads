@@ -67,6 +67,14 @@ export async function POST(req: Request) {
       }
     }
 
+    // Check if contact already exists to preserve their existing opt-in timestamp
+    const { data: existingRow } = await supabase
+      .from("wa_contacts")
+      .select("opted_in_at")
+      .eq("user_id", session.id)
+      .eq("phone_number", phone_number)
+      .maybeSingle();
+
     const { data, error } = await supabase
       .from("wa_contacts")
       .upsert({
@@ -74,6 +82,8 @@ export async function POST(req: Request) {
         phone_number,
         display_name: display_name || null,
         labels: labels || [],
+        is_opted_in: true,
+        opted_in_at: existingRow?.opted_in_at ?? new Date().toISOString(),
       }, { onConflict: "user_id,phone_number" })
       .select()
       .single();

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
-import { sendTemplateMessage, sendTextMessage } from "@/lib/whatsapp/service";
+import { sendTemplateMessage } from "@/lib/whatsapp/service";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -121,30 +121,24 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
 
       try {
-        const hasVariables = /\{\{/.test(template.body_text || "");
-        let result: any;
-        if (hasVariables && template.body_text) {
-          const contactName = nameMap[recipient.contact_id] || phone;
-          const personalizedBody = template.body_text
-            .replace(/\{\{name\}\}/gi, contactName)
-            .replace(/\{\{contact_name\}\}/gi, contactName)
-            .replace(/\{\{phone\}\}/gi, phone)
-            .replace(/\{\{phone_number\}\}/gi, phone);
-          result = await sendTextMessage(
-            conn.phone_number_id,
-            phone,
-            personalizedBody,
-            conn.access_token
-          );
-        } else {
-          result = await sendTemplateMessage(
-            conn.phone_number_id,
-            phone,
-            template.name,
-            template.language || "en_US",
-            conn.access_token
-          );
-        }
+        // Broadcasts must always use approved templates (Meta 24-hour window policy).
+        // Build component parameters from numbered placeholders ({{1}}, {{2}}, ...).
+        const contactName = nameMap[recipient.contact_id] || phone;
+        const numberedParams = (template.body_text || "").match(/\{\{\d+\}\}/g) || [];
+        const paramValues: string[] = [contactName, phone, ...Array(Math.max(0, numberedParams.length - 2)).fill("")];
+        const components = numberedParams.length > 0 ? [{
+          type: "body",
+          parameters: paramValues.slice(0, numberedParams.length).map(v => ({ type: "text", text: v })),
+        }] : undefined;
+
+        const result = await sendTemplateMessage(
+          conn.phone_number_id,
+          phone,
+          template.name,
+          template.language || "en_US",
+          conn.access_token,
+          components
+        );
 
         await supabase
           .from("wa_broadcast_recipients")
