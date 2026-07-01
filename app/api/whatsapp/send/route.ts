@@ -79,7 +79,7 @@ export async function POST(req: Request) {
           }),
         ]);
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ success: true, message_id: msgId });
       } catch (sendErr: any) {
         // Refund the deduction once if the send failed.
         const { data: w } = await supabase.from("wa_wallet").select("balance_paise, total_spent_paise").eq("user_id", session.id).single();
@@ -113,7 +113,7 @@ export async function POST(req: Request) {
       status: "sent",
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message_id: msgId });
   } catch (error: any) {
     console.error("Send message error:", error);
     return NextResponse.json({ error: error.message || "Failed to send message" }, { status: 500 });

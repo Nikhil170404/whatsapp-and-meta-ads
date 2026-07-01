@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search } from "lucide-react";
+import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2 } from "lucide-react";
 
 interface Broadcast {
   id: string;
@@ -40,6 +40,8 @@ export function BroadcastsClient({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
@@ -77,9 +79,13 @@ export function BroadcastsClient({
     try {
       const res = await fetch("/api/whatsapp/contacts");
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load contacts");
       setContacts(data.contacts ?? []);
-    } catch {}
-    setLoadingContacts(false);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoadingContacts(false);
+    }
   };
 
   const resetForm = () => {
@@ -126,6 +132,7 @@ export function BroadcastsClient({
     setSaving(true);
     setError(null);
     try {
+      const isScheduled = !!form.scheduled_at;
       const payload: Record<string, any> = { ...form };
       if (!payload.scheduled_at) delete payload.scheduled_at;
       const res = await fetch("/api/whatsapp/broadcasts", {
@@ -135,16 +142,38 @@ export function BroadcastsClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      // Immediately execute the broadcast
-      const execRes = await fetch(`/api/whatsapp/broadcasts/${data.broadcast.id}/send`, { method: "POST" });
-      const execData = await execRes.json();
-      if (!execRes.ok) throw new Error(execData.error);
-      setBroadcasts((prev) => [{ ...data.broadcast, status: "completed", sent_count: execData.sent, failed_count: execData.failed }, ...prev]);
+
+      if (isScheduled) {
+        // Don't send now — it's queued for later
+        setBroadcasts((prev) => [{ ...data.broadcast, status: "scheduled" }, ...prev]);
+      } else {
+        const execRes = await fetch(`/api/whatsapp/broadcasts/${data.broadcast.id}/send`, { method: "POST" });
+        const execData = await execRes.json();
+        if (!execRes.ok) throw new Error(execData.error);
+        setBroadcasts((prev) => [{ ...data.broadcast, status: execData.failed === data.broadcast.total_recipients ? "failed" : "completed", sent_count: execData.sent, failed_count: execData.failed }, ...prev]);
+      }
       resetForm();
     } catch (e: any) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/whatsapp/broadcasts?id=${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete broadcast");
+      }
+      setBroadcasts((prev) => prev.filter((b) => b.id !== id));
+      setConfirmDeleteId(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -452,24 +481,53 @@ export function BroadcastsClient({
         {broadcasts.length > 0 ? (
           broadcasts.map((bc) => (
             <div key={bc.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 md:p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">{bc.name}</h3>
+              <div className="flex items-start justify-between mb-4 gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 truncate">{bc.name}</h3>
                   <p className="text-xs text-slate-400 mt-0.5 font-medium">
                     {new Date(bc.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} • {bc.total_recipients} recipients
                   </p>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
-                  bc.status === "completed" ? "bg-green-50 text-green-700" :
-                  bc.status === "sending" ? "bg-amber-50 text-amber-600" :
-                  bc.status === "failed" ? "bg-rose-50 text-rose-600" :
-                  "bg-slate-50 text-slate-600"
-                }`}>
-                  {bc.status === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  {bc.status === "sending" && <Clock className="w-3.5 h-3.5" />}
-                  {bc.status === "failed" && <AlertCircle className="w-3.5 h-3.5" />}
-                  {bc.status}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                    bc.status === "completed" ? "bg-green-50 text-green-700" :
+                    bc.status === "sending" ? "bg-amber-50 text-amber-600" :
+                    bc.status === "scheduled" ? "bg-violet-50 text-violet-600" :
+                    bc.status === "failed" ? "bg-rose-50 text-rose-600" :
+                    "bg-slate-50 text-slate-600"
+                  }`}>
+                    {bc.status === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {bc.status === "sending" && <Clock className="w-3.5 h-3.5" />}
+                    {bc.status === "scheduled" && <Clock className="w-3.5 h-3.5" />}
+                    {bc.status === "failed" && <AlertCircle className="w-3.5 h-3.5" />}
+                    {bc.status}
+                  </span>
+                  {confirmDeleteId === bc.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleDelete(bc.id)}
+                        disabled={deleting}
+                        className="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        {deleting ? "…" : "Yes"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(bc.id)}
+                      className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Delete broadcast"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 gap-2 md:gap-3">
                 {[

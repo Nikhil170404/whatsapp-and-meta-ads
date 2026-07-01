@@ -54,7 +54,8 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
   const conversations = useMemo<Record<string, Conversation>>(() => {
     const groups: Record<string, Message[]> = {};
     for (const msg of messages) {
-      const phone = msg.direction === "inbound" ? msg.from_phone! : msg.to_phone!;
+      const phone = (msg.direction === "inbound" ? msg.from_phone : msg.to_phone) ?? msg.from_phone ?? msg.to_phone;
+      if (!phone) continue;
       if (!groups[phone]) groups[phone] = [];
       groups[phone].push(msg);
     }
@@ -158,12 +159,18 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
     setAssigning(true);
     setShowAssignDropdown(false);
     try {
-      await fetch(`/api/whatsapp/conversations/${selectedPhone}/assign`, {
+      const res = await fetch(`/api/whatsapp/conversations/${selectedPhone}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ member_id: memberId }),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to assign conversation");
+      }
       setAssignedMembers((prev) => ({ ...prev, [selectedPhone]: memberId }));
+    } catch (e: any) {
+      setSendError(e.message);
     } finally {
       setAssigning(false);
     }

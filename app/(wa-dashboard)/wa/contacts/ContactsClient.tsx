@@ -153,14 +153,23 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
     }
   };
 
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   const handleDeleteSelected = async () => {
-    if (!confirm(`Delete ${selectedIds.size} contact(s)?`)) return;
     setDeleting(true);
-    // Optimistic
-    setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
-    setSelectedIds(new Set());
-    setDeleting(false);
-    // Note: in a real app you'd call a DELETE API here
+    const ids = Array.from(selectedIds);
+    try {
+      const res = await fetch(`/api/whatsapp/contacts?ids=${encodeURIComponent(ids.join(","))}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to delete contacts");
+      setContacts(prev => prev.filter(c => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteOpen(false);
+    }
   };
 
   return (
@@ -197,6 +206,14 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
           </button>
         </div>
       </div>
+
+      {/* Global error (e.g. bulk delete failure) */}
+      {error && !showAddForm && (
+        <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold flex items-start justify-between gap-3">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-rose-400 hover:text-rose-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Import result */}
       {importResult && (
@@ -285,7 +302,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between p-4 bg-[#25D366]/5 border border-[#25D366]/20 rounded-2xl">
+        <div className="flex items-center justify-between p-4 bg-[#25D366]/5 border border-[#25D366]/20 rounded-2xl gap-3 flex-wrap">
           <p className="text-sm font-bold text-slate-700">{selectedIds.size} selected</p>
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={() => setSelectedIds(new Set())} className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">Deselect</button>
@@ -299,11 +316,22 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
               <Send className="w-3.5 h-3.5" />
               Broadcast
             </button>
-            <button onClick={handleDeleteSelected} disabled={deleting}
-              className="flex items-center gap-1.5 px-4 py-2 bg-rose-500 text-white rounded-xl font-bold text-xs hover:bg-rose-600 transition-all disabled:opacity-60">
-              {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-              Delete Selected
-            </button>
+            {confirmDeleteOpen ? (
+              <>
+                <span className="text-xs font-bold text-rose-600">Delete {selectedIds.size} contact(s)?</span>
+                <button onClick={handleDeleteSelected} disabled={deleting}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-rose-500 text-white rounded-xl font-bold text-xs hover:bg-rose-600 transition-all disabled:opacity-60">
+                  {deleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Yes, delete"}
+                </button>
+                <button onClick={() => setConfirmDeleteOpen(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200 transition-all">Cancel</button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmDeleteOpen(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-100 transition-all">
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -350,8 +378,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                       </div>
                     )}
                   </div>
-                  <a href={`/wa/messages`}
-                    className="p-2.5 text-[#25D366] hover:bg-[#25D366]/10 rounded-xl transition-colors opacity-0 group-hover:opacity-100 shrink-0">
+                  <a href={`/wa/messages?phone=${encodeURIComponent(contact.phone_number)}`}
+                    className="p-2.5 text-[#25D366] hover:bg-[#25D366]/10 rounded-xl transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                    title="Open conversation">
                     <MessageSquare className="w-5 h-5" />
                   </a>
                 </div>

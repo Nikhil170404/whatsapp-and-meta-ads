@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
     let payload: Record<string, unknown>;
 
-    if (type === "text" || (!template && text)) {
+    if (type === "text" || (!template?.trim() && text)) {
       // Simple text message
       if (!text) return NextResponse.json({ error: "Missing required field: text" }, { status: 400 });
       payload = {

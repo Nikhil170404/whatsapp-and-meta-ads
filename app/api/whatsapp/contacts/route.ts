@@ -85,6 +85,34 @@ export async function POST(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+
+    const { searchParams } = new URL(req.url);
+    const idsParam = searchParams.get("ids");
+    if (!idsParam) return NextResponse.json({ error: "ids query param required" }, { status: 400 });
+    const ids = idsParam.split(",").map(s => s.trim()).filter(Boolean);
+    if (ids.length === 0) return NextResponse.json({ error: "No IDs provided" }, { status: 400 });
+
+    const supabase = getSupabaseAdmin() as any;
+    const { error } = await supabase
+      .from("wa_contacts")
+      .delete()
+      .in("id", ids)
+      .eq("user_id", session.id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, deleted: ids.length });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request) {
   try {
     const session = await getSession();
