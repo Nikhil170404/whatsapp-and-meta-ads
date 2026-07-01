@@ -15,6 +15,7 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
   const wabaIdRef = useRef<string | null>(null);
   const phoneIdRef = useRef<string | null>(null);
@@ -124,9 +125,10 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
 
-    // On mobile, start polling immediately since callback likely won't fire
+    // On mobile, show waiting state immediately then begin polling after popup opens
     if (isMobile) {
-      setTimeout(() => startPolling(), 5000); // give 5s for user to start the flow
+      setPolling(true);
+      setTimeout(() => startPolling(), 2000);
     }
   };
 
@@ -153,11 +155,9 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
   };
 
   const handleDisconnect = async () => {
-    if (confirm("Disconnect account?")) {
-      setIsLoading(true);
-      await fetch("/api/whatsapp/connect", { method: "DELETE" });
-      window.location.reload();
-    }
+    setIsLoading(true);
+    await fetch("/api/whatsapp/connect", { method: "DELETE" });
+    window.location.reload();
   };
 
   if (showSuccessModal) {
@@ -236,9 +236,25 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
           </div>
         )}
 
-        <button onClick={handleDisconnect} className="mt-8 px-6 py-3 bg-rose-50 text-rose-600 font-bold rounded-xl text-sm">
-          Disconnect Account
-        </button>
+        {confirmDisconnect ? (
+          <div className="mt-8 flex items-center gap-3 flex-wrap">
+            <p className="text-sm text-slate-600 font-medium">This will remove your WhatsApp connection.</p>
+            <div className="flex gap-2">
+              <button onClick={handleDisconnect} disabled={isLoading}
+                className="px-5 py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl text-sm disabled:opacity-60 transition-colors">
+                {isLoading ? "Disconnecting…" : "Yes, disconnect"}
+              </button>
+              <button onClick={() => setConfirmDisconnect(false)}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-sm transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDisconnect(true)} className="mt-8 px-6 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl text-sm transition-colors">
+            Disconnect Account
+          </button>
+        )}
       </div>
     );
   }
@@ -267,9 +283,6 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
             <><Loader2 className="w-5 h-5 animate-spin" />{polling ? "Verifying connection…" : "Connecting…"}</>
           ) : "Login with Facebook"}
         </button>
-        <p className="text-[10px] text-center text-slate-400">
-          Current Origin: {typeof window !== 'undefined' ? window.location.origin : ''}
-        </p>
       </div>
     </div>
   );

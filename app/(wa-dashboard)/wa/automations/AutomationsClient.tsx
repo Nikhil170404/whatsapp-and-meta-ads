@@ -156,6 +156,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activatingTemplate, setActivatingTemplate] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const emptyForm = { name: "", trigger_type: "keyword", trigger_keyword: "", reply_message: "" };
   const [form, setForm] = useState(emptyForm);
@@ -179,7 +180,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
       if (!res.ok) throw new Error(data.error);
       setAutomations((prev) => [data.automation, ...prev]);
     } catch (e: any) {
-      alert(e.message);
+      setError(e.message);
     } finally {
       setActivatingTemplate(null);
     }
@@ -247,7 +248,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this automation?")) return;
+    setConfirmDeleteId(null);
     setDeletingId(id);
     try {
       const res = await fetch(`/api/whatsapp/automations?id=${id}`, { method: "DELETE" });
@@ -270,6 +271,13 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
           <Plus className="w-4 h-4" /> New Automation
         </button>
       </div>
+
+      {error && !showForm && !editingId && (
+        <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold flex items-start justify-between gap-3">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-rose-400 hover:text-rose-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {automations.length === 0 && !showForm && (
         <div className="bg-violet-50 border border-violet-100 rounded-2xl p-5">
@@ -343,18 +351,33 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => startEdit(auto)} title="Edit"
-                        className="p-2.5 text-slate-400 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleToggle(auto)} disabled={togglingId === auto.id} title={auto.is_active ? "Pause" : "Activate"}
-                        className={`p-2.5 rounded-xl transition-colors disabled:opacity-50 ${auto.is_active ? "text-[#25D366] bg-[#25D366]/10 hover:bg-[#25D366]/20" : "text-slate-400 bg-slate-100 hover:bg-slate-200"}`}>
-                        {togglingId === auto.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
-                      </button>
-                      <button onClick={() => handleDelete(auto.id)} disabled={deletingId === auto.id} title="Delete"
-                        className="p-2.5 text-rose-400 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors disabled:opacity-50">
-                        {deletingId === auto.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </button>
+                      {confirmDeleteId === auto.id ? (
+                        <>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            className="px-3 py-2 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold transition-colors">
+                            Cancel
+                          </button>
+                          <button onClick={() => handleDelete(auto.id)} disabled={deletingId === auto.id}
+                            className="px-3 py-2 text-white bg-rose-500 hover:bg-rose-600 rounded-xl text-xs font-bold transition-colors disabled:opacity-50">
+                            {deletingId === auto.id ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => startEdit(auto)} title="Edit"
+                            className="p-2.5 text-slate-400 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleToggle(auto)} disabled={togglingId === auto.id} title={auto.is_active ? "Pause" : "Activate"}
+                            className={`p-2.5 rounded-xl transition-colors disabled:opacity-50 ${auto.is_active ? "text-[#25D366] bg-[#25D366]/10 hover:bg-[#25D366]/20" : "text-slate-400 bg-slate-100 hover:bg-slate-200"}`}>
+                            {togglingId === auto.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
+                          </button>
+                          <button onClick={() => setConfirmDeleteId(auto.id)} title="Delete"
+                            className="p-2.5 text-rose-400 bg-rose-50 hover:bg-rose-100 rounded-xl transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
