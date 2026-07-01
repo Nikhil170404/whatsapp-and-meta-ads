@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function GET() {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("analytics", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const supabase = getSupabaseAdmin() as any;
     const { data, error } = await supabase
@@ -25,6 +29,9 @@ export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("automations", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const body = await req.json();
     const { trigger_keyword, reply_message, send_dm } = body;
@@ -58,6 +65,9 @@ export async function PATCH(req: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const rl = await checkRateLimit("automations", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
+
     const body = await req.json();
     const { id, is_active, trigger_keyword, reply_message, send_dm } = body;
 
@@ -89,6 +99,9 @@ export async function DELETE(req: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("automations", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");

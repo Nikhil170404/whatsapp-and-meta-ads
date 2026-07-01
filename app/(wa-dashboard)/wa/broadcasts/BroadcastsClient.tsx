@@ -157,7 +157,7 @@ export function BroadcastsClient({
       setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "completed", sent_count: data.sent, failed_count: data.failed } : b));
     } catch (e: any) {
       setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "draft" } : b));
-      alert(e.message);
+      setError(e.message);
     }
   };
 
@@ -436,6 +436,14 @@ export function BroadcastsClient({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Global error banner (e.g. from executeBroadcast when form is closed) */}
+      {!showForm && error && (
+        <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold flex items-start justify-between gap-3">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="shrink-0 text-rose-400 hover:text-rose-600"><X className="w-4 h-4" /></button>
         </div>
       )}
 

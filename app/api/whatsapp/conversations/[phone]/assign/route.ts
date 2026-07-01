@@ -5,10 +5,13 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(req: Request, { params }: { params: Promise<{ phone: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const rl = await checkRateLimit("api", `user:${session.id}`);
+  if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
   const { phone } = await params;
   const { member_id } = await req.json();
   const supabase = getSupabaseAdmin() as any;

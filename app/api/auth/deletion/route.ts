@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 export async function POST(req: Request) {
     try {
+        const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const rl = await checkRateLimit("auth", `deletion:${ip}`);
+        if (!rl.success) return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+
         const formData = await req.formData();
         const signed_request = formData.get("signed_request") as string;
 

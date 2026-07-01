@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
+import { checkRateLimit } from "@/lib/rate-limit-middleware";
 
 /**
  * Facebook Login Server-Side Flow
@@ -20,6 +21,13 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+
+  const ip = req.headers.get("x-real-ip") || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await checkRateLimit("auth", `login:${ip}`);
+  if (!rl.success) {
+    const base = env.APP_URL.replace(/\/$/, "");
+    return NextResponse.redirect(`${base}/signin?error=Too+many+login+attempts.+Try+again+in+a+minute.`);
+  }
 
   const appId = env.NEXT_PUBLIC_FACEBOOK_APP_ID;
   const appSecret = env.FACEBOOK_APP_SECRET;
