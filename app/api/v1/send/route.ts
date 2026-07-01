@@ -48,9 +48,22 @@ export async function POST(req: Request) {
     // Normalize phone (add + if missing)
     const to = phone.startsWith("+") ? phone : `+${phone}`;
 
+    // Block opted-out contacts — Meta policy compliance
+    const { data: contactRow } = await supabase
+      .from("wa_contacts")
+      .select("is_opted_in")
+      .eq("user_id", keyRow.user_id)
+      .eq("phone_number", to)
+      .maybeSingle();
+    if (contactRow?.is_opted_in === false) {
+      return NextResponse.json({
+        error: "This contact has opted out of messages. Cannot send until they re-subscribe by texting START.",
+      }, { status: 403 });
+    }
+
     let payload: Record<string, unknown>;
 
-    if (type === "text" || (!template && text)) {
+    if (type === "text" || (!template?.trim() && text)) {
       // Simple text message
       if (!text) return NextResponse.json({ error: "Missing required field: text" }, { status: 400 });
       payload = {

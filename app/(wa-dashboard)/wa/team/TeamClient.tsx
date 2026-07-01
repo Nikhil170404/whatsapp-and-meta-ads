@@ -26,6 +26,8 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,13 +60,21 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
+    setDeleteError(null);
     try {
-      await fetch("/api/whatsapp/team", {
+      const res = await fetch("/api/whatsapp/team", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to remove member");
+      }
       setMembers((prev) => prev.filter((m) => m.id !== id));
+      setConfirmDeleteId(null);
+    } catch (err: any) {
+      setDeleteError(err.message);
     } finally {
       setDeletingId(null);
     }
@@ -197,6 +207,14 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
         </div>
       )}
 
+      {deleteError && (
+        <div className="flex items-center gap-2 text-rose-600 bg-rose-50 px-4 py-3 rounded-xl text-sm font-medium">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span className="flex-1">{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="shrink-0"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
       {/* Members list */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between">
@@ -248,18 +266,31 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
                 </span>
 
                 {/* Delete */}
-                <button
-                  onClick={() => handleDelete(member.id)}
-                  disabled={deletingId === member.id}
-                  className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 disabled:opacity-50 shrink-0"
-                  title="Remove member"
-                >
-                  {deletingId === member.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
+                {confirmDeleteId === member.id ? (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleDelete(member.id)}
+                      disabled={deletingId === member.id}
+                      className="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      {deletingId === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : "Remove"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(member.id)}
+                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all opacity-0 group-hover:opacity-100 shrink-0"
+                    title="Remove member"
+                  >
                     <Trash2 className="w-4 h-4" />
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
             ))}
           </div>

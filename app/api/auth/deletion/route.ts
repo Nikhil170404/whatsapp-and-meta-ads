@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import { getSupabaseAdmin } from "@/lib/supabase/client";
 
 export async function POST(req: Request) {
     try {
@@ -25,8 +26,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Malformed signed_request" }, { status: 400 });
         }
 
-        // Verify Facebook's signed_request: HMAC-SHA256 of the payload string,
-        // compared as raw bytes against the base64url-decoded signature.
+        // Verify Facebook's signed_request signature before touching any data
         const expectedSig = crypto.createHmac("sha256", secret).update(payload).digest();
         const providedSig = Buffer.from(encoded_sig.replace(/-/g, "+").replace(/_/g, "/"), "base64");
         if (
@@ -36,14 +36,43 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
         }
 
-        // Decode data only after the signature is confirmed valid
         const data = JSON.parse(Buffer.from(payload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString());
-        const userId = data.user_id;
-        console.log(`Data deletion request received for user: ${userId}`);
+        const facebookUserId = data.user_id;
+        console.log(`Data deletion request received for Facebook user: ${facebookUserId}`);
 
-        // Generate a tracking confirmation code
-        const confirmation_code = `del-${userId}-${Date.now()}`;
-        const status_url = `https://www.replykaro.in/deletion-status?id=${confirmation_code}`;
+        // Find the user by their Facebook user ID (stored during OAuth)
+        const supabase = getSupabaseAdmin() as any;
+        const { data: user } = await supabase
+            .from("users")
+            .select("id")
+            .eq("facebook_user_id", facebookUserId)
+            .maybeSingle();
+
+        if (user?.id) {
+            const userId = user.id;
+            // Delete all user data in dependency order (children before parents)
+            await supabase.from("wa_wallet_transactions").delete().eq("user_id", userId);
+            await supabase.from("wa_wallet").delete().eq("user_id", userId);
+            await supabase.from("wa_broadcast_recipients").delete().in(
+                "broadcast_id",
+                supabase.from("wa_broadcasts").select("id").eq("user_id", userId)
+            );
+            await supabase.from("wa_broadcasts").delete().eq("user_id", userId);
+            await supabase.from("wa_messages").delete().eq("user_id", userId);
+            await supabase.from("wa_automations").delete().eq("user_id", userId);
+            await supabase.from("wa_templates").delete().eq("user_id", userId);
+            await supabase.from("wa_contacts").delete().eq("user_id", userId);
+            await supabase.from("wa_api_keys").delete().eq("user_id", userId);
+            await supabase.from("wa_connections").delete().eq("user_id", userId);
+            await supabase.from("wa_usage").delete().eq("user_id", userId);
+            await supabase.from("users").delete().eq("id", userId);
+            console.log(`All data deleted for user ${userId} (Facebook user ${facebookUserId})`);
+        } else {
+            console.log(`No local account found for Facebook user ${facebookUserId} — nothing to delete`);
+        }
+
+        const confirmation_code = `del-${facebookUserId}-${Date.now()}`;
+        const status_url = `${process.env.APP_URL || "https://replykaro.in"}/deletion-status?id=${confirmation_code}`;
 
         return NextResponse.json({
             url: status_url,

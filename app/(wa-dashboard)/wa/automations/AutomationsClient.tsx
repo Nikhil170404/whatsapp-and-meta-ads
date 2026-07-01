@@ -178,7 +178,7 @@ const STARTER_TEMPLATES = [
   },
   {
     id: "fees_edu", category: "education", emoji: "💰", label: "Fee Structure",
-    trigger_keyword: "fees",
+    trigger_keyword: "tuition",
     reply_message: "Our fee structure:\n📚 [Course 1]: ₹[amount] (One-time / Monthly)\n📚 [Course 2]: ₹[amount]\n\nEMI available | Scholarships for merit students\nNo hidden charges ✅\n\nShall we schedule a counselling session?",
     color: "bg-blue-50 border-blue-200 text-blue-700",
   },
@@ -420,8 +420,11 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setAutomations(prev => prev.map(a => a.id === auto.id ? data.automation : a));
-    } catch (e: any) { setError(e.message); }
-    setTogglingId(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleDelete = async (id: string) => {

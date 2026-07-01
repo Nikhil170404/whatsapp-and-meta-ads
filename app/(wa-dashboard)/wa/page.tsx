@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   MessageSquare, Zap, Users, Send, CheckCircle2,
   ArrowUpRight, ArrowDownLeft, FileText, ChevronRight, AlertTriangle,
-  Plus, Power, BarChart3
+  Plus, Power, BarChart3, ShieldCheck
 } from "lucide-react";
 import { RelativeTime } from "@/components/ui/relative-time";
 
@@ -248,6 +248,41 @@ export default async function WaOverviewPage() {
           ))}
         </div>
       </div>
+
+      {/* ── Meta Policy / Messaging Limits ── */}
+      {isConnected && (
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-sm font-black text-slate-900">Meta Messaging Limits</h2>
+              <p className="text-xs text-slate-400 font-medium">Your daily broadcast capacity</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            {[
+              { tier: "Tier 1", limit: "1,000/day", desc: "New accounts start here", active: true },
+              { tier: "Tier 2", limit: "10,000/day", desc: "Unlocks with good quality", active: false },
+              { tier: "Tier 3", limit: "100,000/day", desc: "High-volume senders", active: false },
+              { tier: "Unlimited", limit: "No limit", desc: "Top-rated businesses", active: false },
+            ].map((t) => (
+              <div key={t.tier} className={`rounded-xl p-3 border text-center ${t.active ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-100"}`}>
+                <p className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${t.active ? "text-blue-600" : "text-slate-400"}`}>{t.tier}</p>
+                <p className={`text-sm font-black ${t.active ? "text-blue-900" : "text-slate-400"}`}>{t.limit}</p>
+                <p className={`text-[9px] font-medium mt-0.5 ${t.active ? "text-blue-500" : "text-slate-300"}`}>{t.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-slate-50 pt-3">
+            <p>• Tier increases automatically when you send consistently and get low block rates</p>
+            <p>• Templates must be Meta-approved before broadcasting. Rejected templates cannot be used.</p>
+            <p>• Contacts who reply <span className="font-black text-slate-700">STOP</span> are automatically opted out — ReplyKaro enforces this.</p>
+            <p>• 24-hour window rule: free-text replies only work when customer messaged you first within 24 hrs.</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Recent messages ── */}
       <div>

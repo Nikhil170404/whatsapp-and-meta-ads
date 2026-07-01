@@ -67,6 +67,14 @@ export async function POST(req: Request) {
       }
     }
 
+    // Check if contact already exists to preserve their existing opt-in timestamp
+    const { data: existingRow } = await supabase
+      .from("wa_contacts")
+      .select("opted_in_at")
+      .eq("user_id", session.id)
+      .eq("phone_number", phone_number)
+      .maybeSingle();
+
     const { data, error } = await supabase
       .from("wa_contacts")
       .upsert({
@@ -74,12 +82,42 @@ export async function POST(req: Request) {
         phone_number,
         display_name: display_name || null,
         labels: labels || [],
+        is_opted_in: true,
+        opted_in_at: existingRow?.opted_in_at ?? new Date().toISOString(),
       }, { onConflict: "user_id,phone_number" })
       .select()
       .single();
 
     if (error) throw error;
     return NextResponse.json({ contact: data });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+
+    const { searchParams } = new URL(req.url);
+    const idsParam = searchParams.get("ids");
+    if (!idsParam) return NextResponse.json({ error: "ids query param required" }, { status: 400 });
+    const ids = idsParam.split(",").map(s => s.trim()).filter(Boolean);
+    if (ids.length === 0) return NextResponse.json({ error: "No IDs provided" }, { status: 400 });
+
+    const supabase = getSupabaseAdmin() as any;
+    const { error } = await supabase
+      .from("wa_contacts")
+      .delete()
+      .in("id", ids)
+      .eq("user_id", session.id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true, deleted: ids.length });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

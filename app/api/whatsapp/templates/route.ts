@@ -140,3 +140,55 @@ export async function POST(req: Request) {
   }
 }
 
+export async function DELETE(req: Request) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const rl = await checkRateLimit("api", `user:${session.id}`);
+    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Template ID is required" }, { status: 400 });
+
+    const supabase = getSupabaseAdmin() as any;
+
+    // Also delete from Meta if we have the meta_template_id
+    const { data: tpl } = await supabase
+      .from("wa_templates")
+      .select("meta_template_id, name")
+      .eq("id", id)
+      .eq("user_id", session.id)
+      .single();
+
+    if (!tpl) return NextResponse.json({ error: "Template not found" }, { status: 404 });
+
+    const { data: conn } = await supabase
+      .from("wa_connections")
+      .select("waba_id, access_token")
+      .eq("user_id", session.id)
+      .maybeSingle();
+
+    if (conn?.waba_id && conn?.access_token && tpl.name) {
+      try {
+        await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?name=${encodeURIComponent(tpl.name)}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${conn.access_token}` },
+        });
+      } catch { /* non-fatal — still delete locally */ }
+    }
+
+    const { error } = await supabase
+      .from("wa_templates")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+

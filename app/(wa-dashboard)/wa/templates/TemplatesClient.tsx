@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package } from "lucide-react";
+import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package, Trash2 } from "lucide-react";
 
 interface Template {
   id: string;
@@ -245,6 +245,8 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Template | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState(INDUSTRIES[0]);
   const [showFlows, setShowFlows] = useState(false);
@@ -300,6 +302,23 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string, name: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/whatsapp/templates?id=${id}&name=${encodeURIComponent(name)}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete template");
+      }
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+      setConfirmDeleteId(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -609,7 +628,34 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
                 <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
                   <FileText className="w-4 h-4" />
                 </div>
-                {statusBadge(tpl.status)}
+                <div className="flex items-center gap-2">
+                  {statusBadge(tpl.status)}
+                  {confirmDeleteId === tpl.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleDelete(tpl.id, tpl.name)}
+                        disabled={deleting}
+                        className="px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        {deleting ? "…" : "Yes"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(tpl.id)}
+                      className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Delete template"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
               <h3 className="font-bold text-slate-900 text-sm mb-0.5">{tpl.name}</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">

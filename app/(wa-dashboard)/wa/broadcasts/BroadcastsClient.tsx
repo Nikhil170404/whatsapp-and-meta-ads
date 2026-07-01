@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search } from "lucide-react";
+import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2 } from "lucide-react";
 
 interface Broadcast {
   id: string;
@@ -26,6 +26,8 @@ interface Contact {
   id: string;
   phone_number: string;
   display_name?: string;
+  is_opted_in?: boolean;
+  opted_out_at?: string;
 }
 
 export function BroadcastsClient({
@@ -40,11 +42,14 @@ export function BroadcastsClient({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
   const [labelFilter, setLabelFilter] = useState("");
+  const [showOptedOut, setShowOptedOut] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -61,7 +66,11 @@ export function BroadcastsClient({
     return Array.from(s).sort();
   }, [contacts]);
 
-  const filteredContacts = contacts.filter(
+  const optedInContacts = contacts.filter(c => c.is_opted_in !== false);
+  const optedOutCount = contacts.length - optedInContacts.length;
+  const contactPool = showOptedOut ? contacts : optedInContacts;
+
+  const filteredContacts = contactPool.filter(
     (c) =>
       (c.phone_number.includes(contactSearch) || (c.display_name ?? "").toLowerCase().includes(contactSearch.toLowerCase())) &&
       (!labelFilter || ((c as any).labels ?? []).includes(labelFilter))
@@ -77,9 +86,13 @@ export function BroadcastsClient({
     try {
       const res = await fetch("/api/whatsapp/contacts");
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to load contacts");
       setContacts(data.contacts ?? []);
-    } catch {}
-    setLoadingContacts(false);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoadingContacts(false);
+    }
   };
 
   const resetForm = () => {
@@ -126,6 +139,7 @@ export function BroadcastsClient({
     setSaving(true);
     setError(null);
     try {
+      const isScheduled = !!form.scheduled_at;
       const payload: Record<string, any> = { ...form };
       if (!payload.scheduled_at) delete payload.scheduled_at;
       const res = await fetch("/api/whatsapp/broadcasts", {
@@ -135,16 +149,38 @@ export function BroadcastsClient({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      // Immediately execute the broadcast
-      const execRes = await fetch(`/api/whatsapp/broadcasts/${data.broadcast.id}/send`, { method: "POST" });
-      const execData = await execRes.json();
-      if (!execRes.ok) throw new Error(execData.error);
-      setBroadcasts((prev) => [{ ...data.broadcast, status: "completed", sent_count: execData.sent, failed_count: execData.failed }, ...prev]);
+
+      if (isScheduled) {
+        // Don't send now — it's queued for later
+        setBroadcasts((prev) => [{ ...data.broadcast, status: "scheduled" }, ...prev]);
+      } else {
+        const execRes = await fetch(`/api/whatsapp/broadcasts/${data.broadcast.id}/send`, { method: "POST" });
+        const execData = await execRes.json();
+        if (!execRes.ok) throw new Error(execData.error);
+        setBroadcasts((prev) => [{ ...data.broadcast, status: execData.failed === data.broadcast.total_recipients ? "failed" : "completed", sent_count: execData.sent, failed_count: execData.failed }, ...prev]);
+      }
       resetForm();
     } catch (e: any) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/whatsapp/broadcasts?id=${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete broadcast");
+      }
+      setBroadcasts((prev) => prev.filter((b) => b.id !== id));
+      setConfirmDeleteId(null);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -328,6 +364,25 @@ export function BroadcastsClient({
                 </div>
               ) : (
                 <>
+                  {optedOutCount > 0 && (
+                    <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                      <div>
+                        <p className="text-xs font-bold text-amber-700">
+                          {optedOutCount} contact{optedOutCount > 1 ? "s" : ""} opted out
+                        </p>
+                        <p className="text-[10px] text-amber-600 font-medium mt-0.5">
+                          Meta policy: opted-out contacts cannot receive broadcasts.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setShowOptedOut(!showOptedOut)}
+                        className="text-xs font-bold text-amber-600 underline shrink-0 ml-3"
+                      >
+                        {showOptedOut ? "Hide opted-out" : "Show all"}
+                      </button>
+                    </div>
+                  )}
+
                   {contactLabels.length > 0 && (
                     <div className="flex gap-2 flex-wrap">
                       <button onClick={() => setLabelFilter("")} className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${!labelFilter ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>All</button>
@@ -356,21 +411,25 @@ export function BroadcastsClient({
                     <span className="text-xs text-slate-400">{filteredContacts.length} contacts</span>
                   </div>
                   <div className="max-h-64 overflow-y-auto space-y-1 border border-slate-100 rounded-xl p-1">
-                    {filteredContacts.map((c) => (
+                    {filteredContacts.map((c) => {
+                      const isOptedOut = c.is_opted_in === false;
+                      return (
                       <button
                         key={c.id}
-                        onClick={() => toggleContact(c.id)}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${form.contact_ids.includes(c.id) ? "bg-[#25D366]/10" : "hover:bg-slate-50"}`}
+                        onClick={() => !isOptedOut && toggleContact(c.id)}
+                        disabled={isOptedOut}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${isOptedOut ? "opacity-40 cursor-not-allowed" : form.contact_ids.includes(c.id) ? "bg-[#25D366]/10" : "hover:bg-slate-50"}`}
                       >
                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${form.contact_ids.includes(c.id) ? "bg-[#25D366] border-[#25D366]" : "border-slate-300"}`}>
                           {form.contact_ids.includes(c.id) && <CheckCircle2 className="w-3 h-3 text-white" />}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-slate-900 truncate">{c.display_name || c.phone_number}</p>
-                          {c.display_name && <p className="text-xs text-slate-400">{c.phone_number}</p>}
+                          <p className="text-xs text-slate-400">{c.display_name ? c.phone_number : ""}{isOptedOut ? " · opted out" : ""}</p>
                         </div>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -452,24 +511,53 @@ export function BroadcastsClient({
         {broadcasts.length > 0 ? (
           broadcasts.map((bc) => (
             <div key={bc.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 md:p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">{bc.name}</h3>
+              <div className="flex items-start justify-between mb-4 gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-slate-900 truncate">{bc.name}</h3>
                   <p className="text-xs text-slate-400 mt-0.5 font-medium">
                     {new Date(bc.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} • {bc.total_recipients} recipients
                   </p>
                 </div>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
-                  bc.status === "completed" ? "bg-green-50 text-green-700" :
-                  bc.status === "sending" ? "bg-amber-50 text-amber-600" :
-                  bc.status === "failed" ? "bg-rose-50 text-rose-600" :
-                  "bg-slate-50 text-slate-600"
-                }`}>
-                  {bc.status === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                  {bc.status === "sending" && <Clock className="w-3.5 h-3.5" />}
-                  {bc.status === "failed" && <AlertCircle className="w-3.5 h-3.5" />}
-                  {bc.status}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                    bc.status === "completed" ? "bg-green-50 text-green-700" :
+                    bc.status === "sending" ? "bg-amber-50 text-amber-600" :
+                    bc.status === "scheduled" ? "bg-violet-50 text-violet-600" :
+                    bc.status === "failed" ? "bg-rose-50 text-rose-600" :
+                    "bg-slate-50 text-slate-600"
+                  }`}>
+                    {bc.status === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    {bc.status === "sending" && <Clock className="w-3.5 h-3.5" />}
+                    {bc.status === "scheduled" && <Clock className="w-3.5 h-3.5" />}
+                    {bc.status === "failed" && <AlertCircle className="w-3.5 h-3.5" />}
+                    {bc.status}
+                  </span>
+                  {confirmDeleteId === bc.id ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleDelete(bc.id)}
+                        disabled={deleting}
+                        className="px-2.5 py-1 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60"
+                      >
+                        {deleting ? "…" : "Yes"}
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-lg transition-colors"
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(bc.id)}
+                      className="p-1.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                      title="Delete broadcast"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-4 gap-2 md:gap-3">
                 {[

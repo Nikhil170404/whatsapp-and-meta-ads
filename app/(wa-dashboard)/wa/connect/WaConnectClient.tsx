@@ -125,10 +125,15 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
 
-    // On mobile, show waiting state immediately then begin polling after popup opens
+    // On mobile, show waiting state immediately then begin polling after popup opens.
+    // Guard: only start if the FB callback hasn't already fired (which calls stopPolling
+    // and leaves pollIntervalRef.current as null — but in that case we'd also have
+    // navigated away or shown the success modal, so check isLoading via a ref).
     if (isMobile) {
       setPolling(true);
-      setTimeout(() => startPolling(), 2000);
+      setTimeout(() => {
+        if (!pollIntervalRef.current) startPolling();
+      }, 2000);
     }
   };
 

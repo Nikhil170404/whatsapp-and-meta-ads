@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         const neededRupees = (needed / 100).toFixed(2);
         const balanceRupees = (balance / 100).toFixed(2);
         return NextResponse.json({
-          error: `Insufficient wallet balance. Need ₹${neededRupees} for ${contact_ids.length} recipients but only have ₹${balanceRupees}. Top up your wallet first.`,
+          error: `Insufficient wallet balance. Need ₹${neededRupees} for ${uniqueContactIds.length} recipients but only have ₹${balanceRupees}. Top up your wallet first.`,
           code: "INSUFFICIENT_BALANCE",
         }, { status: 402 });
       }
@@ -117,6 +117,29 @@ export async function POST(req: Request) {
     if (recipError) throw recipError;
 
     return NextResponse.json({ broadcast, scheduled: !!isScheduled });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "Broadcast ID is required" }, { status: 400 });
+
+    const supabase = getSupabaseAdmin() as any;
+    const { error } = await supabase
+      .from("wa_broadcasts")
+      .delete()
+      .eq("id", id)
+      .eq("user_id", session.id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
