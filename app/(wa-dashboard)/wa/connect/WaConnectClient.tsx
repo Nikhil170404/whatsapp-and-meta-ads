@@ -72,6 +72,9 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     );
   }
 
+  const needsReconnect = initialConnection?.status === 'active' &&
+    (initialConnection?.waba_id === "unknown" || initialConnection?.phone_number_id === "unknown");
+
   if (initialConnection?.status === 'active') {
     return (
       <div className="bg-white rounded-[2rem] border border-[#25D366]/20 p-8 shadow-lg relative overflow-hidden">
@@ -87,14 +90,29 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
             </p>
           </div>
         </div>
+
+        {needsReconnect && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl relative z-10">
+            <p className="text-sm font-bold text-amber-800 mb-1">Phone number not linked yet</p>
+            <p className="text-xs text-amber-700 mb-3">Click "Re-connect" below to complete the setup and link your WhatsApp phone number.</p>
+            <button
+              onClick={launchWhatsAppSignup}
+              disabled={isLoading}
+              className="px-4 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold rounded-xl text-sm disabled:opacity-70 transition-colors flex items-center gap-2"
+            >
+              {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Connecting…</> : "Re-connect with Facebook"}
+            </button>
+          </div>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 relative z-10">
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Phone Number</p>
-            <p className="font-bold text-slate-900">{initialConnection.phone_number === "Verified Number" || initialConnection.phone_number === "unknown" ? "Syncing…" : initialConnection.phone_number}</p>
+            <p className="font-bold text-slate-900">{(!initialConnection.phone_number || initialConnection.phone_number === "Verified Number" || initialConnection.phone_number === "unknown") ? "—" : initialConnection.phone_number}</p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">WABA ID</p>
-            <p className="font-bold text-slate-900">{initialConnection.waba_id === "unknown" ? "Syncing…" : initialConnection.waba_id}</p>
+            <p className="font-bold text-slate-900 text-xs break-all">{initialConnection.waba_id === "unknown" ? "—" : initialConnection.waba_id}</p>
           </div>
         </div>
 
