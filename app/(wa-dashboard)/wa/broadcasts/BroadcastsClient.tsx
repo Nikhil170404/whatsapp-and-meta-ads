@@ -20,6 +20,7 @@ interface Template {
   name: string;
   body_text: string;
   status: string;
+  category: string;
 }
 
 interface Contact {
@@ -321,6 +322,19 @@ export function BroadcastsClient({
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Marketing frequency cap notice */}
+              {selectedTemplate?.category === "MARKETING" && (
+                <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-700">Marketing template frequency cap</p>
+                    <p className="text-[11px] text-amber-600 font-medium mt-0.5 leading-snug">
+                      Meta allows a maximum of 2 marketing messages per user per 24 hours globally. Sending too frequently increases block rates and degrades your quality score.
+                    </p>
+                  </div>
                 </div>
               )}
 

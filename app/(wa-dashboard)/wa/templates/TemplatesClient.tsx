@@ -280,11 +280,19 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
     if (tpl) applyTemplate(tpl);
   };
 
+  // Meta rejects templates containing URL shorteners (bit.ly, tinyurl, etc.)
+  const URL_SHORTENER_RE = /\b(bit\.ly|tinyurl\.com|ow\.ly|goo\.gl|t\.co|rb\.gy|shorturl\.at|tiny\.cc|cutt\.ly|rebrand\.ly|is\.gd|buff\.ly|dlvr\.it|ift\.tt|hubs\.ly|smarturl\.it|youtu\.be\/[a-zA-Z0-9_-]{4,})\b/i;
+
   const handleCreate = async () => {
     if (!form.name.trim()) return setError("Template name is required.");
     if (!/^[a-z0-9_]+$/.test(form.name.trim())) return setError("Name must be lowercase letters, numbers, and underscores only.");
     if (!form.body_text.trim()) return setError("Template body is required.");
     if (form.body_text.length < 10) return setError("Template body is too short.");
+    if (URL_SHORTENER_RE.test(form.body_text)) {
+      return setError(
+        "URL shorteners are not allowed in WhatsApp templates — Meta will reject this. Replace bit.ly, tinyurl, etc. with the full destination URL (e.g. replykaro.in/pricing instead of bit.ly/abc)."
+      );
+    }
 
     setSaving(true);
     setError(null);

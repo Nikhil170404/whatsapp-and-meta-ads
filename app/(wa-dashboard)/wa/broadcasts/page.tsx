@@ -10,7 +10,7 @@ export default async function WaBroadcastsPage() {
   const supabase = getSupabaseAdmin() as any;
   const [{ data: broadcasts }, { data: templates }] = await Promise.all([
     supabase.from("wa_broadcasts").select("*").eq("user_id", session.id).order("created_at", { ascending: false }),
-    supabase.from("wa_templates").select("id,name,body_text,status").eq("user_id", session.id).order("created_at", { ascending: false }),
+    supabase.from("wa_templates").select("id,name,body_text,status,category").eq("user_id", session.id).order("created_at", { ascending: false }),
   ]);
 
   return <BroadcastsClient initialBroadcasts={broadcasts ?? []} templates={templates ?? []} />;

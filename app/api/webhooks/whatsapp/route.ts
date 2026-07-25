@@ -226,8 +226,15 @@ async function handleMessagesChange(supabase: any, value: any) {
       phone_number_id: phoneNumberId,
     });
 
-    // Update last customer message timestamp for 24-hour window tracking
+    // Update last customer message timestamp for 24-hour window tracking.
+    // CTWA contacts (referral.source_type === "ad") get a 72-hour window instead.
     const messageTimestamp = new Date(Number(message.timestamp) * 1000).toISOString();
+    const referral = message.referral;
+    const isCTWA = referral?.source_type === "ad";
+    const ctwaWindowExpiresAt = isCTWA
+      ? new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+      : undefined;
+
     await supabase
       .from("wa_contacts")
       .upsert(
@@ -236,6 +243,7 @@ async function handleMessagesChange(supabase: any, value: any) {
           phone_number: contact,
           last_customer_message_at: messageTimestamp,
           last_message_at: messageTimestamp,
+          ...(ctwaWindowExpiresAt && { ctwa_window_expires_at: ctwaWindowExpiresAt }),
         },
         { onConflict: "user_id,phone_number" }
       );
