@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { env } from "@/lib/env";
-import { sendTextMessage } from "@/lib/whatsapp/service";
+import {
+  sendTextMessage,
+  sendButtonMessage,
+  sendImageMessage,
+  sendVideoMessage,
+  sendDocumentMessage,
+} from "@/lib/whatsapp/service";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyMetaSignature } from "@/lib/meta-signature";
@@ -399,12 +405,52 @@ async function handleMessagesChange(supabase: any, value: any) {
     }
 
     try {
-      const response = await sendTextMessage(
-        phoneNumberId,
-        contact,
-        matchedAutomation.reply_message,
-        validToken
-      );
+      const msgType: string = matchedAutomation.message_type || "text";
+      let response: any;
+
+      if (msgType === "image") {
+        response = await sendImageMessage(
+          phoneNumberId, contact,
+          matchedAutomation.media_url,
+          matchedAutomation.reply_message || undefined,
+          validToken
+        );
+      } else if (msgType === "video") {
+        response = await sendVideoMessage(
+          phoneNumberId, contact,
+          matchedAutomation.media_url,
+          matchedAutomation.reply_message || undefined,
+          validToken
+        );
+      } else if (msgType === "document") {
+        response = await sendDocumentMessage(
+          phoneNumberId, contact,
+          matchedAutomation.media_url,
+          matchedAutomation.button_options?.filename || "document",
+          matchedAutomation.reply_message || undefined,
+          validToken
+        );
+      } else if (msgType === "buttons") {
+        response = await sendButtonMessage(
+          phoneNumberId, contact,
+          matchedAutomation.reply_message,
+          matchedAutomation.button_options?.buttons || [],
+          validToken
+        );
+      } else {
+        response = await sendTextMessage(
+          phoneNumberId, contact,
+          matchedAutomation.reply_message,
+          validToken
+        );
+      }
+
+      const outboundContent =
+        msgType === "buttons"
+          ? `[Buttons] ${matchedAutomation.reply_message}`
+          : msgType !== "text"
+          ? `[${msgType}] ${matchedAutomation.media_url}`
+          : matchedAutomation.reply_message;
 
       await supabase.from("wa_messages").insert({
         user_id: connection.user_id,
@@ -412,8 +458,8 @@ async function handleMessagesChange(supabase: any, value: any) {
         from_phone: value.metadata.display_phone_number,
         to_phone: contact,
         direction: "outbound",
-        message_type: "text",
-        content: matchedAutomation.reply_message,
+        message_type: msgType,
+        content: outboundContent,
         status: "sent",
       });
 

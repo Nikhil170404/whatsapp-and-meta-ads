@@ -119,6 +119,128 @@ export async function sendTemplateMessage(
   return response.json();
 }
 
+// ─── Interactive & media messaging ───────────────────────────────────────────
+
+export interface QuickReplyButton {
+  id: string;
+  title: string; // max 20 chars per Meta
+}
+
+export async function sendButtonMessage(
+  phoneNumberId: string,
+  to: string,
+  bodyText: string,
+  buttons: QuickReplyButton[],
+  accessToken: string
+) {
+  const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: bodyText },
+        action: {
+          buttons: buttons.map(b => ({ type: "reply", reply: { id: b.id, title: b.title } })),
+        },
+      },
+    }),
+  });
+  if (!response.ok) {
+    const raw = await response.json();
+    const e = new Error(`WhatsApp API Error: ${JSON.stringify(raw)}`) as any;
+    e.metaError = parseMetaError(raw);
+    throw e;
+  }
+  return response.json();
+}
+
+export async function sendImageMessage(
+  phoneNumberId: string,
+  to: string,
+  imageUrl: string,
+  caption: string | undefined,
+  accessToken: string
+) {
+  const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "image",
+      image: { link: imageUrl, ...(caption ? { caption } : {}) },
+    }),
+  });
+  if (!response.ok) {
+    const raw = await response.json();
+    const e = new Error(`WhatsApp API Error: ${JSON.stringify(raw)}`) as any;
+    e.metaError = parseMetaError(raw);
+    throw e;
+  }
+  return response.json();
+}
+
+export async function sendVideoMessage(
+  phoneNumberId: string,
+  to: string,
+  videoUrl: string,
+  caption: string | undefined,
+  accessToken: string
+) {
+  const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "video",
+      video: { link: videoUrl, ...(caption ? { caption } : {}) },
+    }),
+  });
+  if (!response.ok) {
+    const raw = await response.json();
+    const e = new Error(`WhatsApp API Error: ${JSON.stringify(raw)}`) as any;
+    e.metaError = parseMetaError(raw);
+    throw e;
+  }
+  return response.json();
+}
+
+export async function sendDocumentMessage(
+  phoneNumberId: string,
+  to: string,
+  docUrl: string,
+  filename: string,
+  caption: string | undefined,
+  accessToken: string
+) {
+  const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "document",
+      document: { link: docUrl, filename, ...(caption ? { caption } : {}) },
+    }),
+  });
+  if (!response.ok) {
+    const raw = await response.json();
+    const e = new Error(`WhatsApp API Error: ${JSON.stringify(raw)}`) as any;
+    e.metaError = parseMetaError(raw);
+    throw e;
+  }
+  return response.json();
+}
+
 // ─── Phone number info & quality ─────────────────────────────────────────────
 
 export async function getPhoneNumberInfo(phoneNumberId: string, accessToken: string) {
