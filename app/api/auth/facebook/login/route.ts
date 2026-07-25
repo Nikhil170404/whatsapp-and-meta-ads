@@ -59,6 +59,7 @@ export async function GET(req: Request) {
     if (configId) params.set("config_id", configId);
     else params.set("scope", "email,public_profile"); // Fallback for standard apps
 
+    params.set("display", "page");
     return NextResponse.redirect(`https://www.facebook.com/v25.0/dialog/oauth?${params.toString()}`);
   }
 
