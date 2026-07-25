@@ -45,6 +45,16 @@ function planLabel(plan: string) {
   return plan.charAt(0).toUpperCase() + plan.slice(1);
 }
 
+function shortName(name: string | null | undefined, email: string | null | undefined): string {
+  if (name) {
+    // Strip common system-user suffixes and show first meaningful segment
+    const cleaned = name.replace(/\s+(system\s+user|admin|user)$/i, "").trim();
+    return cleaned.split(/\s+/)[0] || name;
+  }
+  if (email) return email.split("@")[0];
+  return "User";
+}
+
 const navigation = [
   { name: "Overview", href: "/wa", icon: LayoutDashboard },
   { name: "Automations", href: "/wa/automations", icon: Zap },
@@ -148,11 +158,11 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
               <div className="relative transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                 <SafeImage
                   src={user.profile_picture_url}
-                  alt={user.display_name || user.email || 'User'}
+                  alt={shortName(user.display_name, user.email)}
                   className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-[#25D366]/10 ring-2 ring-white"
                   fallbackComponent={
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25D366] to-[#1DA851] flex items-center justify-center text-white font-bold shadow-lg shadow-[#25D366]/10 ring-2 ring-white">
-                      {(user.display_name || user.email || 'U').charAt(0).toUpperCase()}
+                      {shortName(user.display_name, user.email).charAt(0).toUpperCase()}
                     </div>
                   }
                 />
@@ -160,7 +170,7 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-slate-900 truncate">
-                  {user.display_name || user.email || 'User'}
+                  {shortName(user.display_name, user.email)}
                 </p>
                 <div className="flex flex-col gap-1 mt-0.5">
                   <span className={cn(
@@ -282,17 +292,17 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
           <div className="flex items-center gap-3 mb-3">
             <SafeImage
               src={user.profile_picture_url}
-              alt={user.display_name || user.email || 'User'}
+              alt={shortName(user.display_name, user.email)}
               fallbackComponent={
                 <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white font-bold text-sm">
-                  {(user.display_name || user.email || 'U').charAt(0).toUpperCase()}
+                  {shortName(user.display_name, user.email).charAt(0).toUpperCase()}
                 </div>
               }
               className="w-10 h-10 rounded-xl object-cover shrink-0"
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-slate-900 truncate">
-                {user.display_name || user.email || 'User'}
+                {shortName(user.display_name, user.email)}
               </p>
               <span className={cn("text-[10px] uppercase font-black tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5", planBadgeClass(plan))}>{planLabel(plan)}</span>
             </div>

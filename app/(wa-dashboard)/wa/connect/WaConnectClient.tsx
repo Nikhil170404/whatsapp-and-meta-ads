@@ -124,12 +124,18 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setIsLoading(true);
     setError(null);
 
-    // Start polling before FB.login so that on mobile (where the OAuth flow opens in
-    // a new tab with window.opener set), the DB update made in that tab is detected here.
-    startPolling();
+    // On mobile, Chrome Android nulls window.opener for cross-origin tabs, so the
+    // FB.login callback never fires back in this window. Use a server-side redirect
+    // instead: the current page navigates to Facebook, which redirects back to our
+    // callback URL after the user completes setup.
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = "/api/whatsapp/embedded-signup";
+      return;
+    }
 
+    // Desktop: FB.login popup works reliably — window.opener is preserved.
     window.FB.login((response: any) => {
-      stopPolling();
       if (response.authResponse) {
         exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
       } else {
