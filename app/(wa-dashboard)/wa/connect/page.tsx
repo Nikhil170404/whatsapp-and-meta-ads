@@ -37,18 +37,38 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
       }
     } catch {}
 
-    // 3. Fetch WABA info — try multiple endpoints because System Users and Business Admins
-    // may only appear on one of them.
-    let firstWaba: any = null;
-
-    // 3a. Direct user → WABA link (works for personal Facebook accounts with WABA admin)
+    // 3. Get WABA ID and phone number ID from granular_scopes.
+    // Embedded Signup populates this with exactly what the user selected — works for all
+    // account types including System Users where /me/whatsapp_business_accounts is empty.
+    let resolvedWabaId: string | null = null;
+    let resolvedPhoneNumberId: string | null = null;
     try {
-      const wabaRes = await fetch(`${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
-      const wabaData = await wabaRes.json();
-      firstWaba = wabaData?.data?.[0] || null;
+      const scopesRes = await fetch(`${WA_API_URL}/me?fields=granular_scopes&access_token=${finalToken}`);
+      const scopesData = await scopesRes.json();
+      for (const s of scopesData?.granular_scopes || []) {
+        if (s.scope === "whatsapp_business_management" && s.target_ids?.[0]) resolvedWabaId = s.target_ids[0];
+        if (s.scope === "whatsapp_business_messaging" && s.target_ids?.[0]) resolvedPhoneNumberId = s.target_ids[0];
+      }
     } catch {}
 
-    // 3b. Business Portfolio → WABA (works for System Users and Business-level admins)
+    // 4. Resolve WABA node details using the IDs we already know
+    let firstWaba: any = null;
+    if (resolvedWabaId) {
+      try {
+        const wabaRes = await fetch(`${WA_API_URL}/${resolvedWabaId}?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
+        const wabaNode = await wabaRes.json();
+        if (wabaNode?.id) firstWaba = wabaNode;
+      } catch {}
+    }
+
+    // 4b. Fallback — direct user/business listing endpoints
+    if (!firstWaba?.id) {
+      try {
+        const wabaRes = await fetch(`${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
+        const wabaData = await wabaRes.json();
+        firstWaba = wabaData?.data?.[0] || null;
+      } catch {}
+    }
     if (!firstWaba?.id) {
       try {
         const bizRes = await fetch(`${WA_API_URL}/me/businesses?fields=id,whatsapp_business_accounts{id,phone_numbers{id,display_phone_number,verified_name}}&access_token=${finalToken}`);
@@ -60,23 +80,9 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
       } catch {}
     }
 
-    // 3c. Owned businesses (alt endpoint)
-    if (!firstWaba?.id) {
-      try {
-        const ownedRes = await fetch(`${WA_API_URL}/me/owned_whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
-        const ownedData = await ownedRes.json();
-        firstWaba = ownedData?.data?.[0] || null;
-      } catch {}
-    }
-
-    // 3d. If no WABA found via any endpoint, save with placeholder IDs so the token is stored.
-    // The WABA/phone IDs can be filled in later via webhook or re-connect.
-    if (!firstWaba?.id) {
-      firstWaba = { id: "unknown", phone_numbers: { data: [] } };
-    }
-
     const firstPhone = firstWaba?.phone_numbers?.data?.[0];
-    const phoneNumberId = firstPhone?.id || "unknown";
+    const phoneNumberId = resolvedPhoneNumberId || firstPhone?.id || "unknown";
+    const wabaId = resolvedWabaId || firstWaba?.id || "unknown";
     let phoneNumber = firstPhone?.display_phone_number || "Verified Number";
     let displayName = firstPhone?.verified_name || "WhatsApp Business";
 
@@ -88,16 +94,18 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
       } catch {}
     }
 
-    // 4. Subscribe webhooks
-    await fetch(`${WA_API_URL}/${firstWaba.id}/subscribed_apps`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${finalToken}`, "Content-Type": "application/json" },
-    }).catch(() => {});
+    // 5. Subscribe webhooks
+    if (wabaId !== "unknown") {
+      await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${finalToken}`, "Content-Type": "application/json" },
+      }).catch(() => {});
+    }
 
-    // 5. Save connection
+    // 6. Save connection
     const supabase = getSupabaseAdmin() as any;
     const { error: dbError } = await supabase.from("wa_connections").upsert(
-      { user_id: userId, phone_number_id: phoneNumberId, waba_id: firstWaba.id, phone_number: phoneNumber, display_name: displayName, access_token: finalToken, token_expires_at: tokenExpiresAt, status: "active", updated_at: new Date().toISOString() },
+      { user_id: userId, phone_number_id: phoneNumberId, waba_id: wabaId, phone_number: phoneNumber, display_name: displayName, access_token: finalToken, token_expires_at: tokenExpiresAt, status: "active", updated_at: new Date().toISOString() },
       { onConflict: "user_id" }
     );
     if (dbError) return { success: false, error: "Database+error" };
