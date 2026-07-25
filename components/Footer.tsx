@@ -1,89 +1,155 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Shield, Sparkles, ShieldCheck, MessageSquare, BarChart3 } from "lucide-react";
+import { MessageSquare, BarChart3, ShieldCheck, ExternalLink } from "lucide-react";
+
+const LINKS = {
+  products: [
+    { label: "WhatsApp Automation", href: "/whatsapp" },
+    { label: "Meta Ads Engine", href: "/meta-ads" },
+    { label: "Pricing", href: "/#pricing" },
+    { label: "Sign in", href: "/signin" },
+  ],
+  features: [
+    { label: "Keyword Auto-Reply", href: "/whatsapp#features" },
+    { label: "Broadcast Templates", href: "/whatsapp#features" },
+    { label: "Contact CRM", href: "/whatsapp#features" },
+    { label: "CTWA Campaigns", href: "/meta-ads" },
+    { label: "Meta Ads Automation", href: "/meta-ads" },
+  ],
+  support: [
+    { label: "hello@replykaro.in", href: "mailto:hello@replykaro.in" },
+    { label: "Follow on X", href: "https://x.com/HelloReplykaro", external: true },
+    { label: "FAQ", href: "/#faq" },
+  ],
+  legal: [
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Data Deletion", href: "/data-deletion" },
+  ],
+};
 
 export function Footer() {
   return (
-    <footer className="py-24 md:py-32 bg-white border-t border-slate-50 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-100 to-transparent" />
-      <div className="max-w-7xl mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-16 md:gap-12">
-          {/* Logo & Vision */}
-          <div className="col-span-1 md:col-span-1 space-y-8">
-            <Link href="/" className="inline-block group">
-              <span className="text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-2 group-hover:scale-105 transition-transform duration-500">
-                Reply<span className="text-[#25D366] italic">Karo.</span>
+    <footer className="bg-white border-t border-slate-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16 md:py-20">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10 md:gap-8">
+
+          {/* Brand column */}
+          <div className="col-span-2 md:col-span-1 space-y-5">
+            <Link href="/" className="flex items-center gap-2.5 group w-fit">
+              <div className="w-8 h-8 rounded-lg bg-[#25D366] flex items-center justify-center shadow-sm transition-shadow group-hover:shadow-[0_0_0_4px_rgba(37,211,102,0.12)]">
+                <MessageSquare className="h-4 w-4 text-white fill-white" />
+              </div>
+              <span className="text-[15px] font-semibold text-slate-900 tracking-tight">
+                Reply<span className="text-[#25D366]">Karo</span>
               </span>
             </Link>
-            <p className="text-slate-400 font-bold leading-relaxed text-sm max-w-xs">
-              Built for the next generation of Indian businesses. Automating WhatsApp & Meta Ads with official Meta-verified engineering.
+            <p className="text-[13px] text-slate-400 leading-relaxed max-w-[200px]">
+              WhatsApp Business & Meta Ads automation — built for Indian businesses.
             </p>
+            <div className="flex items-center gap-2 text-[11px] text-emerald-600 font-medium">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
+              Meta Official API Partner
+            </div>
           </div>
 
-          {/* Links Grid */}
-          <div className="col-span-1 md:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-12">
-            <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Products</p>
-              <div className="flex flex-col gap-4">
-                <Link href="/whatsapp" className="text-sm font-black text-[#25D366] hover:opacity-80 transition-opacity flex items-center gap-2 italic">
-                  <MessageSquare className="h-3 w-3" />
-                  WhatsApp Automation
-                </Link>
-                <Link href="/meta-ads" className="text-sm font-black text-[#1877F2] hover:opacity-80 transition-opacity flex items-center gap-2 italic">
-                  <BarChart3 className="h-3 w-3" />
-                  Meta Ads Engine
-                </Link>
-              </div>
-            </div>
+          {/* Products */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-semibold text-slate-900 uppercase tracking-wider">Products</p>
+            <ul className="space-y-2.5">
+              {LINKS.products.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-            <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Resources</p>
-              <div className="flex flex-col gap-4">
-                <Link href="/#features" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Features</Link>
-                <Link href="/#pricing" className="text-sm font-black text-[#25D366] hover:text-[#25D366] transition-colors flex items-center gap-2 italic">
-                  Pricing Plans
-                  <Sparkles className="h-3 w-3" />
-                </Link>
-                <Link href="/#faq" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">FAQ</Link>
-                <Link href="/signin" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Sign In</Link>
-              </div>
-            </div>
+          {/* Features */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-semibold text-slate-900 uppercase tracking-wider">Features</p>
+            <ul className="space-y-2.5">
+              {LINKS.features.map((l) => (
+                <li key={l.label}>
+                  <Link
+                    href={l.href}
+                    className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-            <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Legal</p>
-              <div className="flex flex-col gap-4">
-                <Link href="/privacy" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Privacy Policy</Link>
-                <Link href="/terms" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Terms of Service</Link>
-                <Link href="/data-deletion" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">Data Deletion</Link>
-              </div>
-            </div>
+          {/* Support */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-semibold text-slate-900 uppercase tracking-wider">Support</p>
+            <ul className="space-y-2.5">
+              {LINKS.support.map((l) => (
+                <li key={l.href}>
+                  {"external" in l && l.external ? (
+                    <a
+                      href={l.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                      {l.label}
+                      <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                    </a>
+                  ) : (
+                    <a
+                      href={l.href}
+                      className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
+                    >
+                      {l.label}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
 
-            <div className="space-y-6">
-              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Trust</p>
-              <div className="flex flex-col gap-4">
-                <div className="text-sm font-black text-emerald-500 flex items-center gap-2 italic">
-                  Meta Official API
-                  <ShieldCheck className="h-3 w-3" />
-                </div>
-                <a href="mailto:hello@replykaro.in" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors">hello@replykaro.in</a>
-                <a href="https://x.com/HelloReplykaro" target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-slate-400 hover:text-[#25D366] transition-colors flex items-center gap-2">
-                  Follow on X
-                  <ArrowRight className="h-3 w-3" />
-                </a>
-              </div>
-            </div>
+          {/* Legal */}
+          <div className="space-y-4">
+            <p className="text-[11px] font-semibold text-slate-900 uppercase tracking-wider">Legal</p>
+            <ul className="space-y-2.5">
+              {LINKS.legal.map((l) => (
+                <li key={l.href}>
+                  <Link
+                    href={l.href}
+                    className="text-[13px] text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        {/* Bottom Line */}
-        <div className="mt-20 pt-10 border-t border-slate-50 flex flex-col md:flex-row items-center justify-between gap-6">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-300">
-            &copy; {new Date().getFullYear()} ReplyKaro Engineering | WhatsApp & Meta Ads Solutions
+        {/* Bottom bar */}
+        <div className="mt-14 pt-8 border-t border-slate-50 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-[12px] text-slate-400">
+            &copy; {new Date().getFullYear()} ReplyKaro. All rights reserved.
           </p>
-          <div className="flex items-center gap-4 text-slate-300">
-            <Shield className="h-4 w-4" />
-            <p className="text-[10px] font-black uppercase tracking-widest">Meta API Verified | 256-bit Encrypted</p>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="text-[12px] text-slate-400 hover:text-slate-600 transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="text-[12px] text-slate-400 hover:text-slate-600 transition-colors">
+              Terms
+            </Link>
+            <Link href="/data-deletion" className="text-[12px] text-slate-400 hover:text-slate-600 transition-colors">
+              Data Deletion
+            </Link>
           </div>
         </div>
       </div>

@@ -1,17 +1,16 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Navigation } from "@/components/ui/Navigation";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Terms of Service | ReplyKaro",
-  description: "Terms of Service for using ReplyKaro.",
+  description: "ReplyKaro Terms of Service — the rules and conditions for using our WhatsApp and Meta Ads automation platform.",
+  alternates: { canonical: "https://www.replykaro.in/terms" },
 };
 
 export default function TermsOfServicePage() {
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-[#25D366]/20">
-      <Navigation />
       
       <main className="pt-32 pb-24">
         <div className="container mx-auto px-4 max-w-4xl">

@@ -1,196 +1,342 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, X, ArrowRight, MessageSquare, BarChart3 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Menu, X, ChevronDown, MessageSquare, BarChart3, ArrowRight, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface NavigationProps { }
+const PRODUCTS = [
+  {
+    name: "WhatsApp Automation",
+    description: "Auto-replies, broadcasts & contact CRM",
+    href: "/whatsapp",
+    Icon: MessageSquare,
+    accent: "#25D366",
+    bg: "rgba(37,211,102,0.1)",
+  },
+  {
+    name: "Meta Ads Engine",
+    description: "Comment-to-DM & CTWA campaigns",
+    href: "/meta-ads",
+    Icon: BarChart3,
+    accent: "#1877F2",
+    bg: "rgba(24,119,242,0.1)",
+  },
+];
 
-export function Navigation({ }: NavigationProps) {
-    const pathname = usePathname();
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isScrolled, setIsScrolled] = useState(false);
+const HIDDEN_PREFIXES = ["/wa", "/ads", "/dashboard", "/admin", "/dm/", "/rewards", "/open"];
+const HIDDEN_EXACT = ["/signin", "/signup", "/waitlist"];
 
-    // Hide navigation on dashboard, auth, admin, and other app pages
-    const isWaDashboard = pathname?.startsWith("/wa");
-    const isAdsDashboard = pathname?.startsWith("/ads");
-    const isDashboard = pathname?.startsWith("/dashboard");
-    const isAdmin = pathname?.startsWith("/admin");
-    const isDmPage = pathname?.startsWith("/dm/");
-    const isAuthPage = pathname === "/signin" || pathname === "/signup";
-    const isWaitlist = pathname === "/waitlist";
-    const isRewardsPage = pathname?.startsWith("/rewards");
-    const isBlogPost = pathname?.startsWith("/blog/") && pathname !== "/blog/";
-    const isOpenPage = pathname?.startsWith("/open");
+export function Navigation() {
+  const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [productsOpen, setProductsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const productsRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        // Auth Check
-        fetch("/api/auth/session")
-            .then((res) => res.json())
-            .then((data) => setIsLoggedIn(!!data.user))
-            .catch(() => setIsLoggedIn(false));
+  const isHidden =
+    HIDDEN_EXACT.includes(pathname ?? "") ||
+    HIDDEN_PREFIXES.some((p) => pathname?.startsWith(p));
 
-        // Scroll listener for nav shrink
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 20);
-        };
-        window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
-    }, []);
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((d) => setIsLoggedIn(!!d.user))
+      .catch(() => setIsLoggedIn(false));
 
-    // Hide on ALL dashboard/app routes
-    if (isWaDashboard || isAdsDashboard || isDashboard || isAdmin || isAuthPage || isWaitlist || isRewardsPage || isDmPage || isBlogPost || isOpenPage) return null;
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-    const navLinks = [
-        { name: "WhatsApp", href: "/whatsapp" },
-        { name: "Meta Ads", href: "/meta-ads" },
-        { name: "Pricing", href: "/#pricing" },
-    ];
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (productsRef.current && !productsRef.current.contains(e.target as Node)) {
+        setProductsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
-    return (
-        <>
-            <nav className={cn(
-                "fixed top-0 left-0 right-0 z-[100] px-4 transition-all duration-500",
-                isScrolled ? "py-4" : "py-8"
-            )}>
-                <div className="container mx-auto flex items-center justify-center gap-3">
-                    {/* Main Nav Pill */}
-                    <div className="flex items-center justify-between glass-nav px-2.5 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl sm:rounded-[2.5rem] flex-1 max-w-4xl border border-white/20 overflow-hidden">
-                        {/* Logo & Brand Pod */}
-                        <Link href="/" className="flex items-center gap-2 sm:gap-3 md:gap-4 transition-transform hover:scale-105 active:scale-95 group flex-shrink-0">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-full bg-white shadow-[0_8px_24px_-6px_rgba(0,0,0,0.1)] flex items-center justify-center ring-1 ring-slate-100 group-hover:rotate-12 transition-all duration-500 overflow-hidden shrink-0">
-                                    <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 md:h-5 md:w-5 text-[#25D366] fill-[#25D366]" />
-                                </div>
-                            <div className="text-base sm:text-lg md:text-xl font-[900] text-slate-900 tracking-tighter uppercase font-sans whitespace-nowrap">ReplyKaro</div>
-                        </Link>
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
 
-                        {/* Desktop Links */}
-                        <div className="hidden md:flex items-center gap-8 mx-8">
-                            {navLinks.map((link) => {
-                                const isActive = pathname === link.href;
-                                return (
-                                    <Link
-                                        key={link.name}
-                                        href={link.href}
-                                        className={cn(
-                                            "text-[11px] font-black uppercase tracking-[0.2em] transition-all relative group/link",
-                                            isActive ? "text-[#25D366]" : "text-slate-400 hover:text-[#25D366]"
-                                        )}
-                                    >
-                                        {link.name}
-                                        {isActive && (
-                                            <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#25D366] rounded-full" />
-                                        )}
-                                    </Link>
-                                );
-                            })}
-                        </div>
+  if (isHidden) return null;
 
-                        {/* Auth Actions */}
-                        <div className="flex items-center gap-1 sm:gap-2 md:gap-4 ml-2 sm:ml-4 flex-shrink-0">
-                            {isLoggedIn === null ? (
-                                <div className="w-24 h-11 bg-slate-100 animate-pulse rounded-2xl" />
-                            ) : isLoggedIn ? (
-                                <Link href="/wa">
-                                    <Button className="bg-[#25D366] text-white hover:bg-[#1DA851] rounded-xl sm:rounded-2xl px-4 sm:px-6 md:px-8 font-black text-[10px] sm:text-[11px] md:text-[13px] uppercase tracking-widest glow-whatsapp h-9 sm:h-11 transition-all active:scale-95">
-                                        Dashboard
-                                    </Button>
-                                </Link>
-                            ) : (
-                                <>
-                                    <Link href="/signin" className="hidden sm:block">
-                                        <Button variant="ghost" className="text-[11px] font-bold text-slate-500 hover:text-[#25D366] rounded-2xl px-6 uppercase tracking-widest">
-                                            Login
-                                        </Button>
-                                    </Link>
-                                    <Link href="/signin" className="hidden md:block">
-                                        <Button className="bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl px-6 md:px-10 font-black text-[12px] uppercase tracking-widest h-11 md:h-12 transition-all active:scale-95 shadow-xl shadow-[#25D366]/20">
-                                            Start Free
-                                        </Button>
-                                    </Link>
-                                </>
-                            )}
+  return (
+    <>
+      <header
+        className={cn(
+          "fixed top-0 left-0 right-0 z-[100] bg-white transition-all duration-200",
+          scrolled
+            ? "border-b border-slate-100 shadow-[0_1px_16px_-4px_rgba(0,0,0,0.06)]"
+            : "border-b border-transparent"
+        )}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[60px] flex items-center justify-between gap-4">
 
-                            {/* Mobile Menu Button */}
-                            <button
-                                onClick={() => setIsMobileMenuOpen(true)}
-                                className="md:hidden w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center text-slate-600 hover:text-[#25D366] rounded-lg sm:rounded-xl hover:bg-slate-50 active:scale-90 transition-all flex-shrink-0"
-                            >
-                                <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-
-            {/* Mobile Sidebar Overlay */}
-            <div
-                className={cn(
-                    "fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] transition-opacity duration-500 pointer-events-none md:hidden",
-                    isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0"
-                )}
-                onClick={() => setIsMobileMenuOpen(false)}
-            />
-
-            {/* Mobile Sidebar Content */}
-            <div className={cn(
-                "fixed top-4 right-4 bottom-4 w-[280px] z-[120] bg-white shadow-2xl transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1) flex flex-col rounded-[2.5rem] border border-slate-100 md:hidden",
-                isMobileMenuOpen ? "translate-x-0" : "translate-x-[calc(100%+2rem)]"
-            )}>
-                <div className="flex items-center justify-between p-6 border-b border-slate-50">
-                    <span className="text-sm font-black text-slate-900 uppercase tracking-widest">Menu</span>
-                    <button
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-rose-500 transition-colors"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
-
-                <nav className="flex-1 p-6 space-y-2">
-                    {navLinks.map((item) => {
-                        const isActive = pathname === item.href;
-                        return (
-                            <Link
-                                key={item.name}
-                                href={item.href}
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={cn(
-                                    "flex items-center justify-between p-4 rounded-2xl text-sm font-bold transition-all group",
-                                    isActive ? "bg-[#25D366]/5 text-[#25D366]" : "text-slate-600 hover:bg-slate-50 hover:text-[#25D366]"
-                                )}
-                            >
-                                {item.name}
-                                <ArrowRight className={cn(
-                                    "h-4 w-4 transition-all",
-                                    isActive ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0"
-                                )} />
-                            </Link>
-                        );
-                    })}
-                </nav>
-
-                <div className="p-6 border-t border-slate-50">
-                    {!isLoggedIn && (
-                        <Link href="/signin" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Button className="w-full h-14 bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl font-black uppercase tracking-widest glow-whatsapp">
-                                Get Started
-                            </Button>
-                        </Link>
-                    )}
-                    {isLoggedIn && (
-                        <Link href="/wa" onClick={() => setIsMobileMenuOpen(false)}>
-                            <Button className="w-full h-14 bg-[#25D366] text-white hover:bg-[#1DA851] rounded-2xl font-black uppercase tracking-widest glow-whatsapp">
-                                Go to Dashboard
-                            </Button>
-                        </Link>
-                    )}
-                </div>
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-8 h-8 rounded-lg bg-[#25D366] flex items-center justify-center shadow-sm transition-shadow group-hover:shadow-[0_0_0_4px_rgba(37,211,102,0.12)]">
+              <MessageSquare className="h-4 w-4 text-white fill-white" />
             </div>
-        </>
-    );
+            <span className="text-[15px] font-semibold text-slate-900 tracking-tight">
+              Reply<span className="text-[#25D366]">Karo</span>
+            </span>
+          </Link>
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-0.5">
+
+            {/* Products dropdown */}
+            <div ref={productsRef} className="relative">
+              <button
+                onClick={() => setProductsOpen((v) => !v)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-md text-[13.5px] font-medium transition-colors select-none",
+                  productsOpen
+                    ? "bg-slate-100 text-slate-900"
+                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                )}
+              >
+                Products
+                <ChevronDown
+                  className={cn(
+                    "h-3.5 w-3.5 opacity-50 transition-transform duration-150",
+                    productsOpen && "rotate-180"
+                  )}
+                />
+              </button>
+
+              {productsOpen && (
+                <div className="absolute top-[calc(100%+8px)] left-0 w-68 min-w-[260px] bg-white rounded-xl border border-slate-100 shadow-[0_8px_32px_-4px_rgba(0,0,0,0.12)] p-1.5 z-50">
+                  {PRODUCTS.map((p) => (
+                    <Link
+                      key={p.href}
+                      href={p.href}
+                      onClick={() => setProductsOpen(false)}
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-slate-50 transition-colors group"
+                    >
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: p.bg }}
+                      >
+                        <p.Icon className="h-4 w-4" style={{ color: p.accent }} />
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-semibold text-slate-900 leading-none mb-1">
+                          {p.name}
+                        </p>
+                        <p className="text-[12px] text-slate-400 leading-snug">{p.description}</p>
+                      </div>
+                    </Link>
+                  ))}
+                  <div className="my-1 h-px bg-slate-50" />
+                  <Link
+                    href="/signin"
+                    onClick={() => setProductsOpen(false)}
+                    className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-[#25D366]/5 transition-colors group"
+                  >
+                    <span className="text-[12px] font-medium text-[#25D366]">Start free — no credit card</span>
+                    <ArrowRight className="h-3.5 w-3.5 text-[#25D366] group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            <Link
+              href="/#pricing"
+              className={cn(
+                "px-3.5 py-2 rounded-md text-[13.5px] font-medium transition-colors",
+                pathname === "/#pricing"
+                  ? "text-slate-900 bg-slate-100"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+              )}
+            >
+              Pricing
+            </Link>
+
+            <a
+              href="mailto:hello@replykaro.in"
+              className="px-3.5 py-2 rounded-md text-[13.5px] font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+            >
+              Support
+            </a>
+          </nav>
+
+          {/* Auth CTAs */}
+          <div className="flex items-center gap-2 shrink-0">
+            {isLoggedIn === null ? (
+              <div className="w-24 h-8 bg-slate-100 animate-pulse rounded-lg" />
+            ) : isLoggedIn ? (
+              <Link
+                href="/wa"
+                className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-[#25D366] text-white text-[13px] font-semibold hover:bg-[#1DA851] transition-colors shadow-sm"
+              >
+                Dashboard <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/signin"
+                  className="hidden sm:block px-3.5 py-2 text-[13.5px] font-medium text-slate-500 hover:text-slate-900 transition-colors"
+                >
+                  Log in
+                </Link>
+                <Link
+                  href="/signin"
+                  className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-700 transition-colors"
+                >
+                  Start free <Zap className="h-3.5 w-3.5" />
+                </Link>
+              </>
+            )}
+
+            {/* Mobile hamburger */}
+            <button
+              aria-label="Open menu"
+              onClick={() => setMobileOpen(true)}
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile overlay */}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[110] md:hidden transition-opacity duration-200",
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      {/* Mobile drawer */}
+      <div
+        className={cn(
+          "fixed top-0 right-0 bottom-0 w-[288px] bg-white z-[120] flex flex-col md:hidden transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] shadow-[−4px_0_40px_rgba(0,0,0,0.12)]",
+          mobileOpen ? "translate-x-0" : "translate-x-full"
+        )}
+      >
+        <div className="flex items-center justify-between px-4 h-[60px] border-b border-slate-100 shrink-0">
+          <Link
+            href="/"
+            onClick={() => setMobileOpen(false)}
+            className="flex items-center gap-2"
+          >
+            <div className="w-7 h-7 rounded-lg bg-[#25D366] flex items-center justify-center">
+              <MessageSquare className="h-3.5 w-3.5 text-white fill-white" />
+            </div>
+            <span className="text-[14px] font-semibold text-slate-900">
+              Reply<span className="text-[#25D366]">Karo</span>
+            </span>
+          </Link>
+          <button
+            aria-label="Close menu"
+            onClick={() => setMobileOpen(false)}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-0.5">
+          <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            Products
+          </p>
+          {PRODUCTS.map((p) => (
+            <Link
+              key={p.href}
+              href={p.href}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <div
+                className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                style={{ background: p.bg }}
+              >
+                <p.Icon className="h-3.5 w-3.5" style={{ color: p.accent }} />
+              </div>
+              <span className="text-[13px] font-medium text-slate-700">{p.name}</span>
+            </Link>
+          ))}
+
+          <div className="my-3 h-px bg-slate-100" />
+
+          {[
+            { label: "Pricing", href: "/#pricing" },
+            { label: "Support", href: "mailto:hello@replykaro.in" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2.5 rounded-lg text-[13px] font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          <div className="my-3 h-px bg-slate-100" />
+          <p className="px-3 pt-1 pb-1.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            Legal
+          </p>
+          {[
+            { label: "Privacy Policy", href: "/privacy" },
+            { label: "Terms of Service", href: "/terms" },
+            { label: "Data Deletion", href: "/data-deletion" },
+          ].map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMobileOpen(false)}
+              className="block px-3 py-2 rounded-lg text-[12px] font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="p-4 border-t border-slate-100 space-y-2 shrink-0">
+          {isLoggedIn ? (
+            <Link
+              href="/wa"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#25D366] text-white text-[13px] font-semibold hover:bg-[#1DA851] transition-colors"
+            >
+              Go to Dashboard <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/signin"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center h-11 rounded-xl border border-slate-200 text-[13px] font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signin"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-2 h-11 rounded-xl bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+              >
+                Start free <Zap className="h-4 w-4" />
+              </Link>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }

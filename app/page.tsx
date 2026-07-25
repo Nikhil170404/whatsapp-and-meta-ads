@@ -102,24 +102,26 @@ export default function LandingPage() {
           </div>
 
           <h1 className="text-5xl sm:text-7xl md:text-[5.5rem] font-black text-slate-900 tracking-tighter leading-[0.88] mb-6">
-            WhatsApp pe<br />
-            <span className="text-[#25D366]">automatic reply</span><br />
-            hoga.
+            WhatsApp replies<br />
+            <span className="text-[#25D366]">on autopilot.</span>
           </h1>
 
-          <p className="text-base sm:text-lg md:text-xl text-slate-500 font-medium mb-10 max-w-xl mx-auto leading-relaxed">
-            Keyword automations, broadcasts, contact CRM — sab ek jagah. WATI se 60% sasta. India mein bana, India ke liye.
+          <p className="text-base sm:text-lg md:text-xl text-slate-500 font-medium mb-4 max-w-xl mx-auto leading-relaxed">
+            Keyword automations, broadcasts & contact CRM — all in one platform. 60% cheaper than WATI. Built for Indian businesses.
+          </p>
+          <p className="text-sm text-slate-400 font-medium mb-10 max-w-md mx-auto">
+            Keyword pe auto-reply, bulk messages, CRM — sab ek jagah.
           </p>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mb-10">
             <Link href="/signin" className="w-full sm:w-auto">
-              <button className="w-full h-14 px-8 bg-[#25D366] text-white rounded-2xl font-black text-base hover:bg-[#1DA851] active:scale-[0.97] transition-all shadow-lg shadow-[#25D366]/25 flex items-center justify-center gap-2">
-                Shuru karo Free <ArrowRight className="w-4 h-4" />
+              <button className="w-full h-14 px-8 bg-[#25D366] text-white rounded-xl font-semibold text-base hover:bg-[#1DA851] active:scale-[0.97] transition-all shadow-lg shadow-[#25D366]/25 flex items-center justify-center gap-2">
+                Start free <ArrowRight className="w-4 h-4" />
               </button>
             </Link>
             <Link href="#pricing" className="w-full sm:w-auto">
-              <button className="w-full h-14 px-8 border-2 border-slate-200 text-slate-700 rounded-2xl font-black text-base hover:bg-slate-50 active:scale-[0.97] transition-all flex items-center justify-center">
-                Pricing dekho
+              <button className="w-full h-14 px-8 border border-slate-200 text-slate-600 rounded-xl font-medium text-base hover:bg-slate-50 active:scale-[0.97] transition-all flex items-center justify-center">
+                View pricing
               </button>
             </Link>
           </div>
@@ -197,23 +199,27 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter mb-3">
-              5 minute mein <span className="text-[#25D366]">live</span>.
+              Live in <span className="text-[#25D366]">5 minutes</span>.
             </h2>
-            <p className="text-slate-500 font-medium text-sm">No coding. No tech team. Bas connect karo.</p>
+            <p className="text-slate-500 font-medium text-sm">No coding. No tech team. Bas connect karo aur shuru.</p>
           </div>
           <div className="grid sm:grid-cols-3 gap-5">
             {[
-              { n: "01", title: "WhatsApp Connect karo", desc: "Meta se apna Business Account link karo. Sirf 2 minute.", icon: Phone },
-              { n: "02", title: "Automation banao", desc: "Keyword likho, reply message type karo. Save karo — ho gaya.", icon: Zap },
-              { n: "03", title: "Sone jao", desc: "24/7 aapke liye kaam karega. Morning mein dekho kitne gaye.", icon: Clock },
+              { n: "1", title: "Connect your WhatsApp", desc: "Link your Meta Business Account in under 2 minutes. We guide you step by step.", icon: Phone },
+              { n: "2", title: "Create automations", desc: "Set keywords and replies. Hit save — your automation is instantly live.", icon: Zap },
+              { n: "3", title: "Watch it work", desc: "Replies go out 24/7 while you focus on your business. Check results in the morning.", icon: Clock },
             ].map((s) => (
-              <div key={s.n} className="relative p-6 bg-white rounded-[2rem] border border-slate-100 hover:border-[#25D366]/30 hover:shadow-xl hover:shadow-[#25D366]/5 transition-all group">
-                <span className="absolute top-5 right-5 text-5xl font-black text-slate-50 group-hover:text-[#25D366]/8 transition-colors select-none">{s.n}</span>
-                <div className="w-11 h-11 rounded-2xl bg-[#25D366]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <div key={s.n} className="relative p-6 bg-white rounded-2xl border border-slate-100 hover:border-[#25D366]/30 hover:shadow-lg hover:shadow-[#25D366]/5 transition-all group">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-7 h-7 rounded-full bg-[#25D366]/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-[#25D366]">{s.n}</span>
+                  </div>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-[#25D366]/8 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                   <s.icon className="w-5 h-5 text-[#25D366]" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900 mb-1.5">{s.title}</h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">{s.desc}</p>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1.5">{s.title}</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
               </div>
             ))}
           </div>
@@ -224,17 +230,17 @@ export default function LandingPage() {
       <section className="py-20 md:py-28 bg-slate-50" id="features">
         <div className="container mx-auto px-4 max-w-5xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter mb-3">Sab kuch ek jagah.</h2>
-            <p className="text-slate-500 font-medium text-sm max-w-md mx-auto">WhatsApp automation ke liye jitna chahiye, sab yahan hai.</p>
+            <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter mb-3">Everything you need.</h2>
+            <p className="text-slate-500 font-medium text-sm max-w-md mx-auto">WhatsApp automation ke liye jitna chahiye, sab yahan. Official Meta API — no ban risk.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {FEATURES.map((f) => (
-              <div key={f.title} className="p-5 bg-white rounded-[1.5rem] border border-slate-100 hover:border-[#25D366]/20 hover:shadow-lg transition-all group">
+              <div key={f.title} className="p-5 bg-white rounded-2xl border border-slate-100 hover:border-[#25D366]/20 hover:shadow-lg transition-all group">
                 <div className="w-10 h-10 rounded-xl bg-[#25D366]/10 flex items-center justify-center mb-3.5 group-hover:scale-110 group-hover:-rotate-6 transition-transform">
                   <f.icon className="w-5 h-5 text-[#25D366]" />
                 </div>
-                <h3 className="text-sm font-black text-slate-900 mb-1.5">{f.title}</h3>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">{f.desc}</p>
+                <h3 className="text-sm font-semibold text-slate-900 mb-1.5">{f.title}</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>
@@ -252,7 +258,7 @@ export default function LandingPage() {
             <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter mb-3">
               Simple <span className="text-[#25D366]">pricing</span>.
             </h2>
-            <p className="text-slate-500 font-medium text-sm mb-8">Koi hidden fees nahi. Free se shuru karo.</p>
+            <p className="text-slate-500 font-medium text-sm mb-8">No hidden fees. Start free, upgrade when you're ready.</p>
             <div className="inline-flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
               <button onClick={() => setYearly(false)} className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all ${!yearly ? "bg-white shadow text-slate-900" : "text-slate-500"}`}>Monthly</button>
               <button onClick={() => setYearly(true)} className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${yearly ? "bg-white shadow text-slate-900" : "text-slate-500"}`}>
@@ -262,7 +268,7 @@ export default function LandingPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {PLANS.map((p) => (
-              <div key={p.key} className={`relative rounded-[2rem] p-6 border-2 transition-all ${p.popular ? "border-[#25D366] shadow-2xl shadow-[#25D366]/10 bg-white" : "border-slate-100 bg-white"}`}>
+              <div key={p.key} className={`relative rounded-2xl p-6 border-2 transition-all ${p.popular ? "border-[#25D366] shadow-xl shadow-[#25D366]/10 bg-white" : "border-slate-100 bg-white"}`}>
                 {p.badge && (
                   <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-[10px] font-black uppercase tracking-widest rounded-full ${p.popular ? "bg-[#25D366]" : "bg-slate-800"}`}>{p.badge}</div>
                 )}
@@ -280,7 +286,7 @@ export default function LandingPage() {
                   {yearly && p.key !== "free" && <p className="text-xs text-[#25D366] font-bold mt-0.5">billed yearly</p>}
                 </div>
                 <Link href="/signin">
-                  <button className={`w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] mb-5 ${p.popular ? "bg-[#25D366] text-white hover:bg-[#1DA851] shadow-md shadow-[#25D366]/20" : "bg-slate-900 text-white hover:bg-slate-800"}`}>
+                  <button className={`w-full py-3 rounded-lg font-semibold text-sm transition-all active:scale-[0.97] mb-5 ${p.popular ? "bg-[#25D366] text-white hover:bg-[#1DA851] shadow-md shadow-[#25D366]/20" : "bg-slate-900 text-white hover:bg-slate-800"}`}>
                     {p.cta}
                   </button>
                 </Link>
@@ -311,8 +317,8 @@ export default function LandingPage() {
       <section className="py-20 bg-slate-50">
         <div className="container mx-auto px-4 max-w-3xl">
           <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-3">Compare karo.</h2>
-            <p className="text-slate-500 font-medium text-sm">Kyon ReplyKaro better hai competitors se.</p>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-3">How we compare.</h2>
+            <p className="text-slate-500 font-medium text-sm">Same official Meta API — 60% less than WATI.</p>
           </div>
           <div className="overflow-x-auto -mx-4 px-4">
             <table className="w-full min-w-[400px] border-collapse">
@@ -360,8 +366,8 @@ export default function LandingPage() {
       <section className="py-20 md:py-28" id="faq">
         <div className="container mx-auto px-4 max-w-2xl">
           <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-2">Sawaal?</h2>
-            <p className="text-slate-500 font-medium text-sm">Common doubts clear karo.</p>
+            <h2 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tighter mb-2">Frequently asked questions.</h2>
+            <p className="text-slate-500 font-medium text-sm">Common sawaal aur jawab.</p>
           </div>
           <div className="space-y-2">
             {FAQS.map((f, i) => (
@@ -383,17 +389,17 @@ export default function LandingPage() {
 
       {/* ── CTA ── */}
       <section className="pb-24 px-4">
-        <div className="max-w-2xl mx-auto bg-slate-900 rounded-[2.5rem] p-10 md:p-14 text-center relative overflow-hidden">
+        <div className="max-w-2xl mx-auto bg-slate-900 rounded-2xl p-10 md:p-14 text-center relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_#25D36618_0%,_transparent_60%)] pointer-events-none" />
           <div className="relative z-10">
-            <h2 className="text-3xl md:text-4xl font-black text-white tracking-tighter mb-3 leading-tight">
-              Shuru karo aaj.<br />
-              <span className="text-[#25D366]">Free mein.</span>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3 leading-tight">
+              Start automating WhatsApp today.<br />
+              <span className="text-[#25D366]">Free forever to begin.</span>
             </h2>
-            <p className="text-slate-400 font-medium text-sm mb-8">Credit card nahi chahiye. 5 minute mein live.</p>
+            <p className="text-slate-400 text-sm mb-8">No credit card needed. Live in 5 minutes. Credit card nahi chahiye.</p>
             <Link href="/signin">
-              <button className="h-14 px-10 bg-[#25D366] text-white rounded-2xl font-black text-base hover:bg-[#1DA851] active:scale-[0.97] transition-all shadow-lg shadow-[#25D366]/25 inline-flex items-center gap-2">
-                Get Started Free <ArrowRight className="w-4 h-4" />
+              <button className="h-14 px-10 bg-[#25D366] text-white rounded-xl font-semibold text-base hover:bg-[#1DA851] active:scale-[0.97] transition-all shadow-lg shadow-[#25D366]/25 inline-flex items-center gap-2">
+                Get started free <ArrowRight className="w-4 h-4" />
               </button>
             </Link>
             <div className="flex flex-wrap items-center justify-center gap-4 mt-8">

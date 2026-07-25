@@ -12,6 +12,7 @@ export const UNREACHABLE_CODES = new Set([
   131047, // Re-engagement outside 24-hour window — must use template
   131056, // User opted out of receiving messages from this business
   133016, // Customer phone number changed
+  63049,  // US marketing ban — marketing templates to +1 numbers (since April 1, 2025)
 ]);
 
 // ─── Rate-limit error codes ───────────────────────────────────────────────────

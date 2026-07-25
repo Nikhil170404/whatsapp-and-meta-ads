@@ -1,17 +1,16 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Navigation } from "@/components/ui/Navigation";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Data Deletion Instructions | ReplyKaro",
-  description: "Instructions on how to delete your data and Meta API connections from ReplyKaro.",
+  description: "How to request deletion of your personal data and disconnect your Meta API connections from ReplyKaro.",
+  alternates: { canonical: "https://www.replykaro.in/data-deletion" },
 };
 
 export default function DataDeletionPage() {
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-[#25D366]/20">
-      <Navigation />
       
       <main className="pt-32 pb-24">
         <div className="container mx-auto px-4 max-w-4xl">

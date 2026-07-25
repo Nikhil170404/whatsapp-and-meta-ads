@@ -79,7 +79,7 @@ export async function POST(
 
     const { data: template } = await supabase
       .from("wa_templates")
-      .select("name, language, status, body_text")
+      .select("name, language, status, body_text, category")
       .eq("id", broadcast.template_id)
       .single();
 
@@ -215,12 +215,31 @@ export async function POST(
     let sentCount = 0;
     let failedCount = 0;
 
+    // Determine if this is a MARKETING template (US ban applies since April 1, 2025)
+    const isMarketingTemplate =
+      (template.category ?? "").toUpperCase() === "MARKETING";
+
     for (const recipient of recipientsToSend) {
       const phone = phoneMap[recipient.contact_id]?.replace(/\D/g, "");
       if (!phone) {
         await supabase
           .from("wa_broadcast_recipients")
           .update({ status: "failed", error: "No phone number" })
+          .eq("id", recipient.id);
+        failedCount++;
+        continue;
+      }
+
+      // US marketing ban: Meta error 63049. Marketing templates to US numbers
+      // (+1 country code) fail since April 1, 2025. Skip upfront to avoid wasting sends.
+      const isUSNumber = phone.startsWith("1") && phone.length === 11;
+      if (isMarketingTemplate && isUSNumber) {
+        await supabase
+          .from("wa_broadcast_recipients")
+          .update({
+            status: "skipped",
+            error: "US marketing ban: Meta does not allow marketing templates to +1 numbers (effective April 1, 2025, error 63049)",
+          })
           .eq("id", recipient.id);
         failedCount++;
         continue;
