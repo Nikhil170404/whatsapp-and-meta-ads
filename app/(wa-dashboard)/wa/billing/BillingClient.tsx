@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Crown, CheckCircle2, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee } from "lucide-react";
+import { Crown, CheckCircle2, Check, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee, AlertCircle } from "lucide-react";
 
 interface Plan {
   key: string;
@@ -193,14 +193,14 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
             </div>
             <h2 className="text-3xl font-black mb-1 capitalize">{currentPlan} Plan</h2>
             <p className="text-white/70 text-sm font-medium">
-              {currentPlan === "free" ? "Upgrade anytime — no contracts" : "Your subscription is active. Thank you! 🙏"}
+              {currentPlan === "free" ? "Upgrade anytime — no contracts" : "Your subscription is active."}
             </p>
           </div>
           {currentPlan === "free" && !isInternational && (
             <div className="shrink-0 bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
               <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Competitors charge</p>
               <p className="text-white font-black text-lg">₹2,499–₹4,999</p>
-              <p className="text-white/80 text-xs font-medium">We charge ₹999 🎉</p>
+              <p className="text-white/80 text-xs font-medium">We charge ₹999</p>
             </div>
           )}
         </div>
@@ -252,7 +252,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
               {plan.badge && (
                 <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg ${plan.popular ? "bg-[#25D366] shadow-[#25D366]/20" : "bg-slate-700"
                   }`}>
-                  {isCurrent ? "✓ Active" : plan.badge}
+                  {isCurrent ? <><Check className="w-3 h-3 inline mr-1" />Active</> : plan.badge}
                 </div>
               )}
 
@@ -278,7 +278,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
                 {isUpgrading ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</>
                 ) : isCurrent ? (
-                  "✓ Current Plan"
+                  <><Check className="w-4 h-4" /> Current Plan</>
                 ) : plan.key === "free" ? (
                   "Free Forever"
                 ) : (
@@ -326,7 +326,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
       <div className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 md:p-8">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
-            <span className="text-amber-600 text-sm font-black">ℹ</span>
+            <AlertCircle className="w-4 h-4 text-amber-600" />
           </div>
           <div>
             <h3 className="text-sm font-black text-amber-900 mb-1">Meta WhatsApp Conversation Charges (Separate)</h3>

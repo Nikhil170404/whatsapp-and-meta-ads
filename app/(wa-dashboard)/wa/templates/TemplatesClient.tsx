@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package, Trash2, Lock } from "lucide-react";
+import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package, Trash2, Lock, ShoppingBag, Heart, UtensilsCrossed, Home, Scissors, GraduationCap } from "lucide-react";
 
 interface Template {
   id: string;
@@ -159,10 +159,14 @@ const TEMPLATE_LIBRARY = [
 
 const INDUSTRIES = [...new Set(TEMPLATE_LIBRARY.map((t) => t.industry))];
 
+function stripIndustryEmoji(name: string): string {
+  return name.replace(/^[\p{Emoji}\s]+/u, "").trim();
+}
+
 const FLOW_PACKS = [
   {
     id: "ecommerce",
-    emoji: "🛍️",
+    icon: ShoppingBag,
     label: "E-commerce Order Flow",
     desc: "Complete order journey — from purchase confirmation to delivery",
     color: "from-green-50 to-emerald-50 border-green-100",
@@ -175,7 +179,7 @@ const FLOW_PACKS = [
   },
   {
     id: "healthcare",
-    emoji: "🏥",
+    icon: Heart,
     label: "Healthcare Patient Flow",
     desc: "Complete patient journey — from booking to post-visit care",
     color: "from-blue-50 to-cyan-50 border-blue-100",
@@ -188,7 +192,7 @@ const FLOW_PACKS = [
   },
   {
     id: "restaurant",
-    emoji: "🍽️",
+    icon: UtensilsCrossed,
     label: "Restaurant Table Flow",
     desc: "Booking to post-meal loyalty — keep customers coming back",
     color: "from-orange-50 to-amber-50 border-orange-100",
@@ -200,7 +204,7 @@ const FLOW_PACKS = [
   },
   {
     id: "real_estate",
-    emoji: "🏠",
+    icon: Home,
     label: "Real Estate Buyer Flow",
     desc: "From first inquiry to signing — guide buyers step by step",
     color: "from-violet-50 to-purple-50 border-violet-100",
@@ -213,7 +217,7 @@ const FLOW_PACKS = [
   },
   {
     id: "salon",
-    emoji: "💇",
+    icon: Scissors,
     label: "Salon Customer Flow",
     desc: "Booking to follow-up — reduce no-shows and build loyalty",
     color: "from-rose-50 to-pink-50 border-rose-100",
@@ -226,7 +230,7 @@ const FLOW_PACKS = [
   },
   {
     id: "education",
-    emoji: "🎓",
+    icon: GraduationCap,
     label: "Education Student Flow",
     desc: "Admission to results — keep students engaged throughout",
     color: "from-yellow-50 to-amber-50 border-yellow-100",
@@ -486,7 +490,9 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
               {FLOW_PACKS.map((pack) => (
                 <div key={pack.id} className={`border rounded-2xl p-5 bg-gradient-to-br ${pack.color}`}>
                   <div className="flex items-start gap-3 mb-4">
-                    <span className="text-2xl">{pack.emoji}</span>
+                    <div className="w-9 h-9 rounded-xl bg-white/70 flex items-center justify-center shrink-0">
+                      <pack.icon className="w-5 h-5 text-slate-700" />
+                    </div>
                     <div>
                       <p className="font-black text-slate-900 text-sm">{pack.label}</p>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">{pack.desc}</p>
@@ -528,7 +534,7 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
                       onClick={() => setSelectedIndustry(ind)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${selectedIndustry === ind ? "bg-[#25D366] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
                     >
-                      {ind}
+                      {stripIndustryEmoji(ind)}
                     </button>
                   ))}
                 </div>
