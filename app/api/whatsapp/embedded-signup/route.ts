@@ -10,18 +10,20 @@ import { NextResponse } from "next/server";
  */
 export async function GET() {
   const session = await getSession();
+  const appUrl = env.APP_URL.replace(/\/$/, "");
+
   if (!session) {
-    return NextResponse.redirect(`${env.APP_URL}/signin?redirect=/wa/connect`);
+    return NextResponse.redirect(`${appUrl}/signin?redirect=/wa/connect`);
   }
 
   const appId = env.NEXT_PUBLIC_FACEBOOK_APP_ID;
   const configId = env.NEXT_PUBLIC_FB_CONFIG_ID;
 
   if (!appId || !configId) {
-    return NextResponse.redirect(`${env.APP_URL}/wa/connect?error=Server+configuration+error`);
+    return NextResponse.redirect(`${appUrl}/wa/connect?error=Server+configuration+error`);
   }
 
-  const redirectUri = `${env.APP_URL}/api/whatsapp/embedded-signup/callback`;
+  const redirectUri = `${appUrl}/api/whatsapp/embedded-signup/callback`;
 
   const url = new URL("https://www.facebook.com/v25.0/dialog/oauth");
   url.searchParams.set("client_id", appId);

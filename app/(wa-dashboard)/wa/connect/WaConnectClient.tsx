@@ -280,19 +280,32 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     );
   }
 
+  const isMobileDevice = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
   return (
     <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm">
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-black text-slate-900 mb-3">WhatsApp Embedded Signup</h2>
+        <h2 className="text-2xl font-black text-slate-900 mb-3">Connect WhatsApp</h2>
         <p className="text-slate-500 font-medium max-w-md mx-auto">
-          Connect your WhatsApp Business Account in just 1 click.
+          Connect your WhatsApp Business Account to start sending messages and automations.
         </p>
       </div>
       <div className="max-w-xs mx-auto space-y-4">
-        {error && <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold leading-relaxed">{error}</div>}
+        {error && (
+          <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-bold leading-relaxed">
+            {error}
+            {error.includes("blocked") || error.includes("redirect") ? (
+              <p className="mt-2 text-xs font-normal text-rose-500">
+                Go to Meta App → Facebook Login for Business → Settings → Valid OAuth Redirect URIs and add:<br />
+                <span className="font-mono break-all select-all">{window.location.origin}/api/whatsapp/embedded-signup/callback</span>
+                <br />Then click Save Changes and try again.
+              </p>
+            ) : null}
+          </div>
+        )}
         {polling && (
           <div className="p-3 rounded-xl bg-blue-50 text-blue-700 text-sm font-medium text-center">
-            Waiting for Facebook to complete setup… Please finish the steps in the tab that opened.
+            Completing setup… please wait.
           </div>
         )}
         <button
@@ -301,9 +314,18 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
           className="w-full flex items-center justify-center gap-3 py-4 bg-[#1877F2] hover:bg-[#166fe5] transition-colors text-white rounded-xl font-bold disabled:opacity-70"
         >
           {isLoading ? (
-            <><Loader2 className="w-5 h-5 animate-spin" />{polling ? "Verifying connection…" : "Connecting…"}</>
+            <><Loader2 className="w-5 h-5 animate-spin" />Connecting…</>
           ) : "Login with Facebook"}
         </button>
+        {isMobileDevice && !isLoading && (
+          <p className="text-center text-xs text-slate-400 leading-relaxed">
+            If you see a "URL blocked" error from Facebook,{" "}
+            <a href="/wa/connect" className="text-[#1877F2] font-semibold underline" onClick={(e) => { e.preventDefault(); window.location.href = window.location.href; }}>
+              try again
+            </a>{" "}
+            or open this page on a desktop browser.
+          </p>
+        )}
       </div>
     </div>
   );
