@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
 
 declare global {
@@ -11,9 +12,10 @@ declare global {
 }
 
 export function WaConnectClient({ initialConnection }: { initialConnection: any }) {
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(!initialConnection);
-  const [error, setError] = useState<string | null>(null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [error, setError] = useState<string | null>(searchParams.get("error"));
+  const [showSuccessModal, setShowSuccessModal] = useState(searchParams.get("success") === "1");
   const [polling, setPolling] = useState(false);
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
 
@@ -122,11 +124,17 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setIsLoading(true);
     setError(null);
 
-    // Detect mobile — on mobile FB.login opens a new tab so the callback may never fire
+    // On mobile, FB.login() opens a new tab and the callback never fires back in the
+    // original window. Use a server-side redirect flow instead — it works on all devices.
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      window.location.href = "/api/whatsapp/embedded-signup";
+      return;
+    }
 
+    // Desktop: use FB.login() popup (works reliably in desktop browsers)
     window.FB.login((response: any) => {
-      stopPolling(); // callback fired — stop polling
+      stopPolling();
       if (response.authResponse) {
         exchangeCodeForToken(response.authResponse.code, wabaIdRef.current, phoneIdRef.current);
       } else {
@@ -141,17 +149,6 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       override_default_response_type: true,
       extras: { "sessionInfoVersion": "3", "version": "v4" }
     });
-
-    // On mobile, show waiting state immediately then begin polling after popup opens.
-    // Guard: only start if the FB callback hasn't already fired (which calls stopPolling
-    // and leaves pollIntervalRef.current as null — but in that case we'd also have
-    // navigated away or shown the success modal, so check isLoading via a ref).
-    if (isMobile) {
-      setPolling(true);
-      setTimeout(() => {
-        if (!pollIntervalRef.current) startPolling();
-      }, 2000);
-    }
   };
 
   const exchangeCodeForToken = async (code: string, wabaId: string | null, phoneNumberId: string | null) => {
