@@ -30,6 +30,16 @@ export async function POST(req: Request) {
     // Update last_used_at (fire-and-forget, non-blocking)
     supabase.from("wa_api_keys").update({ last_used_at: new Date().toISOString() }).eq("api_key", apiKey).then(() => {});
 
+    // API access requires a paid plan — always read fresh from DB (JWT is stale)
+    const { data: userRow } = await supabase.from("users").select("plan_type").eq("id", keyRow.user_id).single();
+    const planKey = (userRow?.plan_type?.toUpperCase() || "FREE");
+    if (planKey === "FREE" || planKey === "EXPIRED") {
+      return NextResponse.json({
+        error: "API access requires a paid plan. Upgrade to Growth or Pro at replykaro.in.",
+        code: "PLAN_REQUIRED",
+      }, { status: 403 });
+    }
+
     // Get WA connection for this user
     const { data: conn } = await supabase
       .from("wa_connections")
