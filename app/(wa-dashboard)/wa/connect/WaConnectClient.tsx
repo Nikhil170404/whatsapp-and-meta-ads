@@ -11,7 +11,7 @@ declare global {
 }
 
 export function WaConnectClient({ initialConnection }: { initialConnection: any }) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(!initialConnection);
   const [error, setError] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [polling, setPolling] = useState(false);
@@ -58,6 +58,23 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
   useEffect(() => {
     return () => stopPolling();
   }, []);
+
+  // Silently try to connect using the stored login token — avoids a second FB.login()
+  useEffect(() => {
+    if (initialConnection) return; // already connected
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/whatsapp/auto-connect", { method: "POST" });
+        if (cancelled) return;
+        if (res.ok) {
+          setShowSuccessModal(true);
+        }
+      } catch {}
+      if (!cancelled) setIsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [initialConnection]);
 
   useEffect(() => {
     if (document.getElementById('facebook-jssdk')) return;
@@ -147,7 +164,8 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
 
       const data = await res.json();
       if (res.status === 401) {
-        window.location.href = "/signin?redirect=/wa/connect";
+        setError("Session expired. Please refresh the page and try again.");
+        setIsLoading(false);
         return;
       }
       if (!res.ok) throw new Error(data.details || data.error || "Failed to exchange token.");
