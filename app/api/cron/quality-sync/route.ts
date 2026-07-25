@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { getPhoneNumberQuality } from "@/lib/whatsapp/service";
+import { verifyCronRequest } from "@/lib/cron-auth";
 
 /**
  * Quality-sync cron — runs once daily.
@@ -15,9 +16,9 @@ import { getPhoneNumberQuality } from "@/lib/whatsapp/service";
  * once Meta restores the quality rating.
  */
 export async function GET(req: Request) {
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = verifyCronRequest(req);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
 
   const supabase = getSupabaseAdmin() as any;
