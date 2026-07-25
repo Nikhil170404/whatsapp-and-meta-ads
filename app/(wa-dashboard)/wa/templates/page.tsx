@@ -8,11 +8,12 @@ export default async function WaTemplatesPage() {
   if (!session) redirect("/signin");
 
   const supabase = getSupabaseAdmin() as any;
-  const { data: templates } = await supabase
-    .from("wa_templates")
-    .select("*")
-    .eq("user_id", session.id)
-    .order("created_at", { ascending: false });
+  const [{ data: templates }, { data: userRow }] = await Promise.all([
+    supabase.from("wa_templates").select("*").eq("user_id", session.id).order("created_at", { ascending: false }),
+    supabase.from("users").select("plan_type").eq("id", session.id).maybeSingle(),
+  ]);
 
-  return <TemplatesClient initialTemplates={templates ?? []} />;
+  const planType: string = (userRow?.plan_type || "free").toLowerCase();
+
+  return <TemplatesClient initialTemplates={templates ?? []} planType={planType} />;
 }

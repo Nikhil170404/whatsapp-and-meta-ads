@@ -27,6 +27,22 @@ import { SafeImage } from "@/components/ui/safe-image";
 
 interface SidebarProps {
   user: SessionUser;
+  planType?: string;
+}
+
+function planBadgeClass(plan: string) {
+  switch (plan) {
+    case "pro": return "bg-violet-100 text-violet-700";
+    case "growth":
+    case "starter": return "bg-[#25D366]/15 text-[#1DA851]";
+    case "expired": return "bg-rose-100 text-rose-600";
+    default: return "bg-slate-100 text-slate-500";
+  }
+}
+
+function planLabel(plan: string) {
+  if (!plan) return "Free";
+  return plan.charAt(0).toUpperCase() + plan.slice(1);
 }
 
 const navigation = [
@@ -53,7 +69,8 @@ const bottomTabs = [
   { name: "More", href: "__more__", icon: MoreHorizontal },
 ];
 
-export function WaSidebar({ user }: SidebarProps) {
+export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
+  const plan = (planTypeProp || user.plan_type || "free").toLowerCase();
   const pathname = usePathname();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
@@ -148,9 +165,9 @@ export function WaSidebar({ user }: SidebarProps) {
                 <div className="flex flex-col gap-1 mt-0.5">
                   <span className={cn(
                     "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md w-fit",
-                    "bg-[#25D366]/10 text-[#25D366]"
+                    planBadgeClass(plan)
                   )}>
-                    {user.plan_type} plan
+                    {planLabel(plan)} plan
                   </span>
                 </div>
               </div>
@@ -276,7 +293,7 @@ export function WaSidebar({ user }: SidebarProps) {
               <p className="text-sm font-bold text-slate-900">
                 {user.email || 'User'}
               </p>
-              <p className="text-xs text-[#25D366] uppercase font-black tracking-wider">{user.plan_type} plan</p>
+              <p className={cn("text-xs uppercase font-black tracking-wider", planBadgeClass(plan).split(" ")[1])}>{planLabel(plan)} plan</p>
             </div>
           </div>
           <a
@@ -299,7 +316,7 @@ export function WaSidebar({ user }: SidebarProps) {
             <span className="text-base font-black text-slate-900 tracking-tighter">ReplyKaro</span>
           </Link>
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black uppercase tracking-widest text-[#25D366] bg-[#25D366]/10 px-2 py-1 rounded-lg">{user.plan_type}</span>
+            <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg", planBadgeClass(plan))}>{planLabel(plan)}</span>
           </div>
         </div>
       </div>
