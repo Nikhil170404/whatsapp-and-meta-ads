@@ -77,5 +77,43 @@ export async function GET() {
       : "No phone number registered. Add and verify a number in the WhatsApp signup flow.",
   });
 
+  // Is this app subscribed to the WABA's webhooks? Without this Meta never
+  // delivers inbound messages, so no automation can ever fire.
+  if (wabaId) {
+    try {
+      const res = await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps?access_token=${token}`);
+      const json = await res.json();
+      const apps = json?.data || [];
+      const subscribed = apps.some((a: any) => String(a?.whatsapp_business_api_data?.id) === String(appId));
+      checks.push({
+        name: "Webhook subscription",
+        status: subscribed ? "pass" : "fail",
+        detail: subscribed
+          ? "This app is subscribed to the WABA's webhooks."
+          : `App ${appId} is NOT subscribed to WABA ${wabaId}. Reconnect to subscribe, and make sure the Webhooks callback URL is configured in the Meta App dashboard.`,
+      });
+    } catch {
+      checks.push({ name: "Webhook subscription", status: "warn", detail: "Could not read subscribed_apps." });
+    }
+  }
+
+  // What is actually stored, and does it match what Meta reports?
+  const { data: conn } = await supabase
+    .from("wa_connections")
+    .select("phone_number_id, waba_id, status")
+    .eq("user_id", session.id)
+    .single();
+
+  if (conn) {
+    const mismatch = phoneNumberId && conn.phone_number_id !== phoneNumberId;
+    checks.push({
+      name: "Saved connection",
+      status: mismatch || conn.phone_number_id === conn.waba_id ? "fail" : "pass",
+      detail: mismatch
+        ? `Stored phone_number_id ${conn.phone_number_id} does not match Meta's ${phoneNumberId}. Inbound messages are being dropped — reload this page to repair it.`
+        : `status=${conn.status}, phone_number_id=${conn.phone_number_id}, waba_id=${conn.waba_id}`,
+    });
+  }
+
   return NextResponse.json({ ok: Boolean(wabaId && phoneNumberId), checks });
 }
