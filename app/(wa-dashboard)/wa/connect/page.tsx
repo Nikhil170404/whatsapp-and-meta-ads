@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
 import { redirect } from "next/navigation";
 import { WaConnectClient } from "./WaConnectClient";
-import { getPhoneNumberInfo } from "@/lib/whatsapp/service";
+import { resolveWabaFromToken, fetchPhoneDetails } from "@/lib/whatsapp/waba-lookup";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -37,92 +37,56 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
       }
     } catch {}
 
-    // 3. Get WABA ID and phone number ID from granular_scopes.
-    // Embedded Signup populates this with exactly what the user selected — works for all
-    // account types including System Users where /me/whatsapp_business_accounts is empty.
-    let resolvedWabaId: string | null = null;
-    let resolvedPhoneNumberId: string | null = null;
-    try {
-      const scopesRes = await fetch(`${WA_API_URL}/me?fields=granular_scopes&access_token=${finalToken}`);
-      const scopesData = await scopesRes.json();
-      for (const s of scopesData?.granular_scopes || []) {
-        if (s.scope === "whatsapp_business_management" && s.target_ids?.[0]) resolvedWabaId = s.target_ids[0];
-        if (s.scope === "whatsapp_business_messaging" && s.target_ids?.[0]) resolvedPhoneNumberId = s.target_ids[0];
-      }
-    } catch {}
+    // 3. Resolve WABA + phone number via debug_token granular_scopes (authoritative).
+    const { wabaId, phoneNumberId, diagnostics } = await resolveWabaFromToken(finalToken, appId, appSecret);
 
-    // 4. Resolve WABA node details using the IDs we already know
-    let firstWaba: any = null;
-    if (resolvedWabaId) {
-      try {
-        const wabaRes = await fetch(`${WA_API_URL}/${resolvedWabaId}?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
-        const wabaNode = await wabaRes.json();
-        if (wabaNode?.id) firstWaba = wabaNode;
-      } catch {}
-    }
-
-    // 4b. Fallback — direct user/business listing endpoints
-    if (!firstWaba?.id) {
-      try {
-        const wabaRes = await fetch(`${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
-        const wabaData = await wabaRes.json();
-        firstWaba = wabaData?.data?.[0] || null;
-      } catch {}
-    }
-    if (!firstWaba?.id) {
-      try {
-        const bizRes = await fetch(`${WA_API_URL}/me/businesses?fields=id,whatsapp_business_accounts{id,phone_numbers{id,display_phone_number,verified_name}}&access_token=${finalToken}`);
-        const bizData = await bizRes.json();
-        for (const biz of bizData?.data || []) {
-          const waba = biz?.whatsapp_business_accounts?.data?.[0];
-          if (waba?.id) { firstWaba = waba; break; }
-        }
-      } catch {}
-    }
-
-    let firstPhone = firstWaba?.phone_numbers?.data?.[0];
-
-    // If granular_scopes gave us a WABA ID but the node fetch didn't include phone numbers,
-    // fetch them explicitly from /{wabaId}/phone_numbers
-    const wabaId = resolvedWabaId || firstWaba?.id || "unknown";
-    if (!firstPhone && wabaId !== "unknown") {
-      try {
-        const pnRes = await fetch(`${WA_API_URL}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${finalToken}`);
-        const pnData = await pnRes.json();
-        firstPhone = pnData?.data?.[0] || null;
-      } catch {}
-    }
-
-    const phoneNumberId = resolvedPhoneNumberId || firstPhone?.id || "unknown";
-    let phoneNumber = firstPhone?.display_phone_number || "Verified Number";
-    let displayName = firstPhone?.verified_name || "WhatsApp Business";
-
-    if (phoneNumberId && phoneNumberId !== "unknown") {
-      try {
-        const info = await getPhoneNumberInfo(phoneNumberId, finalToken);
-        if (info.display_phone_number) phoneNumber = info.display_phone_number;
-        if (info.verified_name) displayName = info.verified_name;
-      } catch {}
-    }
-
-    // 5. Subscribe webhooks
-    if (wabaId !== "unknown") {
-      await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${finalToken}`, "Content-Type": "application/json" },
-      }).catch(() => {});
-    }
-
-    // 6. Save connection
     const supabase = getSupabaseAdmin() as any;
+
+    // Always keep the freshest user token, even if no WABA is attached to it.
+    await supabase.from("users").update({ fb_access_token: finalToken, fb_token_expires_at: tokenExpiresAt }).eq("id", userId);
+
+    // 4. No WABA on this token — do not fabricate an "active" connection. Report why.
+    if (!wabaId) {
+      await supabase
+        .from("wa_connections")
+        .update({ status: "disconnected", last_error: diagnostics.join(" | "), last_error_at: new Date().toISOString() })
+        .eq("user_id", userId);
+      return { success: false, error: encodeURIComponent(diagnostics.join(" | ") || "No WhatsApp Business Account is attached to this Facebook account.") };
+    }
+
+    // 5. Enrich with the phone number's display number and verified business name.
+    let phoneNumber = "Verified Number";
+    let displayName = "WhatsApp Business";
+    if (phoneNumberId) {
+      const details = await fetchPhoneDetails(phoneNumberId, finalToken);
+      if (details?.display_phone_number) phoneNumber = details.display_phone_number;
+      if (details?.verified_name) displayName = details.verified_name;
+    }
+
+    // 6. Subscribe the app to this WABA's webhooks.
+    await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${finalToken}`, "Content-Type": "application/json" },
+    }).catch(() => {});
+
+    // 7. Save the connection.
     const { error: dbError } = await supabase.from("wa_connections").upsert(
-      { user_id: userId, phone_number_id: phoneNumberId, waba_id: wabaId, phone_number: phoneNumber, display_name: displayName, access_token: finalToken, token_expires_at: tokenExpiresAt, status: "active", updated_at: new Date().toISOString() },
+      {
+        user_id: userId,
+        phone_number_id: phoneNumberId || "unknown",
+        waba_id: wabaId,
+        phone_number: phoneNumber,
+        display_name: displayName,
+        access_token: finalToken,
+        token_expires_at: tokenExpiresAt,
+        status: "active",
+        last_error: null,
+        last_error_at: null,
+        updated_at: new Date().toISOString(),
+      },
       { onConflict: "user_id" }
     );
     if (dbError) return { success: false, error: "Database+error" };
-
-    // 6. Update stored user token
-    await supabase.from("users").update({ fb_access_token: finalToken, fb_token_expires_at: tokenExpiresAt }).eq("id", userId).catch(() => {});
 
     return { success: true };
   } catch {
@@ -151,11 +115,18 @@ export default async function WaConnectPage({
   }
 
   const supabase = getSupabaseAdmin() as any;
-  const { data: connection } = await supabase
+  const { data: row } = await supabase
     .from("wa_connections")
     .select("*")
     .eq("user_id", session.id)
     .single();
+
+  // A row with no real WABA ID is not a usable connection — older builds saved these
+  // as "active". Surface it as not-connected so the user gets the signup button back,
+  // while still showing why the previous attempt failed.
+  const isUsable = row?.status === "active" && row?.waba_id && row.waba_id !== "unknown";
+  const connection = isUsable ? row : null;
+  const previousError: string | null = !isUsable ? row?.last_error ?? null : null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -164,7 +135,7 @@ export default async function WaConnectPage({
         <p className="text-slate-500 font-medium mt-1">Link your WhatsApp Business Account to enable API access and automations.</p>
       </div>
 
-      <WaConnectClient initialConnection={connection} />
+      <WaConnectClient initialConnection={connection} previousError={previousError} />
     </div>
   );
 }
