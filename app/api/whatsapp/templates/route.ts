@@ -73,10 +73,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Name and body text are required" }, { status: 400 });
     }
 
+    const supabase = getSupabaseAdmin() as any;
+
+    // Template creation requires STARTER or PRO — read fresh from DB (JWT is stale)
+    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
+    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE");
+    if (planKey === "FREE" || planKey === "EXPIRED") {
+      return NextResponse.json({
+        error: "Message templates require a paid plan. Upgrade to Growth or Pro to create and submit templates to Meta.",
+        code: "PLAN_REQUIRED",
+      }, { status: 403 });
+    }
+
     // Template names must be lowercase with underscores for Meta
     const metaName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-
-    const supabase = getSupabaseAdmin() as any;
 
     // Save to DB first
     const { data, error } = await supabase

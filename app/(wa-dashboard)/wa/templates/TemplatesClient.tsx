@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package, Trash2 } from "lucide-react";
+import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package, Trash2, Lock } from "lucide-react";
 
 interface Template {
   id: string;
@@ -239,8 +239,10 @@ const FLOW_PACKS = [
   },
 ];
 
-export function TemplatesClient({ initialTemplates }: { initialTemplates: Template[] }) {
+export function TemplatesClient({ initialTemplates, planType }: { initialTemplates: Template[]; planType?: string }) {
+  const isPaidPlan = planType !== undefined && planType !== "free" && planType !== "expired";
   const [templates, setTemplates] = useState(initialTemplates);
+  const [showUpgradeGate, setShowUpgradeGate] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -267,7 +269,15 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
     setShowFlows(false);
   };
 
+  const openNewForm = () => {
+    if (!isPaidPlan) { setShowUpgradeGate(true); setShowLibrary(false); return; }
+    setShowForm(true);
+    setShowLibrary(false);
+    setShowFlows(false);
+  };
+
   const applyTemplate = (tpl: typeof TEMPLATE_LIBRARY[0]) => {
+    if (!isPaidPlan) { setShowUpgradeGate(true); setShowLibrary(false); return; }
     const nameSlug = tpl.label.toLowerCase().replace(/[^a-z0-9]+/g, "_");
     setForm((f) => ({ ...f, body_text: tpl.text, category: tpl.category, name: f.name || nameSlug }));
     setShowLibrary(false);
@@ -280,11 +290,19 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
     if (tpl) applyTemplate(tpl);
   };
 
+  // Meta rejects templates containing URL shorteners (bit.ly, tinyurl, etc.)
+  const URL_SHORTENER_RE = /\b(bit\.ly|tinyurl\.com|ow\.ly|goo\.gl|t\.co|rb\.gy|shorturl\.at|tiny\.cc|cutt\.ly|rebrand\.ly|is\.gd|buff\.ly|dlvr\.it|ift\.tt|hubs\.ly|smarturl\.it|youtu\.be\/[a-zA-Z0-9_-]{4,})\b/i;
+
   const handleCreate = async () => {
     if (!form.name.trim()) return setError("Template name is required.");
     if (!/^[a-z0-9_]+$/.test(form.name.trim())) return setError("Name must be lowercase letters, numbers, and underscores only.");
     if (!form.body_text.trim()) return setError("Template body is required.");
     if (form.body_text.length < 10) return setError("Template body is too short.");
+    if (URL_SHORTENER_RE.test(form.body_text)) {
+      return setError(
+        "URL shorteners are not allowed in WhatsApp templates — Meta will reject this. Replace bit.ly, tinyurl, etc. with the full destination URL (e.g. replykaro.in/pricing instead of bit.ly/abc)."
+      );
+    }
 
     setSaving(true);
     setError(null);
@@ -357,7 +375,7 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
             <span className="whitespace-nowrap">{TEMPLATE_LIBRARY.length}+ Templates</span>
           </button>
           <button
-            onClick={() => { setShowForm(true); setShowLibrary(false); setShowFlows(false); }}
+            onClick={openNewForm}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-lg shadow-[#25D366]/20"
           >
             <Plus className="w-4 h-4" />
@@ -376,6 +394,45 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: Templa
               Browse our <span className="font-bold">{TEMPLATE_LIBRARY.length}+ prebuilt templates</span> across 15 industries, or use a <span className="font-bold">Business Flow</span> to set up a complete customer journey in minutes.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Upgrade gate */}
+      {showUpgradeGate && (
+        <div className="bg-white rounded-[2rem] border border-violet-200 shadow-lg shadow-violet-500/5 p-6 md:p-8">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+              <Lock className="w-6 h-6 text-violet-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">Upgrade to create Templates</h2>
+              <p className="text-sm text-slate-500 font-medium mt-1">Message templates require a Growth or Pro plan to submit for Meta approval.</p>
+            </div>
+            <button onClick={() => setShowUpgradeGate(false)} className="ml-auto p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            {[
+              { label: "Meta-approved templates", desc: "Create and submit templates directly to WhatsApp" },
+              { label: "150+ prebuilt templates", desc: "Pick from our library across 15 industries" },
+              { label: "Use in Broadcasts", desc: "Send templates to thousands of contacts at once" },
+            ].map((f) => (
+              <div key={f.label} className="flex items-start gap-2.5 p-3 bg-violet-50 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{f.label}</p>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <a
+            href="/wa/billing"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-violet-500/25"
+          >
+            View Plans & Upgrade →
+          </a>
         </div>
       )}
 

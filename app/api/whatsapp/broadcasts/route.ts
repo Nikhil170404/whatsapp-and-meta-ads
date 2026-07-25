@@ -39,6 +39,16 @@ export async function POST(req: Request) {
 
     const supabase = getSupabaseAdmin() as any;
 
+    // Always read plan_type fresh from DB — JWT is stale for up to 7 days
+    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
+    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE");
+    if (planKey === "FREE" || planKey === "EXPIRED") {
+      return NextResponse.json({
+        error: "Broadcasts require a paid plan. Upgrade to Growth or Pro to send bulk messages.",
+        code: "PLAN_REQUIRED",
+      }, { status: 403 });
+    }
+
     // Verify the template and every contact belong to this user, so a caller
     // can't broadcast to (or through) another user's data by passing foreign IDs.
     const { data: ownedTemplate } = await supabase

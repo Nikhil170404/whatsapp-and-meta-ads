@@ -9,9 +9,37 @@ export async function GET() {
   const supabase = getSupabaseAdmin() as any;
   const { data } = await supabase
     .from("wa_connections")
-    .select("status")
+    .select(
+      "status, quality_rating, messaging_tier, quality_paused_at, token_expires_at, token_refresh_failed_at, last_error, last_error_at, daily_unique_sent, daily_sent_reset_at"
+    )
     .eq("user_id", session.id)
     .single();
 
-  return NextResponse.json({ connected: data?.status === "active" });
+  if (!data) return NextResponse.json({ connected: false });
+
+  const isConnected = data.status === "active";
+  const tokenExpiresAt = data.token_expires_at
+    ? new Date(data.token_expires_at)
+    : null;
+  const now = new Date();
+  const daysUntilExpiry = tokenExpiresAt
+    ? Math.floor((tokenExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  return NextResponse.json({
+    connected: isConnected,
+    status: data.status,
+    qualityRating: data.quality_rating ?? "UNKNOWN",
+    messagingTier: data.messaging_tier ?? 1,
+    qualityPaused: !!data.quality_paused_at,
+    tokenExpiresAt: data.token_expires_at,
+    daysUntilExpiry,
+    tokenNeedsAttention:
+      data.token_refresh_failed_at !== null ||
+      (daysUntilExpiry !== null && daysUntilExpiry < 7),
+    lastError: data.last_error,
+    lastErrorAt: data.last_error_at,
+    dailyUniqueSent: data.daily_unique_sent ?? 0,
+    dailySentResetAt: data.daily_sent_reset_at,
+  });
 }

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { verifyCronRequest } from "@/lib/cron-auth";
 
 export async function GET(req: Request) {
-  // Verify cron secret to prevent unauthorized calls
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = verifyCronRequest(req);
+  if (!auth.authorized) {
+    return NextResponse.json({ error: auth.message }, { status: auth.status });
   }
 
   const supabase = getSupabaseAdmin() as any;

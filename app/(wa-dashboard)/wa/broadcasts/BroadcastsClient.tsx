@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2 } from "lucide-react";
+import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2, Lock } from "lucide-react";
 
 interface Broadcast {
   id: string;
@@ -20,6 +20,7 @@ interface Template {
   name: string;
   body_text: string;
   status: string;
+  category: string;
 }
 
 interface Contact {
@@ -33,11 +34,15 @@ interface Contact {
 export function BroadcastsClient({
   initialBroadcasts,
   templates,
+  planType,
 }: {
   initialBroadcasts: Broadcast[];
   templates: Template[];
+  planType?: string;
 }) {
+  const isPaidPlan = planType !== undefined && planType !== "free" && planType !== "expired";
   const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
+  const [showUpgradeGate, setShowUpgradeGate] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
@@ -77,6 +82,10 @@ export function BroadcastsClient({
   );
 
   const openForm = async () => {
+    if (!isPaidPlan) {
+      setShowUpgradeGate(true);
+      return;
+    }
     setShowForm(true);
     setStep(1);
     setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "" });
@@ -216,6 +225,45 @@ export function BroadcastsClient({
         </button>
       </div>
 
+      {/* Upgrade gate */}
+      {showUpgradeGate && (
+        <div className="bg-white rounded-[2rem] border border-violet-200 shadow-lg shadow-violet-500/5 p-6 md:p-8">
+          <div className="flex items-start gap-4 mb-5">
+            <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
+              <Lock className="w-6 h-6 text-violet-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-900">Upgrade to send Broadcasts</h2>
+              <p className="text-sm text-slate-500 font-medium mt-1">Broadcasts are available on the Growth and Pro plans.</p>
+            </div>
+            <button onClick={() => setShowUpgradeGate(false)} className="ml-auto p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors shrink-0">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            {[
+              { label: "Bulk broadcasts", desc: "Send one message to hundreds of contacts at once" },
+              { label: "Scheduled sends", desc: "Queue broadcasts for the perfect time" },
+              { label: "Delivery analytics", desc: "Track sent, delivered, read, and failed counts" },
+            ].map((f) => (
+              <div key={f.label} className="flex items-start gap-2.5 p-3 bg-violet-50 rounded-xl">
+                <CheckCircle2 className="w-4 h-4 text-violet-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-slate-900">{f.label}</p>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <a
+            href="/wa/billing"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-violet-500/25"
+          >
+            View Plans & Upgrade →
+          </a>
+        </div>
+      )}
+
       {/* No approved templates warning */}
       {approvedTemplates.length === 0 && !showForm && (
         <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5 flex gap-3">
@@ -321,6 +369,19 @@ export function BroadcastsClient({
                       )}
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Marketing frequency cap notice */}
+              {selectedTemplate?.category === "MARKETING" && (
+                <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-700">Marketing template frequency cap</p>
+                    <p className="text-[11px] text-amber-600 font-medium mt-0.5 leading-snug">
+                      Meta allows a maximum of 2 marketing messages per user per 24 hours globally. Sending too frequently increases block rates and degrades your quality score.
+                    </p>
+                  </div>
                 </div>
               )}
 

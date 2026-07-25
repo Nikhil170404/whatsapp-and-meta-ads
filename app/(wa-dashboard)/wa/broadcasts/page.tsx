@@ -8,10 +8,13 @@ export default async function WaBroadcastsPage() {
   if (!session) redirect("/signin");
 
   const supabase = getSupabaseAdmin() as any;
-  const [{ data: broadcasts }, { data: templates }] = await Promise.all([
+  const [{ data: broadcasts }, { data: templates }, { data: userRow }] = await Promise.all([
     supabase.from("wa_broadcasts").select("*").eq("user_id", session.id).order("created_at", { ascending: false }),
-    supabase.from("wa_templates").select("id,name,body_text,status").eq("user_id", session.id).order("created_at", { ascending: false }),
+    supabase.from("wa_templates").select("id,name,body_text,status,category").eq("user_id", session.id).order("created_at", { ascending: false }),
+    supabase.from("users").select("plan_type").eq("id", session.id).maybeSingle(),
   ]);
 
-  return <BroadcastsClient initialBroadcasts={broadcasts ?? []} templates={templates ?? []} />;
+  const planType: string = (userRow?.plan_type || "free").toLowerCase();
+
+  return <BroadcastsClient initialBroadcasts={broadcasts ?? []} templates={templates ?? []} planType={planType} />;
 }

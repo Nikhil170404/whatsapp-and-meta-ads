@@ -1,17 +1,16 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Navigation } from "@/components/ui/Navigation";
 import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Privacy Policy | ReplyKaro",
-  description: "Privacy Policy for ReplyKaro WhatsApp and Meta Ads automation services.",
+  description: "Read how ReplyKaro collects, uses and protects your personal data when you use our WhatsApp Business and Meta Ads automation services.",
+  alternates: { canonical: "https://www.replykaro.in/privacy" },
 };
 
 export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen bg-slate-50 selection:bg-[#25D366]/20">
-      <Navigation />
       
       <main className="pt-32 pb-24">
         <div className="container mx-auto px-4 max-w-4xl">

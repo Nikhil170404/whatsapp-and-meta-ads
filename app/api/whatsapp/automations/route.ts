@@ -29,10 +29,23 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { name, trigger_keyword, trigger_type, reply_message } = body;
+    const { name, trigger_keyword, trigger_type, reply_message, message_type, media_url, button_options } = body;
 
-    if (!name || !reply_message) {
-      return NextResponse.json({ error: "Name and reply message are required" }, { status: 400 });
+    if (!name) {
+      return NextResponse.json({ error: "Automation name is required" }, { status: 400 });
+    }
+    const msgType = message_type || "text";
+    if (msgType === "text" && !reply_message) {
+      return NextResponse.json({ error: "Reply message is required for text automations" }, { status: 400 });
+    }
+    if ((msgType === "image" || msgType === "video" || msgType === "document") && !media_url) {
+      return NextResponse.json({ error: "Media URL is required for image/video/document automations" }, { status: 400 });
+    }
+    if (msgType === "buttons") {
+      if (!reply_message) return NextResponse.json({ error: "Body text is required for button messages" }, { status: 400 });
+      const btns = button_options?.buttons ?? [];
+      if (!btns.length) return NextResponse.json({ error: "Add at least one button (max 3)" }, { status: 400 });
+      if (btns.length > 3) return NextResponse.json({ error: "Maximum 3 buttons allowed by Meta" }, { status: 400 });
     }
 
     const rl = await checkRateLimit("automations", `user:${session.id}`);
@@ -59,7 +72,10 @@ export async function POST(req: Request) {
         name,
         trigger_keyword: trigger_keyword || null,
         trigger_type: trigger_type || "keyword",
-        reply_message,
+        reply_message: reply_message || null,
+        message_type: msgType,
+        media_url: media_url || null,
+        button_options: button_options || null,
         is_active: true,
       })
       .select()
@@ -78,7 +94,7 @@ export async function PATCH(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { id, is_active, name, trigger_type, trigger_keyword, reply_message } = body;
+    const { id, is_active, name, trigger_type, trigger_keyword, reply_message, message_type, media_url, button_options } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Automation ID is required" }, { status: 400 });
@@ -90,6 +106,9 @@ export async function PATCH(req: Request) {
     if (trigger_type !== undefined) updates.trigger_type = trigger_type;
     if (trigger_keyword !== undefined) updates.trigger_keyword = trigger_keyword;
     if (reply_message !== undefined) updates.reply_message = reply_message;
+    if (message_type !== undefined) updates.message_type = message_type;
+    if (media_url !== undefined) updates.media_url = media_url;
+    if (button_options !== undefined) updates.button_options = button_options;
 
     const supabase = getSupabaseAdmin() as any;
     const { data, error } = await supabase

@@ -1,12 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/broadcasts",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/purge-messages",
-      "schedule": "0 2 * * *"
-    }
-  ]
-}
+{}
