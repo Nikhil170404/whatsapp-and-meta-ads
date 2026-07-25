@@ -90,11 +90,11 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
         <div className="grid gap-6 md:grid-cols-2 relative z-10">
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Phone Number</p>
-            <p className="font-bold text-slate-900">{initialConnection.phone_number}</p>
+            <p className="font-bold text-slate-900">{initialConnection.phone_number === "Verified Number" || initialConnection.phone_number === "unknown" ? "Syncing…" : initialConnection.phone_number}</p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">WABA ID</p>
-            <p className="font-bold text-slate-900">{initialConnection.waba_id}</p>
+            <p className="font-bold text-slate-900">{initialConnection.waba_id === "unknown" ? "Syncing…" : initialConnection.waba_id}</p>
           </div>
         </div>
 

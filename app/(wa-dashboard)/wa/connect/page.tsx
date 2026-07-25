@@ -37,12 +37,42 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
       }
     } catch {}
 
-    // 3. Fetch WABA info
-    const wabaRes = await fetch(`${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
-    const wabaData = await wabaRes.json();
-    const firstWaba = wabaData?.data?.[0];
+    // 3. Fetch WABA info — try multiple endpoints because System Users and Business Admins
+    // may only appear on one of them.
+    let firstWaba: any = null;
+
+    // 3a. Direct user → WABA link (works for personal Facebook accounts with WABA admin)
+    try {
+      const wabaRes = await fetch(`${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
+      const wabaData = await wabaRes.json();
+      firstWaba = wabaData?.data?.[0] || null;
+    } catch {}
+
+    // 3b. Business Portfolio → WABA (works for System Users and Business-level admins)
     if (!firstWaba?.id) {
-      return { success: false, error: "No+WhatsApp+Business+Account+found.+Complete+Meta+Business+Verification+first." };
+      try {
+        const bizRes = await fetch(`${WA_API_URL}/me/businesses?fields=id,whatsapp_business_accounts{id,phone_numbers{id,display_phone_number,verified_name}}&access_token=${finalToken}`);
+        const bizData = await bizRes.json();
+        for (const biz of bizData?.data || []) {
+          const waba = biz?.whatsapp_business_accounts?.data?.[0];
+          if (waba?.id) { firstWaba = waba; break; }
+        }
+      } catch {}
+    }
+
+    // 3c. Owned businesses (alt endpoint)
+    if (!firstWaba?.id) {
+      try {
+        const ownedRes = await fetch(`${WA_API_URL}/me/owned_whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${finalToken}`);
+        const ownedData = await ownedRes.json();
+        firstWaba = ownedData?.data?.[0] || null;
+      } catch {}
+    }
+
+    // 3d. If no WABA found via any endpoint, save with placeholder IDs so the token is stored.
+    // The WABA/phone IDs can be filled in later via webhook or re-connect.
+    if (!firstWaba?.id) {
+      firstWaba = { id: "unknown", phone_numbers: { data: [] } };
     }
 
     const firstPhone = firstWaba?.phone_numbers?.data?.[0];
