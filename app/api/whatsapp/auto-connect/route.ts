@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
+import { resolveWabaFromToken, fetchPhoneDetails } from "@/lib/whatsapp/waba-lookup";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -26,24 +27,33 @@ export async function POST() {
     const token = userRow?.fb_access_token;
     if (!token) return NextResponse.json({ error: "No stored token" }, { status: 404 });
 
-    // Check if the token already has WhatsApp WABA access
-    const wabaRes = await fetch(
-      `${WA_API_URL}/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${token}`
-    );
-    const wabaData = await wabaRes.json();
+    const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
+    const appSecret = process.env.FACEBOOK_APP_SECRET;
+    if (!appId || !appSecret) {
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+    }
 
-    const firstWaba = wabaData?.data?.[0];
-    if (!firstWaba?.id) {
+    // Resolve via debug_token granular_scopes — the only method that works for
+    // System Users and Business-Portfolio-owned WABAs.
+    const { wabaId, phoneNumberId, diagnostics } = await resolveWabaFromToken(token, appId, appSecret);
+
+    if (!wabaId) {
       return NextResponse.json(
-        { error: "Stored token does not have WhatsApp Business access. Manual signup required." },
+        { error: "Stored token has no WhatsApp Business Account attached.", diagnostics },
         { status: 404 }
       );
     }
 
-    const firstPhone = firstWaba?.phone_numbers?.data?.[0];
+    let phoneNumber = "Verified Number";
+    let displayName = "WhatsApp Business";
+    if (phoneNumberId) {
+      const details = await fetchPhoneDetails(phoneNumberId, token);
+      if (details?.display_phone_number) phoneNumber = details.display_phone_number;
+      if (details?.verified_name) displayName = details.verified_name;
+    }
 
     // Subscribe app to webhooks for this WABA
-    await fetch(`${WA_API_URL}/${firstWaba.id}/subscribed_apps`, {
+    await fetch(`${WA_API_URL}/${wabaId}/subscribed_apps`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     }).catch(() => {});
@@ -53,19 +63,21 @@ export async function POST() {
     await supabase.from("wa_connections").upsert(
       {
         user_id: session.id,
-        phone_number_id: firstPhone?.id || "unknown",
-        waba_id: firstWaba.id,
-        phone_number: firstPhone?.display_phone_number || "Verified Number",
-        display_name: firstPhone?.verified_name || "WhatsApp Business",
+        phone_number_id: phoneNumberId || "unknown",
+        waba_id: wabaId,
+        phone_number: phoneNumber,
+        display_name: displayName,
         access_token: token,
         token_expires_at: expiresAt,
         status: "active",
+        last_error: null,
+        last_error_at: null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }
     );
 
-    return NextResponse.json({ success: true, waba_id: firstWaba.id });
+    return NextResponse.json({ success: true, waba_id: wabaId });
   } catch (err) {
     console.error("auto-connect error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

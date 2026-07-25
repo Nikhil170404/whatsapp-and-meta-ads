@@ -2,14 +2,36 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, AlertTriangle, XCircle, Stethoscope } from "lucide-react";
 
-export function WaConnectClient({ initialConnection }: { initialConnection: any }) {
+interface DiagnosticCheck { name: string; status: "pass" | "fail" | "warn"; detail: string; }
+
+export function WaConnectClient({
+  initialConnection,
+  previousError,
+}: {
+  initialConnection: any;
+  previousError?: string | null;
+}) {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(!initialConnection);
-  const [error, setError] = useState<string | null>(searchParams.get("error"));
+  const [error, setError] = useState<string | null>(searchParams.get("error") || previousError || null);
+  const [checks, setChecks] = useState<DiagnosticCheck[] | null>(null);
+  const [isDiagnosing, setIsDiagnosing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(searchParams.get("success") === "1");
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+
+  const runDiagnostics = async () => {
+    setIsDiagnosing(true);
+    try {
+      const res = await fetch("/api/whatsapp/diagnose");
+      const json = await res.json();
+      setChecks(json.checks || []);
+    } catch {
+      setChecks([{ name: "Diagnostics", status: "fail", detail: "Could not run diagnostics." }]);
+    }
+    setIsDiagnosing(false);
+  };
 
   // Silently try to connect using the token already stored from Facebook login
   useEffect(() => {
@@ -72,9 +94,6 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     );
   }
 
-  const needsReconnect = initialConnection?.status === 'active' &&
-    (initialConnection?.waba_id === "unknown" || initialConnection?.phone_number_id === "unknown");
-
   if (initialConnection?.status === 'active') {
     return (
       <div className="bg-white rounded-[2rem] border border-[#25D366]/20 p-8 shadow-lg relative overflow-hidden">
@@ -91,28 +110,14 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
           </div>
         </div>
 
-        {needsReconnect && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl relative z-10">
-            <p className="text-sm font-bold text-amber-800 mb-1">Phone number not linked yet</p>
-            <p className="text-xs text-amber-700 mb-3">Click "Re-connect" below to complete the setup and link your WhatsApp phone number.</p>
-            <button
-              onClick={launchWhatsAppSignup}
-              disabled={isLoading}
-              className="px-4 py-2 bg-[#1877F2] hover:bg-[#166fe5] text-white font-bold rounded-xl text-sm disabled:opacity-70 transition-colors flex items-center gap-2"
-            >
-              {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Connecting…</> : "Re-connect with Facebook"}
-            </button>
-          </div>
-        )}
-
         <div className="grid gap-6 md:grid-cols-2 relative z-10">
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Phone Number</p>
-            <p className="font-bold text-slate-900">{(!initialConnection.phone_number || initialConnection.phone_number === "Verified Number" || initialConnection.phone_number === "unknown") ? "—" : initialConnection.phone_number}</p>
+            <p className="font-bold text-slate-900">{initialConnection.phone_number}</p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">WABA ID</p>
-            <p className="font-bold text-slate-900 text-xs break-all">{initialConnection.waba_id === "unknown" ? "—" : initialConnection.waba_id}</p>
+            <p className="font-bold text-slate-900 text-xs break-all">{initialConnection.waba_id}</p>
           </div>
         </div>
 
@@ -162,8 +167,26 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
       </div>
       <div className="max-w-xs mx-auto space-y-4">
         {error && (
-          <div className="p-4 rounded-xl bg-rose-50 text-rose-600 text-sm font-medium leading-relaxed">
-            {error}
+          <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-700 text-sm font-medium leading-relaxed space-y-2">
+            <p className="font-bold flex items-center gap-2"><AlertTriangle className="w-4 h-4 shrink-0" />Could not link a WhatsApp account</p>
+            <p className="text-rose-600 text-xs break-words">{error}</p>
+          </div>
+        )}
+
+        {checks && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Diagnostics</p>
+            {checks.map((c) => (
+              <div key={c.name} className="flex gap-2.5 items-start">
+                {c.status === "pass" && <CheckCircle2 className="w-4 h-4 text-[#25D366] shrink-0 mt-0.5" />}
+                {c.status === "warn" && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
+                {c.status === "fail" && <XCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />}
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-800">{c.name}</p>
+                  <p className="text-xs text-slate-500 break-words leading-relaxed">{c.detail}</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
         <button
@@ -174,6 +197,16 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
           {isLoading ? (
             <><Loader2 className="w-5 h-5 animate-spin" />Connecting…</>
           ) : "Login with Facebook"}
+        </button>
+
+        <button
+          onClick={runDiagnostics}
+          disabled={isDiagnosing}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-slate-500 hover:text-slate-800 font-semibold text-xs disabled:opacity-60 transition-colors"
+        >
+          {isDiagnosing
+            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Checking…</>
+            : <><Stethoscope className="w-3.5 h-3.5" />Why is my account not connecting?</>}
         </button>
       </div>
     </div>

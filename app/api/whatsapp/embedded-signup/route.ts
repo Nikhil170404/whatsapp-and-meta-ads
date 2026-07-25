@@ -28,10 +28,12 @@ export async function GET() {
   url.searchParams.set("config_id", configId);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("display", "page");
-  // Explicit scopes so granular_scopes is populated after the flow
-  url.searchParams.set("scope", "whatsapp_business_management,whatsapp_business_messaging,business_management");
-  // extras triggers the Embedded Signup WABA-selection screens instead of plain OAuth
-  url.searchParams.set("extras", JSON.stringify({ setup: {}, featuretype: "", sessioninfoversion: "3" }));
+  // Required when config_id is present — without it Facebook ignores response_type=code.
+  url.searchParams.set("override_default_response_type", "true");
+  // Drives the Embedded Signup asset-selection screens. Keys are case-sensitive.
+  url.searchParams.set("extras", JSON.stringify({ setup: {}, featureType: "", sessionInfoVersion: "3" }));
+  // NOTE: no `scope` param — the Login-for-Business Config ID defines the permissions,
+  // and passing both makes Facebook fall back to plain OAuth with no WhatsApp assets.
 
   return NextResponse.redirect(url.toString());
 }
