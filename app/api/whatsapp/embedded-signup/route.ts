@@ -28,6 +28,10 @@ export async function GET() {
   url.searchParams.set("config_id", configId);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("display", "page");
+  // Explicit scopes so granular_scopes is populated after the flow
+  url.searchParams.set("scope", "whatsapp_business_management,whatsapp_business_messaging,business_management");
+  // extras triggers the Embedded Signup WABA-selection screens instead of plain OAuth
+  url.searchParams.set("extras", JSON.stringify({ setup: {}, featuretype: "", sessioninfoversion: "3" }));
 
   return NextResponse.redirect(url.toString());
 }

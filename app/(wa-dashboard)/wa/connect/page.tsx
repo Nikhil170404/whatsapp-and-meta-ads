@@ -80,9 +80,20 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
       } catch {}
     }
 
-    const firstPhone = firstWaba?.phone_numbers?.data?.[0];
-    const phoneNumberId = resolvedPhoneNumberId || firstPhone?.id || "unknown";
+    let firstPhone = firstWaba?.phone_numbers?.data?.[0];
+
+    // If granular_scopes gave us a WABA ID but the node fetch didn't include phone numbers,
+    // fetch them explicitly from /{wabaId}/phone_numbers
     const wabaId = resolvedWabaId || firstWaba?.id || "unknown";
+    if (!firstPhone && wabaId !== "unknown") {
+      try {
+        const pnRes = await fetch(`${WA_API_URL}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${finalToken}`);
+        const pnData = await pnRes.json();
+        firstPhone = pnData?.data?.[0] || null;
+      } catch {}
+    }
+
+    const phoneNumberId = resolvedPhoneNumberId || firstPhone?.id || "unknown";
     let phoneNumber = firstPhone?.display_phone_number || "Verified Number";
     let displayName = firstPhone?.verified_name || "WhatsApp Business";
 
