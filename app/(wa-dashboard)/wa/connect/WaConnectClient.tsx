@@ -124,15 +124,10 @@ export function WaConnectClient({ initialConnection }: { initialConnection: any 
     setIsLoading(true);
     setError(null);
 
-    // On mobile, FB.login() opens a new tab and the callback never fires back in the
-    // original window. Use a server-side redirect flow instead — it works on all devices.
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      window.location.href = "/api/whatsapp/embedded-signup";
-      return;
-    }
+    // Start polling before FB.login so that on mobile (where the OAuth flow opens in
+    // a new tab with window.opener set), the DB update made in that tab is detected here.
+    startPolling();
 
-    // Desktop: use FB.login() popup (works reliably in desktop browsers)
     window.FB.login((response: any) => {
       stopPolling();
       if (response.authResponse) {
