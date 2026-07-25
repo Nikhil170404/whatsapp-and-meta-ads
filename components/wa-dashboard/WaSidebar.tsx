@@ -222,19 +222,20 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
       )} onClick={() => setIsMoreOpen(false)} />
 
       <div className={cn(
-        "lg:hidden fixed bottom-0 left-0 right-0 z-[58] bg-white shadow-[0_-32px_64px_-16px_rgba(0,0,0,0.15)] transition-transform duration-500 rounded-t-[2.5rem] border-t border-slate-100 overflow-hidden",
+        "lg:hidden fixed bottom-0 left-0 right-0 z-[58] bg-white shadow-[0_-32px_64px_-16px_rgba(0,0,0,0.15)] transition-transform duration-500 rounded-t-[2.5rem] border-t border-slate-100 flex flex-col max-h-[85vh]",
         isMoreOpen ? "translate-y-0" : "translate-y-full"
       )}>
-        {/* Sheet handle */}
-        <div className="flex justify-center pt-3 pb-2">
+        {/* Sheet handle — fixed at top */}
+        <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="w-10 h-1 rounded-full bg-slate-200" />
         </div>
 
-        <div className="px-6 pb-2">
+        <div className="px-6 py-2 shrink-0">
           <p className="text-xs font-black text-slate-400 uppercase tracking-widest">More Options</p>
         </div>
 
-        <nav className="px-4 pb-4 space-y-1">
+        {/* Scrollable nav */}
+        <nav className="px-4 pb-2 space-y-1 overflow-y-auto flex-1 overscroll-contain">
           {[
             { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
             { name: "Contacts", href: "/wa/contacts", icon: Users },
@@ -252,48 +253,48 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
                 href={item.href}
                 onClick={() => setIsMoreOpen(false)}
                 className={cn(
-                  "flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all",
+                  "flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all",
                   isActive
                     ? "bg-[#25D366] text-white shadow-lg shadow-[#25D366]/20"
                     : "text-slate-600 hover:bg-slate-50"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-5 w-5 shrink-0" />
                 {item.name}
               </Link>
             );
           })}
 
-          <div className="pt-3 mt-3 border-t border-slate-100">
+          <div className="pt-2 mt-2 border-t border-slate-100">
             <Link
               href="/ads"
               onClick={() => setIsMoreOpen(false)}
-              className="flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold text-[#1877F2] hover:bg-[#1877F2]/5 transition-all"
+              className="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold text-[#1877F2] hover:bg-[#1877F2]/5 transition-all"
             >
-              <BarChart3 className="h-5 w-5" />
+              <BarChart3 className="h-5 w-5 shrink-0" />
               Meta Ads Dashboard
             </Link>
           </div>
         </nav>
 
-        {/* User info in more sheet */}
-        <div className="px-6 pt-6 pb-[calc(var(--tab-bar-height,64px)+env(safe-area-inset-bottom,8px)+8px)] border-t border-slate-50 bg-slate-50/30">
-          <div className="flex items-center gap-4 mb-4">
+        {/* User info — fixed at bottom, above tab bar */}
+        <div className="px-6 pt-4 pb-[calc(var(--tab-bar-height,64px)+env(safe-area-inset-bottom,8px)+8px)] border-t border-slate-100 bg-slate-50/50 shrink-0">
+          <div className="flex items-center gap-3 mb-3">
             <SafeImage
               src={user.profile_picture_url}
               alt={user.email || 'User'}
               fallbackComponent={
-                <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center text-white font-bold text-sm">
                   {(user.email || 'U').charAt(0).toUpperCase()}
                 </div>
               }
-              className="w-10 h-10 rounded-xl object-cover"
+              className="w-10 h-10 rounded-xl object-cover shrink-0"
             />
-            <div className="flex-1">
-              <p className="text-sm font-bold text-slate-900">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-900 truncate">
                 {user.email || 'User'}
               </p>
-              <p className={cn("text-xs uppercase font-black tracking-wider", planBadgeClass(plan).split(" ")[1])}>{planLabel(plan)} plan</p>
+              <span className={cn("text-[10px] uppercase font-black tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5", planBadgeClass(plan))}>{planLabel(plan)}</span>
             </div>
           </div>
           <a
@@ -301,7 +302,7 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
             className="flex items-center justify-center gap-2 w-full py-3 text-sm font-bold text-rose-500 bg-rose-50 rounded-2xl active:scale-95 transition-all"
           >
             <LogOut className="h-4 w-4" />
-            Logout Account
+            Sign out
           </a>
         </div>
       </div>
