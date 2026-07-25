@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2, Lock } from "lucide-react";
+import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2, Lock, Tag } from "lucide-react";
 
 interface Broadcast {
   id: string;
@@ -450,7 +450,7 @@ export function BroadcastsClient({
                       {contactLabels.map(l => (
                         <button key={l} onClick={() => setLabelFilter(labelFilter === l ? "" : l)}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${labelFilter === l ? "bg-[#25D366] text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
-                          🏷 {l}
+                          <Tag className="w-3 h-3" /> {l}
                         </button>
                       ))}
                     </div>

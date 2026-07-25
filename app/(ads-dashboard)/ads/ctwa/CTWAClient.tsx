@@ -52,7 +52,7 @@ export function CTWAClient({ initialCampaigns, isConnected, hasPage, waPhoneNumb
     ad_text: "",
     headline: "",
     whatsapp_number: waPhoneNumber,
-    opening_message: "Hi, I saw your ad and I'm interested! 👋",
+    opening_message: "Hi, I saw your ad and I'm interested!",
     daily_budget_inr: "100",
     countries: ["IN"],
   });
@@ -63,7 +63,7 @@ export function CTWAClient({ initialCampaigns, isConnected, hasPage, waPhoneNumb
       ad_text: "",
       headline: "",
       whatsapp_number: waPhoneNumber,
-      opening_message: "Hi, I saw your ad and I'm interested! 👋",
+      opening_message: "Hi, I saw your ad and I'm interested!",
       daily_budget_inr: "100",
       countries: ["IN"],
     });

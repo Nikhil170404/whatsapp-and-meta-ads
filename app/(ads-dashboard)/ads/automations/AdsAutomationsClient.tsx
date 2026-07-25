@@ -14,10 +14,10 @@ interface AdsAutomation {
 }
 
 const PREBUILT = [
-  { label: "Interest Reply", keyword: "interested", reply: "Thanks for your interest! 🎉 Reply to this message and our team will get back to you shortly with more details.", send_dm: true },
+  { label: "Interest Reply", keyword: "interested", reply: "Thanks for your interest! Reply to this message and our team will get back to you shortly with more details.", send_dm: true },
   { label: "Price Enquiry", keyword: "price", reply: "Hi! Thanks for asking about pricing. Our plans start from ₹99/month. DM us to know more!", send_dm: true },
-  { label: "Any Comment", keyword: "", reply: "Thanks for engaging with our ad! We'll reach out to you with more information very soon. 🙌", send_dm: true },
-  { label: "Buy Now", keyword: "buy", reply: "Great choice! 🛍️ Visit our store to complete your purchase. Our team will help you through the process.", send_dm: true },
+  { label: "Any Comment", keyword: "", reply: "Thanks for engaging with our ad! We'll reach out to you with more information very soon.", send_dm: true },
+  { label: "Buy Now", keyword: "buy", reply: "Great choice! Visit our store to complete your purchase. Our team will help you through the process.", send_dm: true },
 ];
 
 export function AdsAutomationsClient({
@@ -185,7 +185,7 @@ export function AdsAutomationsClient({
           </label>
           <textarea
             rows={4}
-            placeholder="Thanks for your interest! Our team will reach out to you shortly with all the details. 🎉"
+            placeholder="Thanks for your interest! Our team will reach out to you shortly with all the details."
             value={form.reply_message}
             onChange={(e) => setForm({ ...form, reply_message: e.target.value })}
             className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1877F2]/30 focus:border-[#1877F2] resize-none"

@@ -1,53 +1,53 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Zap, Trash2, Power, X, Loader2, Edit2, Check, Info, Image, Video, FileText, MessageSquare } from "lucide-react";
+import { Plus, Zap, Trash2, Power, X, Loader2, Edit2, Check, Info, Image, Video, FileText, MessageSquare, ShoppingBag, UtensilsCrossed, Heart, Home, GraduationCap, Scissors, Car, AlertTriangle } from "lucide-react";
 
 const CATEGORIES = [
-  { id: "general",     emoji: "⚡", label: "General" },
-  { id: "ecommerce",   emoji: "📦", label: "E-commerce" },
-  { id: "restaurant",  emoji: "🍽️", label: "Restaurant" },
-  { id: "healthcare",  emoji: "🏥", label: "Clinic" },
-  { id: "realestate",  emoji: "🏠", label: "Real Estate" },
-  { id: "education",   emoji: "🎓", label: "Education" },
-  { id: "salon",       emoji: "💇", label: "Salon" },
-  { id: "automotive",  emoji: "🚗", label: "Auto" },
+  { id: "general",     icon: Zap,             label: "General" },
+  { id: "ecommerce",   icon: ShoppingBag,      label: "E-commerce" },
+  { id: "restaurant",  icon: UtensilsCrossed,  label: "Restaurant" },
+  { id: "healthcare",  icon: Heart,            label: "Clinic" },
+  { id: "realestate",  icon: Home,             label: "Real Estate" },
+  { id: "education",   icon: GraduationCap,    label: "Education" },
+  { id: "salon",       icon: Scissors,         label: "Salon" },
+  { id: "automotive",  icon: Car,              label: "Auto" },
 ];
 
 const STARTER_TEMPLATES = [
-  { id: "price", category: "general", emoji: "💰", label: "Price Inquiry", trigger_keyword: "price", reply_message: "Hi! Thanks for your interest 😊 Our prices start from ₹499. Reply with 'catalog' to see all products, or call us for a custom quote!", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-  { id: "hours", category: "general", emoji: "🕐", label: "Business Hours", trigger_keyword: "hours", reply_message: "We're open Monday–Saturday, 10 AM to 7 PM IST. Sundays we're closed. Feel free to message anytime — we'll reply during business hours!", color: "bg-blue-50 border-blue-200 text-blue-700" },
-  { id: "location", category: "general", emoji: "📍", label: "Location / Address", trigger_keyword: "location", reply_message: "We're located at [Your Address Here]. Find us on Google Maps: [link]. Need directions? Just reply 'directions'!", color: "bg-amber-50 border-amber-200 text-amber-700" },
-  { id: "human", category: "general", emoji: "👋", label: "Talk to Human", trigger_keyword: "human", reply_message: "Sure! A team member will connect with you shortly. Response time: ~30 min during business hours. Thank you for your patience! 🙏", color: "bg-violet-50 border-violet-200 text-violet-700" },
-  { id: "catalog", category: "general", emoji: "📋", label: "Product Catalog", trigger_keyword: "catalog", reply_message: "Here's our catalog! 🎉 Check out our latest offerings at [your-website.com/catalog]. Want a specific product? Type its name!", color: "bg-rose-50 border-rose-200 text-rose-700" },
-  { id: "help", category: "general", emoji: "🆘", label: "Support Request", trigger_keyword: "help", reply_message: "Hi! We're here to help 😊\n\nYou can ask us about:\n• Pricing — type PRICE\n• Order status — type ORDER\n• Location — type LOCATION\n• Talk to us — type HUMAN\n\nWhat do you need?", color: "bg-slate-50 border-slate-200 text-slate-700" },
-  { id: "offer", category: "general", emoji: "🎁", label: "Current Offers", trigger_keyword: "offer", reply_message: "🎉 Current Offers:\n• Flat 20% off on orders above ₹999 — use code SAVE20\n• Buy 2 Get 1 Free on select items\n• Free delivery on orders above ₹599\n\nOffer valid till [date]. Shop now: [link]", color: "bg-pink-50 border-pink-200 text-pink-700" },
-  { id: "order", category: "ecommerce", emoji: "📦", label: "Order Status", trigger_keyword: "order", reply_message: "To check your order status, please share your Order ID (e.g. #12345). We'll update you within 1 hour during business hours! 📦", color: "bg-orange-50 border-orange-200 text-orange-700" },
-  { id: "track", category: "ecommerce", emoji: "🚚", label: "Track Delivery", trigger_keyword: "track", reply_message: "📦 To track your delivery:\n1. Share your Order ID\n2. Or visit: [tracking-link]\n\nTypically dispatched within 24–48 hrs. Expected delivery: 3–5 business days.", color: "bg-sky-50 border-sky-200 text-sky-700" },
-  { id: "return", category: "ecommerce", emoji: "↩️", label: "Return / Refund", trigger_keyword: "return", reply_message: "We offer 7-day easy returns! 😊\n\nTo initiate a return:\n1. Share your Order ID\n2. Reason for return\n3. Photos (if damaged)\n\nRefunds are processed within 5–7 business days after we receive the item.", color: "bg-red-50 border-red-200 text-red-700" },
-  { id: "payment", category: "ecommerce", emoji: "💳", label: "Payment Options", trigger_keyword: "payment", reply_message: "We accept:\n✅ UPI (GPay, PhonePe, Paytm)\n✅ Credit/Debit Cards\n✅ Net Banking\n✅ Cash on Delivery\n✅ EMI (on orders ₹3000+)\n\nAll payments are 100% secure 🔒", color: "bg-green-50 border-green-200 text-green-700" },
-  { id: "cancel_order", category: "ecommerce", emoji: "❌", label: "Cancel Order", trigger_keyword: "cancel", reply_message: "To cancel your order, please share your Order ID. Orders can be cancelled within 2 hours of placing. After dispatch, you'll need to initiate a return instead. 📦", color: "bg-orange-50 border-orange-200 text-orange-700" },
-  { id: "cod", category: "ecommerce", emoji: "💵", label: "Cash on Delivery", trigger_keyword: "cod", reply_message: "Yes, we offer Cash on Delivery! 💵\n\n• Available on orders up to ₹5,000\n• Extra ₹40 COD handling fee applies\n• Available in [your city/region]\n\nShall we place your order?", color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
-  { id: "book_table", category: "restaurant", emoji: "🍽️", label: "Table Booking", trigger_keyword: "book", reply_message: "We'd love to have you! 🍽️ To book a table, please share:\n1. Date & Time\n2. Number of guests\n3. Your name\n\nWe'll confirm within 15 minutes!", color: "bg-amber-50 border-amber-200 text-amber-700" },
-  { id: "menu", category: "restaurant", emoji: "📜", label: "View Menu", trigger_keyword: "menu", reply_message: "Here's our menu! 🍛\n\nView full menu: [menu-link]\n\nToday's specials:\n• [Dish 1] — ₹[price]\n• [Dish 2] — ₹[price]\n\nWant to pre-order? Just ask!", color: "bg-orange-50 border-orange-200 text-orange-700" },
-  { id: "food_delivery", category: "restaurant", emoji: "🛵", label: "Home Delivery", trigger_keyword: "delivery", reply_message: "🛵 We deliver within [X] km radius!\n\nDelivery charges: ₹30–₹50\nFree delivery on orders above ₹399\nEstimated time: 30–45 minutes\n\nOrder now: [order-link] or send us your address!", color: "bg-red-50 border-red-200 text-red-700" },
-  { id: "timings", category: "restaurant", emoji: "🕐", label: "Restaurant Timings", trigger_keyword: "timings", reply_message: "⏰ We're open:\nLunch: 12:00 PM – 3:30 PM\nDinner: 7:00 PM – 11:00 PM\n\nClosed on Mondays.\n\nFor large group reservations (10+ pax), call us directly!", color: "bg-blue-50 border-blue-200 text-blue-700" },
-  { id: "appointment", category: "healthcare", emoji: "📅", label: "Book Appointment", trigger_keyword: "appointment", reply_message: "To book your appointment, please share:\n1. Your full name\n2. Preferred date & time\n3. Type of consultation (General / Specialist)\n\nOur team will confirm within 30 minutes. 🏥", color: "bg-teal-50 border-teal-200 text-teal-700" },
-  { id: "doctor", category: "healthcare", emoji: "👨‍⚕️", label: "Doctor Availability", trigger_keyword: "doctor", reply_message: "Available Doctors:\n👨‍⚕️ Dr. [Name] (General Physician) — Mon–Sat, 9 AM–1 PM\n👩‍⚕️ Dr. [Name] (Cardiologist) — Tue, Thu, 2 PM–6 PM\n\nReply APPOINTMENT to book a slot!", color: "bg-blue-50 border-blue-200 text-blue-700" },
-  { id: "fees_clinic", category: "healthcare", emoji: "💰", label: "Consultation Fees", trigger_keyword: "fees", reply_message: "Our consultation charges:\n🏥 General Physician: ₹300\n🫀 Specialist: ₹500–₹800\n🦷 Dental: ₹200 (check-up)\n\nDiagnostics available on-site. Senior citizen discount: 10% 🙏", color: "bg-green-50 border-green-200 text-green-700" },
-  { id: "emergency", category: "healthcare", emoji: "🚨", label: "Emergency Info", trigger_keyword: "emergency", reply_message: "🚨 For emergencies, please call:\n☎️ [Helpline]: [phone number]\n\nEmergency services available 24/7 at:\n[Clinic/Hospital Address]\n\nFor non-emergencies, message us and we'll respond ASAP.", color: "bg-red-50 border-red-200 text-red-700" },
-  { id: "property", category: "realestate", emoji: "🏠", label: "Property Inquiry", trigger_keyword: "property", reply_message: "Thanks for your interest! 🏠 Please share your requirements:\n1. Type (1BHK/2BHK/Villa/Plot)\n2. Budget range\n3. Preferred location\n4. Ready to move or under construction?\n\nWe'll share matching options shortly!", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-  { id: "site_visit", category: "realestate", emoji: "👀", label: "Site Visit", trigger_keyword: "visit", reply_message: "Great! We'd love to show you the property 🏡\n\nTo schedule a site visit:\n1. Share your preferred date & time\n2. Your name and contact number\n\nOur executive will pick you up from a convenient location!", color: "bg-blue-50 border-blue-200 text-blue-700" },
-  { id: "rera", category: "realestate", emoji: "📄", label: "RERA & Documents", trigger_keyword: "rera", reply_message: "All our projects are RERA registered ✅\n\nRERA No: [Your RERA Number]\n\nDocuments available:\n• Floor plans\n• Brochure\n• Price sheet\n• Legal approvals\n\nType BROCHURE to receive the project brochure!", color: "bg-violet-50 border-violet-200 text-violet-700" },
-  { id: "admission", category: "education", emoji: "🎓", label: "Admission Info", trigger_keyword: "admission", reply_message: "Admissions are open! 🎓\n\nCourses available:\n• [Course 1] — ₹[Fee] / [Duration]\n• [Course 2] — ₹[Fee] / [Duration]\n\nNext batch starts: [Date]\n\nType FEES for fee structure or DEMO for a free trial class!", color: "bg-indigo-50 border-indigo-200 text-indigo-700" },
-  { id: "fees_edu", category: "education", emoji: "💰", label: "Fee Structure", trigger_keyword: "tuition", reply_message: "Our fee structure:\n📚 [Course 1]: ₹[amount] (One-time / Monthly)\n📚 [Course 2]: ₹[amount]\n\nEMI available | Scholarships for merit students\nNo hidden charges ✅\n\nShall we schedule a counselling session?", color: "bg-blue-50 border-blue-200 text-blue-700" },
-  { id: "demo", category: "education", emoji: "▶️", label: "Free Demo Class", trigger_keyword: "demo", reply_message: "🎉 Book your FREE demo class!\n\nShare:\n1. Your name\n2. Subject/Course of interest\n3. Preferred date & time\n\nNo commitment required. Experience our teaching style first! 😊", color: "bg-green-50 border-green-200 text-green-700" },
-  { id: "salon_book", category: "salon", emoji: "💈", label: "Book Appointment", trigger_keyword: "booking", reply_message: "Book your slot at [Salon Name]! 💇\n\nPlease share:\n1. Service required (haircut/colour/facial etc.)\n2. Preferred date & time\n3. Your name\n\nSlots available Mon–Sun, 10 AM to 8 PM!", color: "bg-pink-50 border-pink-200 text-pink-700" },
-  { id: "salon_services", category: "salon", emoji: "✨", label: "Services & Pricing", trigger_keyword: "services", reply_message: "Our services:\n✂️ Haircut (Women): ₹300–₹800\n✂️ Haircut (Men): ₹150–₹400\n💅 Manicure/Pedicure: ₹500–₹1200\n🧴 Facial: ₹800–₹2500\n🎨 Hair Colour: ₹1200+\n\nAll services include wash & finish. Type BOOKING to reserve!", color: "bg-purple-50 border-purple-200 text-purple-700" },
-  { id: "salon_combo", category: "salon", emoji: "💎", label: "Combo Packages", trigger_keyword: "package", reply_message: "💎 Our Bestseller Packages:\n\n🌸 Bridal Package: ₹8,999 (all inclusive)\n👗 Party Ready: ₹2,499 (hair + makeup + nails)\n🧖 Self-Care Sunday: ₹1,999 (facial + massage + mani-pedi)\n\nAll packages include complimentary tea/coffee ☕", color: "bg-rose-50 border-rose-200 text-rose-700" },
-  { id: "service", category: "automotive", emoji: "🔧", label: "Car Service Booking", trigger_keyword: "service", reply_message: "Book your car service! 🚗\n\nShare:\n1. Car make & model\n2. Registration number\n3. Preferred date & time\n4. Type of service (basic / full / AC / tyres)\n\nPickup & drop available at extra charge!", color: "bg-slate-50 border-slate-200 text-slate-700" },
-  { id: "car_price", category: "automotive", emoji: "💰", label: "Service Charges", trigger_keyword: "charges", reply_message: "Our service charges:\n🔧 Basic Service: ₹1,999\n🔧 Full Service: ₹3,499\n❄️ AC Service: ₹1,499\n🛞 Tyre Change: ₹400/tyre\n\nAll prices inclusive of labour. Parts at actuals. Free vehicle health check with every service! ✅", color: "bg-blue-50 border-blue-200 text-blue-700" },
-  { id: "test_drive", category: "automotive", emoji: "🚗", label: "Test Drive", trigger_keyword: "testdrive", reply_message: "Experience your dream car! 🚗✨\n\nBook a FREE test drive:\n1. Car model you're interested in\n2. Preferred date & time\n3. Your name & location\n\nWe can also bring the car to your doorstep! 🏠", color: "bg-green-50 border-green-200 text-green-700" },
+  { id: "price", category: "general", label: "Price Inquiry", trigger_keyword: "price", reply_message: "Hi! Thanks for your interest 😊 Our prices start from ₹499. Reply with 'catalog' to see all products, or call us for a custom quote!", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+  { id: "hours", category: "general", label: "Business Hours", trigger_keyword: "hours", reply_message: "We're open Monday–Saturday, 10 AM to 7 PM IST. Sundays we're closed. Feel free to message anytime — we'll reply during business hours!", color: "bg-blue-50 border-blue-200 text-blue-700" },
+  { id: "location", category: "general", label: "Location / Address", trigger_keyword: "location", reply_message: "We're located at [Your Address Here]. Find us on Google Maps: [link]. Need directions? Just reply 'directions'!", color: "bg-amber-50 border-amber-200 text-amber-700" },
+  { id: "human", category: "general", label: "Talk to Human", trigger_keyword: "human", reply_message: "Sure! A team member will connect with you shortly. Response time: ~30 min during business hours. Thank you for your patience! 🙏", color: "bg-violet-50 border-violet-200 text-violet-700" },
+  { id: "catalog", category: "general", label: "Product Catalog", trigger_keyword: "catalog", reply_message: "Here's our catalog! 🎉 Check out our latest offerings at [your-website.com/catalog]. Want a specific product? Type its name!", color: "bg-rose-50 border-rose-200 text-rose-700" },
+  { id: "help", category: "general", label: "Support Request", trigger_keyword: "help", reply_message: "Hi! We're here to help 😊\n\nYou can ask us about:\n• Pricing — type PRICE\n• Order status — type ORDER\n• Location — type LOCATION\n• Talk to us — type HUMAN\n\nWhat do you need?", color: "bg-slate-50 border-slate-200 text-slate-700" },
+  { id: "offer", category: "general", label: "Current Offers", trigger_keyword: "offer", reply_message: "🎉 Current Offers:\n• Flat 20% off on orders above ₹999 — use code SAVE20\n• Buy 2 Get 1 Free on select items\n• Free delivery on orders above ₹599\n\nOffer valid till [date]. Shop now: [link]", color: "bg-pink-50 border-pink-200 text-pink-700" },
+  { id: "order", category: "ecommerce", label: "Order Status", trigger_keyword: "order", reply_message: "To check your order status, please share your Order ID (e.g. #12345). We'll update you within 1 hour during business hours! 📦", color: "bg-orange-50 border-orange-200 text-orange-700" },
+  { id: "track", category: "ecommerce", label: "Track Delivery", trigger_keyword: "track", reply_message: "📦 To track your delivery:\n1. Share your Order ID\n2. Or visit: [tracking-link]\n\nTypically dispatched within 24–48 hrs. Expected delivery: 3–5 business days.", color: "bg-sky-50 border-sky-200 text-sky-700" },
+  { id: "return", category: "ecommerce", label: "Return / Refund", trigger_keyword: "return", reply_message: "We offer 7-day easy returns! 😊\n\nTo initiate a return:\n1. Share your Order ID\n2. Reason for return\n3. Photos (if damaged)\n\nRefunds are processed within 5–7 business days after we receive the item.", color: "bg-red-50 border-red-200 text-red-700" },
+  { id: "payment", category: "ecommerce", label: "Payment Options", trigger_keyword: "payment", reply_message: "We accept:\n✅ UPI (GPay, PhonePe, Paytm)\n✅ Credit/Debit Cards\n✅ Net Banking\n✅ Cash on Delivery\n✅ EMI (on orders ₹3000+)\n\nAll payments are 100% secure 🔒", color: "bg-green-50 border-green-200 text-green-700" },
+  { id: "cancel_order", category: "ecommerce", label: "Cancel Order", trigger_keyword: "cancel", reply_message: "To cancel your order, please share your Order ID. Orders can be cancelled within 2 hours of placing. After dispatch, you'll need to initiate a return instead. 📦", color: "bg-orange-50 border-orange-200 text-orange-700" },
+  { id: "cod", category: "ecommerce", label: "Cash on Delivery", trigger_keyword: "cod", reply_message: "Yes, we offer Cash on Delivery! 💵\n\n• Available on orders up to ₹5,000\n• Extra ₹40 COD handling fee applies\n• Available in [your city/region]\n\nShall we place your order?", color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
+  { id: "book_table", category: "restaurant", label: "Table Booking", trigger_keyword: "book", reply_message: "We'd love to have you! 🍽️ To book a table, please share:\n1. Date & Time\n2. Number of guests\n3. Your name\n\nWe'll confirm within 15 minutes!", color: "bg-amber-50 border-amber-200 text-amber-700" },
+  { id: "menu", category: "restaurant", label: "View Menu", trigger_keyword: "menu", reply_message: "Here's our menu! 🍛\n\nView full menu: [menu-link]\n\nToday's specials:\n• [Dish 1] — ₹[price]\n• [Dish 2] — ₹[price]\n\nWant to pre-order? Just ask!", color: "bg-orange-50 border-orange-200 text-orange-700" },
+  { id: "food_delivery", category: "restaurant", label: "Home Delivery", trigger_keyword: "delivery", reply_message: "🛵 We deliver within [X] km radius!\n\nDelivery charges: ₹30–₹50\nFree delivery on orders above ₹399\nEstimated time: 30–45 minutes\n\nOrder now: [order-link] or send us your address!", color: "bg-red-50 border-red-200 text-red-700" },
+  { id: "timings", category: "restaurant", label: "Restaurant Timings", trigger_keyword: "timings", reply_message: "⏰ We're open:\nLunch: 12:00 PM – 3:30 PM\nDinner: 7:00 PM – 11:00 PM\n\nClosed on Mondays.\n\nFor large group reservations (10+ pax), call us directly!", color: "bg-blue-50 border-blue-200 text-blue-700" },
+  { id: "appointment", category: "healthcare", label: "Book Appointment", trigger_keyword: "appointment", reply_message: "To book your appointment, please share:\n1. Your full name\n2. Preferred date & time\n3. Type of consultation (General / Specialist)\n\nOur team will confirm within 30 minutes. 🏥", color: "bg-teal-50 border-teal-200 text-teal-700" },
+  { id: "doctor", category: "healthcare", label: "Doctor Availability", trigger_keyword: "doctor", reply_message: "Available Doctors:\n👨‍⚕️ Dr. [Name] (General Physician) — Mon–Sat, 9 AM–1 PM\n👩‍⚕️ Dr. [Name] (Cardiologist) — Tue, Thu, 2 PM–6 PM\n\nReply APPOINTMENT to book a slot!", color: "bg-blue-50 border-blue-200 text-blue-700" },
+  { id: "fees_clinic", category: "healthcare", label: "Consultation Fees", trigger_keyword: "fees", reply_message: "Our consultation charges:\n🏥 General Physician: ₹300\n🫀 Specialist: ₹500–₹800\n🦷 Dental: ₹200 (check-up)\n\nDiagnostics available on-site. Senior citizen discount: 10% 🙏", color: "bg-green-50 border-green-200 text-green-700" },
+  { id: "emergency", category: "healthcare", label: "Emergency Info", trigger_keyword: "emergency", reply_message: "🚨 For emergencies, please call:\n☎️ [Helpline]: [phone number]\n\nEmergency services available 24/7 at:\n[Clinic/Hospital Address]\n\nFor non-emergencies, message us and we'll respond ASAP.", color: "bg-red-50 border-red-200 text-red-700" },
+  { id: "property", category: "realestate", label: "Property Inquiry", trigger_keyword: "property", reply_message: "Thanks for your interest! 🏠 Please share your requirements:\n1. Type (1BHK/2BHK/Villa/Plot)\n2. Budget range\n3. Preferred location\n4. Ready to move or under construction?\n\nWe'll share matching options shortly!", color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
+  { id: "site_visit", category: "realestate", label: "Site Visit", trigger_keyword: "visit", reply_message: "Great! We'd love to show you the property 🏡\n\nTo schedule a site visit:\n1. Share your preferred date & time\n2. Your name and contact number\n\nOur executive will pick you up from a convenient location!", color: "bg-blue-50 border-blue-200 text-blue-700" },
+  { id: "rera", category: "realestate", label: "RERA & Documents", trigger_keyword: "rera", reply_message: "All our projects are RERA registered ✅\n\nRERA No: [Your RERA Number]\n\nDocuments available:\n• Floor plans\n• Brochure\n• Price sheet\n• Legal approvals\n\nType BROCHURE to receive the project brochure!", color: "bg-violet-50 border-violet-200 text-violet-700" },
+  { id: "admission", category: "education", label: "Admission Info", trigger_keyword: "admission", reply_message: "Admissions are open! 🎓\n\nCourses available:\n• [Course 1] — ₹[Fee] / [Duration]\n• [Course 2] — ₹[Fee] / [Duration]\n\nNext batch starts: [Date]\n\nType FEES for fee structure or DEMO for a free trial class!", color: "bg-indigo-50 border-indigo-200 text-indigo-700" },
+  { id: "fees_edu", category: "education", label: "Fee Structure", trigger_keyword: "tuition", reply_message: "Our fee structure:\n📚 [Course 1]: ₹[amount] (One-time / Monthly)\n📚 [Course 2]: ₹[amount]\n\nEMI available | Scholarships for merit students\nNo hidden charges ✅\n\nShall we schedule a counselling session?", color: "bg-blue-50 border-blue-200 text-blue-700" },
+  { id: "demo", category: "education", label: "Free Demo Class", trigger_keyword: "demo", reply_message: "🎉 Book your FREE demo class!\n\nShare:\n1. Your name\n2. Subject/Course of interest\n3. Preferred date & time\n\nNo commitment required. Experience our teaching style first! 😊", color: "bg-green-50 border-green-200 text-green-700" },
+  { id: "salon_book", category: "salon", label: "Book Appointment", trigger_keyword: "booking", reply_message: "Book your slot at [Salon Name]! 💇\n\nPlease share:\n1. Service required (haircut/colour/facial etc.)\n2. Preferred date & time\n3. Your name\n\nSlots available Mon–Sun, 10 AM to 8 PM!", color: "bg-pink-50 border-pink-200 text-pink-700" },
+  { id: "salon_services", category: "salon", label: "Services & Pricing", trigger_keyword: "services", reply_message: "Our services:\n✂️ Haircut (Women): ₹300–₹800\n✂️ Haircut (Men): ₹150–₹400\n💅 Manicure/Pedicure: ₹500–₹1200\n🧴 Facial: ₹800–₹2500\n🎨 Hair Colour: ₹1200+\n\nAll services include wash & finish. Type BOOKING to reserve!", color: "bg-purple-50 border-purple-200 text-purple-700" },
+  { id: "salon_combo", category: "salon", label: "Combo Packages", trigger_keyword: "package", reply_message: "💎 Our Bestseller Packages:\n\n🌸 Bridal Package: ₹8,999 (all inclusive)\n👗 Party Ready: ₹2,499 (hair + makeup + nails)\n🧖 Self-Care Sunday: ₹1,999 (facial + massage + mani-pedi)\n\nAll packages include complimentary tea/coffee ☕", color: "bg-rose-50 border-rose-200 text-rose-700" },
+  { id: "service", category: "automotive", label: "Car Service Booking", trigger_keyword: "service", reply_message: "Book your car service! 🚗\n\nShare:\n1. Car make & model\n2. Registration number\n3. Preferred date & time\n4. Type of service (basic / full / AC / tyres)\n\nPickup & drop available at extra charge!", color: "bg-slate-50 border-slate-200 text-slate-700" },
+  { id: "car_price", category: "automotive", label: "Service Charges", trigger_keyword: "charges", reply_message: "Our service charges:\n🔧 Basic Service: ₹1,999\n🔧 Full Service: ₹3,499\n❄️ AC Service: ₹1,499\n🛞 Tyre Change: ₹400/tyre\n\nAll prices inclusive of labour. Parts at actuals. Free vehicle health check with every service! ✅", color: "bg-blue-50 border-blue-200 text-blue-700" },
+  { id: "test_drive", category: "automotive", label: "Test Drive", trigger_keyword: "testdrive", reply_message: "Experience your dream car! 🚗✨\n\nBook a FREE test drive:\n1. Car model you're interested in\n2. Preferred date & time\n3. Your name & location\n\nWe can also bring the car to your doorstep! 🏠", color: "bg-green-50 border-green-200 text-green-700" },
 ];
 
 interface ButtonOption { id: string; title: string; }
@@ -632,7 +632,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
 
       {automations.length < 5 && (
         <div className="mb-6">
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">⚡ Quick-Start Templates</p>
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Zap className="w-3 h-3" /> Quick-Start Templates</p>
           <div className="flex gap-2 flex-wrap mb-4">
             {CATEGORIES.map(cat => (
               <button key={cat.id} onClick={() => setTemplateCategory(cat.id)}
@@ -641,7 +641,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
                     ? "bg-[#25D366] text-white border-[#25D366] shadow-sm"
                     : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
                 }`}>
-                <span>{cat.emoji}</span>
+                <cat.icon className="w-3 h-3" />
                 <span>{cat.label}</span>
               </button>
             ))}
@@ -649,15 +649,18 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {visibleTemplates.map((t) => {
               const alreadyAdded = automations.some(a => a.trigger_keyword === t.trigger_keyword);
+              const CategoryIcon = CATEGORIES.find(c => c.id === t.category)?.icon ?? Zap;
               return (
                 <button key={t.id} onClick={() => !alreadyAdded && activateTemplate(t)}
                   disabled={alreadyAdded || activatingTemplate === t.id}
                   className={`${t.color} border rounded-2xl p-4 text-left transition-all active:scale-95 disabled:opacity-60`}>
-                  <div className="text-2xl mb-2">{t.emoji}</div>
+                  <div className="w-8 h-8 rounded-xl bg-white/60 flex items-center justify-center mb-2">
+                    <CategoryIcon className="w-4 h-4" />
+                  </div>
                   <p className="text-sm font-bold">{t.label}</p>
                   <p className="text-xs mt-1 opacity-70">Keyword: {t.trigger_keyword}</p>
                   {alreadyAdded ? (
-                    <p className="text-xs font-bold mt-2 opacity-60">✓ Added</p>
+                    <p className="text-xs font-bold mt-2 opacity-60 flex items-center gap-0.5"><Check className="w-3 h-3" /> Added</p>
                   ) : activatingTemplate === t.id ? (
                     <p className="text-xs font-bold mt-2">Adding…</p>
                   ) : (
@@ -705,7 +708,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
                           )}
                         </div>
                         <p className="text-xs text-slate-500 truncate mt-0.5 max-w-xs">{automationPreviewText(auto)}</p>
-                        {auto.last_error && <p className="text-xs text-amber-600 font-medium mt-0.5 truncate max-w-xs">⚠ {auto.last_error}</p>}
+                        {auto.last_error && <p className="text-xs text-amber-600 font-medium mt-0.5 truncate max-w-xs flex items-center gap-1"><AlertTriangle className="w-3 h-3 shrink-0" /> {auto.last_error}</p>}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

@@ -59,7 +59,7 @@ export default async function WaOverviewPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-            Hey, {session.display_name?.split(" ")[0] || "there"} 👋
+            Welcome back, {session.display_name?.split(" ")[0] || "there"}
           </h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
             {activeAutomations.length > 0
@@ -128,8 +128,8 @@ export default async function WaOverviewPage() {
             </div>
             <div className="divide-y divide-slate-50">
               {[
-                { keyword: "price", reply: "Hey! 👋 Our plans start at ₹999/mo. See full pricing at replykaro.in/pricing" },
-                { keyword: "catalog", reply: "Here's our full catalog 📱 [link]. Reply DEMO to book a free call." },
+                { keyword: "price", reply: "Hi! Our plans start at ₹999/mo. See full pricing at replykaro.in/pricing" },
+                { keyword: "catalog", reply: "Here's our full catalog: [link]. Reply DEMO to book a free call." },
                 { keyword: "support", reply: "Hi! Our support team will get back to you within 2 hours. WhatsApp us anytime." },
               ].map((ex) => (
                 <Link key={ex.keyword} href={`/wa/automations?keyword=${ex.keyword}`} className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors group">

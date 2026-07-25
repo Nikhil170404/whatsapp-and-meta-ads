@@ -2,7 +2,7 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { BarChart3, Zap, Link2, AlertCircle, ArrowUpRight, Activity, TrendingUp, Clock, ExternalLink } from "lucide-react";
+import { BarChart3, Zap, Link2, AlertCircle, ArrowUpRight, Activity, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
 
 export default async function AdsOverviewPage() {
   const session = await getSession();
@@ -59,10 +59,10 @@ export default async function AdsOverviewPage() {
               While approval is pending, you can connect your account, set up automations, and view campaigns — everything will go live the moment Meta approves.
             </p>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">✓ Account connect works</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold">✓ Campaign sync works</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold">⏳ Comment automation — coming soon</span>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold">⏳ Auto DM — coming soon</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold"><CheckCircle2 className="w-3 h-3" /> Account connect works</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-bold"><CheckCircle2 className="w-3 h-3" /> Campaign sync works</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold"><Clock className="w-3 h-3" /> Comment automation — coming soon</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-700 rounded-lg text-xs font-bold"><Clock className="w-3 h-3" /> Auto DM — coming soon</span>
             </div>
           </div>
         </div>

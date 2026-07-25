@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2, UserCheck, ChevronDown, UserX } from "lucide-react";
+import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2, UserCheck, ChevronDown, UserX, ArrowDownLeft, ArrowUpRight, CheckCheck, Check } from "lucide-react";
 import Link from "next/link";
 import { RelativeTime } from "@/components/ui/relative-time";
 
@@ -29,11 +29,11 @@ interface TeamMember {
 }
 
 const QUICK_REPLIES = [
-  "👋 Hi! How can I help you today?",
-  "✅ Sure, I'll check and get back to you!",
-  "⏱ Please give us 30 minutes to respond.",
-  "📞 Can we call you to discuss further?",
-  "🙏 Thank you for contacting us!",
+  "Hi! How can I help you today?",
+  "Sure, I'll check and get back to you!",
+  "Please give us 30 minutes to respond.",
+  "Can we call you to discuss further?",
+  "Thank you for contacting us!",
 ];
 
 export function MessagesClient({ initialMessages, teamMembers = [] }: { initialMessages: Message[]; teamMembers?: TeamMember[] }) {
@@ -241,8 +241,8 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-1">{convo.lastMessage.content}</p>
                         <div className="flex items-center gap-1.5 mt-1">
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${convo.lastMessage.direction === "inbound" ? "bg-slate-100 text-slate-500" : "bg-[#25D366]/10 text-[#25D366]"}`}>
-                            {convo.lastMessage.direction === "inbound" ? "↙ In" : "↗ Out"}
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-flex items-center gap-0.5 ${convo.lastMessage.direction === "inbound" ? "bg-slate-100 text-slate-500" : "bg-[#25D366]/10 text-[#25D366]"}`}>
+                            {convo.lastMessage.direction === "inbound" ? <><ArrowDownLeft className="w-2.5 h-2.5" /> In</> : <><ArrowUpRight className="w-2.5 h-2.5" /> Out</>}
                           </span>
                           <span className="text-[10px] text-slate-400">{convo.messages.length} msgs</span>
                         </div>
@@ -353,7 +353,9 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                       <div className="text-[10px] font-medium mt-1 flex justify-end items-center gap-1 text-slate-400">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         {msg.direction === "outbound" && (
-                          <span>{msg.status === "sending" ? "⌛" : msg.status === "read" ? "✓✓" : "✓"}</span>
+                          <span className="inline-flex items-center">
+                            {msg.status === "sending" ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : msg.status === "read" ? <CheckCheck className="w-3 h-3 text-[#53bdeb]" /> : <Check className="w-3 h-3" />}
+                          </span>
                         )}
                       </div>
                     </div>
