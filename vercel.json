@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/purge-messages",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/token-refresh",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/quality-sync",
+      "schedule": "0 9 * * *"
     }
   ]
 }
