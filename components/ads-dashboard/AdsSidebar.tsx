@@ -24,6 +24,16 @@ interface SidebarProps {
   user: SessionUser;
 }
 
+// The layout resolves display_name to the WhatsApp verified business name, so it
+// matches what the Connect page shows. Email is only a fallback, and it can be
+// null on Facebook accounts that don't share it.
+function accountLabel(user: SessionUser): string {
+  const name = (user.display_name ?? "").trim();
+  if (name) return name;
+  const local = (user.email ?? "").split("@")[0]?.trim();
+  return local || "User";
+}
+
 const navigation = [
   { name: "Overview", href: "/ads", icon: LayoutDashboard },
   { name: "Connect Account", href: "/ads/connect", icon: Link2 },
@@ -117,11 +127,11 @@ export function AdsSidebar({ user }: SidebarProps) {
               <div className="relative transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                 <SafeImage
                   src={user.profile_picture_url}
-                  alt={user.email || 'User'}
+                  alt={accountLabel(user)}
                   className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-[#1877F2]/10 ring-2 ring-white"
                   fallbackComponent={
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1877F2] to-[#155EC0] flex items-center justify-center text-white font-bold shadow-lg shadow-[#1877F2]/10 ring-2 ring-white">
-                      {(user.email || 'U').charAt(0).toUpperCase()}
+                      {accountLabel(user).charAt(0).toUpperCase()}
                     </div>
                   }
                 />
@@ -129,7 +139,7 @@ export function AdsSidebar({ user }: SidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-slate-900 truncate">
-                  {user.email || 'User'}
+                  {accountLabel(user)}
                 </p>
                 <span className={cn(
                   "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md w-fit",
@@ -245,16 +255,16 @@ export function AdsSidebar({ user }: SidebarProps) {
           <div className="flex items-center gap-4 mb-4">
             <SafeImage
               src={user.profile_picture_url}
-              alt={user.email || 'User'}
+              alt={accountLabel(user)}
               fallbackComponent={
                 <div className="w-10 h-10 rounded-xl bg-[#1877F2] flex items-center justify-center text-white font-bold">
-                  {(user.email || 'U').charAt(0).toUpperCase()}
+                  {accountLabel(user).charAt(0).toUpperCase()}
                 </div>
               }
               className="w-10 h-10 rounded-xl object-cover"
             />
             <div className="flex-1">
-              <p className="text-sm font-bold text-slate-900">{user.email || 'User'}</p>
+              <p className="text-sm font-bold text-slate-900">{accountLabel(user)}</p>
               <p className="text-xs text-[#1877F2] uppercase font-black tracking-wider">{user.plan_type} plan</p>
             </div>
           </div>
