@@ -239,7 +239,8 @@ export function WalletClient({
               )}
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Top up here using <strong>UPI, NetBanking</strong>, or any Indian payment. We pay Meta on your behalf.
+              Pay for ReplyKaro usage with <strong>UPI, NetBanking</strong>, or any Indian payment.
+              Meta still bills your own WhatsApp payment method separately for message costs.
             </p>
           </button>
         </div>
