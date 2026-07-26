@@ -38,13 +38,14 @@ export async function GET(req: Request) {
     const quality = await getPhoneNumberQuality(conn.phone_number_id, conn.access_token);
     if (!quality) continue;
 
-    const { qualityRating, messagingTier } = quality;
-    const wasLow = conn.quality_rating === "LOW";
-    const isLow = qualityRating === "LOW";
+    const { qualityRating, tier, messagingTier } = quality;
+    const wasLow = conn.quality_rating === "LOW" || conn.quality_rating === "RED";
+    const isLow = qualityRating === "LOW" || qualityRating === "RED";
 
     const update: Record<string, any> = {
       quality_rating: qualityRating,
       messaging_tier: messagingTier,
+      messaging_limit_tier: tier,
       quality_synced_at: new Date().toISOString(),
     };
 

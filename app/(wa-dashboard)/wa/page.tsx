@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { pickDisplayName } from "@/lib/auth/display-name";
+import { parseMessagingTier, describeQuality } from "@/lib/whatsapp/messaging-limits";
 
 export default async function WaOverviewPage() {
   const session = await getSession();
@@ -45,6 +46,10 @@ export default async function WaOverviewPage() {
   const activeAutomations = automations?.filter((a: any) => a.is_active) ?? [];
   const allAutomations = automations ?? [];
   const msgs = recentMessages ?? [];
+
+  const limit = parseMessagingTier(connection?.messaging_limit_tier);
+  const quality = describeQuality(connection?.quality_rating);
+  const dailyUsed = connection?.daily_unique_sent ?? 0;
 
   const setupDone = [isConnected, allAutomations.length > 0, (contactCount ?? 0) > 0].filter(Boolean).length;
   const setupComplete = setupDone === 3;
@@ -272,22 +277,43 @@ export default async function WaOverviewPage() {
               <p className="text-xs text-slate-400 font-medium">Your daily broadcast capacity</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-            {[
-              { tier: "Tier 1", limit: "1,000/day", desc: "New accounts start here", active: true },
-              { tier: "Tier 2", limit: "10,000/day", desc: "Unlocks with good quality", active: false },
-              { tier: "Tier 3", limit: "100,000/day", desc: "High-volume senders", active: false },
-              { tier: "Unlimited", limit: "No limit", desc: "Top-rated businesses", active: false },
-            ].map((t) => (
-              <div key={t.tier} className={`rounded-xl p-3 border text-center ${t.active ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-100"}`}>
-                <p className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${t.active ? "text-blue-600" : "text-slate-400"}`}>{t.tier}</p>
-                <p className={`text-sm font-black ${t.active ? "text-blue-900" : "text-slate-400"}`}>{t.limit}</p>
-                <p className={`text-[9px] font-medium mt-0.5 ${t.active ? "text-blue-500" : "text-slate-300"}`}>{t.desc}</p>
-              </div>
-            ))}
+          <div className="grid gap-3 sm:grid-cols-3 mb-4">
+            <div className="rounded-xl p-3 border border-blue-200 bg-blue-50">
+              <p className="text-[10px] font-black uppercase tracking-wider text-blue-600 mb-0.5">Your limit</p>
+              <p className="text-sm font-black text-blue-900">{limit.label}</p>
+              <p className="text-[9px] font-medium text-blue-500 mt-0.5">Unique recipients you start a chat with</p>
+            </div>
+            <div className="rounded-xl p-3 border border-slate-100 bg-slate-50">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Used today</p>
+              <p className="text-sm font-black text-slate-900">
+                {dailyUsed.toLocaleString("en-IN")}
+                {Number.isFinite(limit.dailyLimit) && (
+                  <span className="text-slate-400 font-bold"> / {limit.dailyLimit.toLocaleString("en-IN")}</span>
+                )}
+              </p>
+              {Number.isFinite(limit.dailyLimit) && (
+                <div className="h-1.5 rounded-full bg-slate-200 mt-1.5 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-[#25D366]"
+                    style={{ width: `${Math.min(100, (dailyUsed / limit.dailyLimit) * 100)}%` }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="rounded-xl p-3 border border-slate-100 bg-slate-50">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-0.5">Quality</p>
+              <p className={`text-sm font-black ${
+                quality.tone === "good" ? "text-[#1DA851]"
+                : quality.tone === "warn" ? "text-amber-600"
+                : quality.tone === "bad" ? "text-rose-600"
+                : "text-slate-400"
+              }`}>{quality.label}</p>
+              <p className="text-[9px] font-medium text-slate-400 mt-0.5 leading-snug">{quality.detail}</p>
+            </div>
           </div>
           <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-slate-50 pt-3">
-            <p>• Tier increases automatically when you send consistently and get low block rates</p>
+            <p>• <span className="font-black text-slate-700">Replies don\'t count.</span> This limit only applies to conversations you start. Answering someone who messaged you first is unlimited.</p>
+            <p>• Meta raises the limit automatically — reach half your current limit in unique recipients over 7 days, with good quality.</p>
             <p>• Templates must be Meta-approved before broadcasting. Rejected templates cannot be used.</p>
             <p>• Contacts who reply <span className="font-black text-slate-700">STOP</span> are automatically opted out — ReplyKaro enforces this.</p>
             <p>• 24-hour window rule: free-text replies only work when customer messaged you first within 24 hrs.</p>

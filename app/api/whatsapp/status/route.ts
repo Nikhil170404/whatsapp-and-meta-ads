@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
+import { parseMessagingTier } from "@/lib/whatsapp/messaging-limits";
 
 export async function GET() {
   const session = await getSession();
@@ -10,7 +11,7 @@ export async function GET() {
   const { data } = await supabase
     .from("wa_connections")
     .select(
-      "status, quality_rating, messaging_tier, quality_paused_at, token_expires_at, token_refresh_failed_at, last_error, last_error_at, daily_unique_sent, daily_sent_reset_at"
+      "status, quality_rating, messaging_tier, messaging_limit_tier, quality_paused_at, token_expires_at, token_refresh_failed_at, last_error, last_error_at, daily_unique_sent, daily_sent_reset_at"
     )
     .eq("user_id", session.id)
     .single();
@@ -26,11 +27,17 @@ export async function GET() {
     ? Math.floor((tokenExpiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     : null;
 
+  const limit = parseMessagingTier(data.messaging_limit_tier);
+
   return NextResponse.json({
     connected: isConnected,
     status: data.status,
     qualityRating: data.quality_rating ?? "UNKNOWN",
     messagingTier: data.messaging_tier ?? 1,
+    // Real allowance from Meta, plus a ready-to-render label.
+    messagingLimitTier: limit.tier,
+    dailyLimit: Number.isFinite(limit.dailyLimit) ? limit.dailyLimit : null,
+    dailyLimitLabel: limit.label,
     qualityPaused: !!data.quality_paused_at,
     tokenExpiresAt: data.token_expires_at,
     daysUntilExpiry,

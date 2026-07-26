@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { parseMessagingTier, tierOrdinal } from "@/lib/whatsapp/messaging-limits";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -320,15 +321,14 @@ export async function getMessageTemplates(wabaId: string, accessToken: string) {
 export async function getPhoneNumberQuality(
   phoneNumberId: string,
   accessToken: string
-): Promise<{ qualityRating: string; messagingTier: number } | null> {
+): Promise<{ qualityRating: string; tier: string; dailyLimit: number; messagingTier: number } | null> {
   try {
     const data = await getPhoneNumberInfo(phoneNumberId, accessToken);
-    // Meta returns e.g. "HIGH", "MEDIUM", "LOW", "UNKNOWN"
+    // Meta returns e.g. "GREEN", "YELLOW", "RED", "UNKNOWN"
     const qualityRating: string = data.quality_rating ?? "UNKNOWN";
-    // messaging_limit_tier: "TIER_1" (1k/day), "TIER_2" (10k), "TIER_3" (100k), "TIER_4" (unlimited)
-    const tierStr: string = data.messaging_limit_tier ?? "TIER_1";
-    const messagingTier = parseInt(tierStr.replace("TIER_", ""), 10) || 1;
-    return { qualityRating, messagingTier };
+    // messaging_limit_tier values are not sequential — see messaging-limits.ts.
+    const { tier, dailyLimit } = parseMessagingTier(data.messaging_limit_tier);
+    return { qualityRating, tier, dailyLimit, messagingTier: tierOrdinal(tier) };
   } catch {
     return null;
   }

@@ -11,6 +11,7 @@ import {
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyMetaSignature } from "@/lib/meta-signature";
+import { parseMessagingTier, tierOrdinal } from "@/lib/whatsapp/messaging-limits";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
 // window after the customer's last inbound message. Outside it, use templates.
@@ -94,7 +95,13 @@ export async function POST(req: Request) {
 
 async function handleQualityUpdate(supabase: any, value: any) {
   const phoneNumberId: string = value.phone_number_id ?? value.display_phone_number;
-  const newRating: string = value.current_limit ?? value.quality_score?.score ?? "UNKNOWN";
+
+  // These are two different fields and were previously conflated: `current_limit`
+  // is the messaging tier (e.g. "TIER_1K") while `quality_score.score` is the
+  // GREEN/YELLOW/RED rating. Storing the tier in quality_rating meant the LOW-quality
+  // comparison below never matched, so the protective auto-pause never fired.
+  const newRating: string = value.quality_score?.score ?? "UNKNOWN";
+  const limit = value.current_limit ? parseMessagingTier(value.current_limit) : null;
 
   if (!phoneNumberId) return;
 
@@ -106,11 +113,16 @@ async function handleQualityUpdate(supabase: any, value: any) {
 
   if (!conn) return;
 
-  const isLow = newRating === "LOW";
+  const isLow = newRating === "LOW" || newRating === "RED";
   const update: Record<string, any> = {
     quality_rating: newRating,
     quality_synced_at: new Date().toISOString(),
   };
+
+  if (limit) {
+    update.messaging_limit_tier = limit.tier;
+    update.messaging_tier = tierOrdinal(limit.tier);
+  }
 
   if (isLow && !conn.quality_paused_at) {
     // Quality just dropped to LOW — pause all automations immediately

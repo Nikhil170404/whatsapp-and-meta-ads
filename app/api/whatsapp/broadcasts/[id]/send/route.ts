@@ -4,18 +4,14 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { sendTemplateMessage, sleep, UNREACHABLE_CODES } from "@/lib/whatsapp/service";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import { parseMessagingTier } from "@/lib/whatsapp/messaging-limits";
 
 // Delay between each message send to stay well under Meta's 80 msg/s API cap.
 // At 200 ms we cap at ~5 msg/s — safe even on Tier 1 accounts.
 const SEND_DELAY_MS = 200;
 
-// Daily messaging limits per tier (unique users / 24 h)
-const TIER_LIMITS: Record<number, number> = {
-  1: 1_000,
-  2: 10_000,
-  3: 100_000,
-  4: Infinity,
-};
+// Daily unique-recipient allowance comes from the tier string Meta reports —
+// see lib/whatsapp/messaging-limits.ts for why the integer column is not enough.
 
 export async function POST(
   req: Request,
@@ -56,7 +52,7 @@ export async function POST(
 
     const { data: conn } = await supabase
       .from("wa_connections")
-      .select("phone_number_id, access_token, token_expires_at, billing_type, waba_id, quality_rating, messaging_tier, quality_paused_at, daily_unique_sent, daily_sent_reset_at")
+      .select("phone_number_id, access_token, token_expires_at, billing_type, waba_id, quality_rating, messaging_tier, messaging_limit_tier, quality_paused_at, daily_unique_sent, daily_sent_reset_at")
       .eq("user_id", userId)
       .single();
 
@@ -127,8 +123,7 @@ export async function POST(
     }
 
     // ── Tier-limit check ────────────────────────────────────────────────────
-    const tier = conn.messaging_tier ?? 1;
-    const dailyLimit = TIER_LIMITS[tier] ?? TIER_LIMITS[1];
+    const { tier, dailyLimit, label: limitLabel } = parseMessagingTier(conn.messaging_limit_tier);
 
     // Reset daily counter if it's a new day
     const lastReset = conn.daily_sent_reset_at ? new Date(conn.daily_sent_reset_at) : new Date(0);
@@ -145,7 +140,7 @@ export async function POST(
 
     if (remaining <= 0) {
       return NextResponse.json({
-        error: `Daily messaging limit reached for Tier ${tier} (${dailyLimit.toLocaleString()} unique users/day). Try again tomorrow or upgrade your Meta messaging tier.`,
+        error: `Daily messaging limit reached (${limitLabel} unique recipients). Meta raises this automatically as you send consistently with good quality. Replies to customers who message you first are unaffected.`,
         code: "DAILY_LIMIT_REACHED",
         tier,
         dailyLimit,
@@ -193,7 +188,7 @@ export async function POST(
         .map((r: any) => r.id);
       await supabase
         .from("wa_broadcast_recipients")
-        .update({ status: "skipped", error: `Daily tier limit (Tier ${tier}: ${dailyLimit.toLocaleString()}/day) reached` })
+        .update({ status: "skipped", error: `Daily Meta limit reached (${limitLabel} unique recipients)` })
         .in("id", limitedIds);
     }
 
