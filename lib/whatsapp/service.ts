@@ -21,6 +21,37 @@ export const RATE_LIMIT_CODES = new Set([
   131056, // Duplicate: also opts-out but surfaces as rate-signal
 ]);
 
+// ─── Codes that block ALL sending until the account owner acts ────────────────
+// These are not transient: retrying changes nothing, so they need to be shown to
+// the user as a task rather than logged as a failure.
+export const ACCOUNT_BLOCKED_CODES = new Set([
+  131042, // Business eligibility payment issue — no valid payment method on the WABA
+  131031, // Account has been locked / restricted
+  368,    // Temporarily blocked for policy violations
+]);
+
+/**
+ * Plain-language explanation and next step for the codes users actually hit.
+ * Meta's own message ("Business eligibility payment issue") does not say what to
+ * do, so the raw text is not enough on its own.
+ */
+const ERROR_GUIDANCE: Record<number, string> = {
+  131042:
+    "WhatsApp has no valid payment method for this account, so Meta is blocking all outgoing messages. " +
+    "Add a credit card in Meta Business Settings → Billing & Payments, assign it to this WhatsApp Business Account, " +
+    "and make sure the business country, currency and tax info are filled in.",
+  131031: "Meta has restricted this WhatsApp Business Account. Check Business Support Home for the reason and to appeal.",
+  368: "Meta has temporarily blocked this account for a policy violation. Check Business Support Home.",
+  131047:
+    "The customer's last message is more than 24 hours old, so a free-form reply is not allowed. " +
+    "Send an approved template instead.",
+  131056: "This customer opted out of messages from your business.",
+  131026: "That number is not reachable on WhatsApp.",
+  190: "The access token expired. Reconnect WhatsApp to get a fresh one.",
+  131005: "The access token expired. Reconnect WhatsApp to get a fresh one.",
+  63049: "Meta blocks marketing templates to US numbers. Use a utility or service message instead.",
+};
+
 export interface MetaApiError {
   code: number;
   message: string;
@@ -29,6 +60,10 @@ export interface MetaApiError {
   isTokenExpired: boolean;
   isRateLimit: boolean;
   isUnreachable: boolean;
+  /** Sending is blocked account-wide until the owner fixes something. */
+  isAccountBlocked: boolean;
+  /** Plain-language explanation with the next step, when one is known. */
+  guidance?: string;
 }
 
 export function parseMetaError(raw: any): MetaApiError {
@@ -42,7 +77,15 @@ export function parseMetaError(raw: any): MetaApiError {
     isTokenExpired: TOKEN_EXPIRED_CODES.has(code),
     isRateLimit: RATE_LIMIT_CODES.has(code),
     isUnreachable: UNREACHABLE_CODES.has(code),
+    isAccountBlocked: ACCOUNT_BLOCKED_CODES.has(code),
+    guidance: ERROR_GUIDANCE[code],
   };
+}
+
+/** One line suitable for storing in last_error and showing in the UI. */
+export function describeMetaError(err: MetaApiError): string {
+  const guidance = ERROR_GUIDANCE[err.code];
+  return guidance ? `${guidance} (Meta error ${err.code})` : `(#${err.code}) ${err.message}`;
 }
 
 /** Wait `ms` milliseconds — used to throttle broadcast sends. */

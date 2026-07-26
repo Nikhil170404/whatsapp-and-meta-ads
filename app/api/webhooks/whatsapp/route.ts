@@ -6,6 +6,7 @@ import {
   sendImageMessage,
   sendVideoMessage,
   sendDocumentMessage,
+  describeMetaError,
 } from "@/lib/whatsapp/service";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
@@ -536,7 +537,9 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       let errorMsg = error?.message || "Unknown error sending reply";
       const metaErr = error?.metaError;
       if (metaErr) {
-        errorMsg = `(#${metaErr.code}) ${metaErr.message}`;
+        // Prefer the plain-language explanation — Meta's own text for billing and
+        // policy blocks does not say what the user has to do about it.
+        errorMsg = describeMetaError(metaErr);
       } else {
         try {
           const parsed = JSON.parse(

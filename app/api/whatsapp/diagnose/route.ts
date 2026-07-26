@@ -97,6 +97,64 @@ export async function GET() {
     }
   }
 
+  // Is the number actually in a state that can send? A phone that is PENDING or
+  // RESTRICTED, or a WABA still under review, blocks delivery regardless of code.
+  if (phoneNumberId) {
+    try {
+      const res = await fetch(
+        `${WA_API_URL}/${phoneNumberId}?fields=status,code_verification_status,quality_rating,name_status&access_token=${token}`
+      );
+      const json = await res.json();
+      if (json?.error) {
+        checks.push({ name: "Number status", status: "warn", detail: json.error.message });
+      } else {
+        const ready = json.status === "CONNECTED";
+        checks.push({
+          name: "Number status",
+          status: ready ? "pass" : "fail",
+          detail: ready
+            ? `CONNECTED · quality ${json.quality_rating ?? "unknown"} · name ${json.name_status ?? "unknown"}`
+            : `Meta reports status ${json.status ?? "unknown"} — the number cannot send until this is CONNECTED.`,
+        });
+      }
+    } catch {
+      checks.push({ name: "Number status", status: "warn", detail: "Could not read the phone number's status." });
+    }
+  }
+
+  if (wabaId) {
+    try {
+      const res = await fetch(`${WA_API_URL}/${wabaId}?fields=account_review_status&access_token=${token}`);
+      const json = await res.json();
+      if (!json?.error) {
+        const approved = json.account_review_status === "APPROVED";
+        checks.push({
+          name: "Account review",
+          status: approved ? "pass" : "warn",
+          detail: `Meta review status: ${json.account_review_status ?? "unknown"}`,
+        });
+      }
+    } catch {}
+  }
+
+  // Billing eligibility cannot be read from the Graph API without billing
+  // permissions, so surface the last real send failure instead — Meta reports
+  // error 131042 ("Business eligibility payment issue") only on an actual send.
+  const { data: lastErrRow } = await supabase
+    .from("wa_connections")
+    .select("last_error, last_error_at")
+    .eq("user_id", session.id)
+    .single();
+
+  if (lastErrRow?.last_error) {
+    const blocked = /131042|eligibility|payment/i.test(lastErrRow.last_error);
+    checks.push({
+      name: blocked ? "Billing / payment method" : "Last send error",
+      status: "fail",
+      detail: lastErrRow.last_error,
+    });
+  }
+
   // What is actually stored, and does it match what Meta reports?
   const { data: conn } = await supabase
     .from("wa_connections")
