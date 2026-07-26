@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { WaSidebar } from "@/components/wa-dashboard/WaSidebar";
+import { resolveDisplayName } from "@/lib/auth/display-name";
 
 export default async function WaDashboardLayout({
   children,
@@ -15,18 +16,11 @@ export default async function WaDashboardLayout({
   }
 
   const supabase = getSupabaseAdmin() as any;
-  const [{ data: userRow }, { data: waConn }] = await Promise.all([
-    supabase.from("users").select("plan_type, display_name, email").eq("id", session.id).maybeSingle(),
-    supabase.from("wa_connections").select("display_name, phone_number").eq("user_id", session.id).maybeSingle(),
+  const [{ data: userRow }, businessName] = await Promise.all([
+    supabase.from("users").select("plan_type").eq("id", session.id).maybeSingle(),
+    resolveDisplayName(supabase, session, "User"),
   ]);
   const planType: string = (userRow?.plan_type || "free").toLowerCase();
-
-  // Prefer the WhatsApp Business verified name over the Facebook account name,
-  // since the FB name often reflects the app provider, not the user's business.
-  const businessName: string =
-    (waConn?.display_name && waConn.display_name !== "WhatsApp Business" && waConn.display_name !== "unknown")
-      ? waConn.display_name
-      : (userRow?.display_name || session.display_name);
 
   return (
     <div className="min-h-screen bg-white">

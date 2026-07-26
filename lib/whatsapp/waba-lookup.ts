@@ -1,3 +1,5 @@
+import { isPlaceholderName } from "@/lib/auth/display-name";
+
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
 export interface WabaLookupResult {
@@ -128,6 +130,19 @@ export function needsPhoneRepair(row: { phone_number_id?: string | null; waba_id
 }
 
 /**
+ * True when the stored business name or phone number is still a placeholder.
+ * Meta populates verified_name only once the number clears business verification,
+ * so a row saved before that needs re-reading rather than being left generic —
+ * otherwise the UI keeps falling back to the Facebook account name.
+ */
+export function needsProfileRefresh(row: {
+  display_name?: string | null;
+  phone_number?: string | null;
+}): boolean {
+  return isPlaceholderName(row.display_name) || isPlaceholderName(row.phone_number);
+}
+
+/**
  * Re-resolves the phone number for a connection whose stored ID is missing or wrong
  * and writes the corrected values back. Returns the repaired row, or null if the
  * WABA still has no usable phone number.
@@ -143,12 +158,15 @@ export async function repairPhoneNumber(
   const phone = json?.data?.[0];
   if (!phone?.id) return null;
 
-  const patch = {
+  // Only write values Meta actually returned, so an unverified number does not
+  // overwrite a good stored name with a placeholder on every page load.
+  const patch: Record<string, string> = {
     phone_number_id: phone.id,
-    phone_number: phone.display_phone_number || "Verified Number",
-    display_name: phone.verified_name || "WhatsApp Business",
     updated_at: new Date().toISOString(),
   };
+  if (phone.display_phone_number) patch.phone_number = phone.display_phone_number;
+  if (phone.verified_name) patch.display_name = phone.verified_name;
+
   await supabase.from("wa_connections").update(patch).eq("user_id", row.user_id);
   return { ...row, ...patch };
 }
