@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, AlertTriangle, XCircle, Stethoscope } from "lucide-react";
+import { isPlaceholderName } from "@/lib/auth/display-name";
 
 interface DiagnosticCheck { name: string; status: "pass" | "fail" | "warn"; detail: string; }
 
@@ -94,6 +95,11 @@ export function WaConnectClient({
     );
   }
 
+  // Meta stores a placeholder when it has not published the real value yet, so
+  // don't present those strings as though they were the user's actual data.
+  const hasRealNumber = !isPlaceholderName(initialConnection?.phone_number);
+  const hasRealBusinessName = !isPlaceholderName(initialConnection?.display_name);
+
   if (initialConnection?.status === 'active') {
     return (
       <div className="bg-white rounded-[2rem] border border-[#25D366]/20 p-8 shadow-lg relative overflow-hidden">
@@ -110,14 +116,35 @@ export function WaConnectClient({
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 relative z-10">
+        <div className="grid gap-4 sm:grid-cols-2 relative z-10">
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">Phone Number</p>
-            <p className="font-bold text-slate-900">{initialConnection.phone_number}</p>
+            {hasRealNumber ? (
+              <p className="font-bold text-slate-900">{initialConnection.phone_number}</p>
+            ) : (
+              <>
+                <p className="font-bold text-slate-400">Not published by Meta</p>
+                <p className="text-[11px] text-slate-400 font-medium mt-1 leading-relaxed">
+                  Meta only returns the number once it passes business verification. The IDs below still work.
+                </p>
+              </>
+            )}
+          </div>
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Business Name</p>
+            <p className={`font-bold ${hasRealBusinessName ? "text-slate-900" : "text-slate-400"}`}>
+              {hasRealBusinessName ? initialConnection.display_name : "Not published by Meta"}
+            </p>
+          </div>
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+            <p className="text-xs font-bold text-slate-400 uppercase mb-1">Phone Number ID</p>
+            <p className="font-bold text-slate-900 text-xs break-all font-mono">{initialConnection.phone_number_id}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">Used for sending messages</p>
           </div>
           <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase mb-1">WABA ID</p>
-            <p className="font-bold text-slate-900 text-xs break-all">{initialConnection.waba_id}</p>
+            <p className="font-bold text-slate-900 text-xs break-all font-mono">{initialConnection.waba_id}</p>
+            <p className="text-[11px] text-slate-400 font-medium mt-1">Your WhatsApp Business Account</p>
           </div>
         </div>
 
