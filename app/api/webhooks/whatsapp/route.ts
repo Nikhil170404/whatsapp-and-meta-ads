@@ -74,8 +74,10 @@ export async function POST(req: Request) {
         }
 
         // ── Inbound messages & delivery receipts ─────────────────────────────
+        // entry.id is the WABA ID — used as a fallback key when the stored
+        // phone_number_id is stale or wrong.
         if (change.field === "messages") {
-          await handleMessagesChange(supabase, change.value);
+          await handleMessagesChange(supabase, change.value, entry.id);
         }
       }
     }
@@ -185,7 +187,7 @@ async function handleTemplateQualityUpdate(supabase: any, value: any) {
 
 // ─── Messages change handler (inbound messages + delivery receipts) ──────────
 
-async function handleMessagesChange(supabase: any, value: any) {
+async function handleMessagesChange(supabase: any, value: any, wabaId?: string) {
   const phoneNumberId: string = value.metadata.phone_number_id;
 
   // Process statuses (delivery / read receipts)
@@ -218,11 +220,32 @@ async function handleMessagesChange(supabase: any, value: any) {
       message.type === "text" ? message.text.body : `[${message.type} message]`;
 
     // Find the connected user by phone_number_id
-    const { data: connection } = await supabase
+    const cols = "user_id, access_token, token_expires_at, billing_type, quality_paused_at";
+    let { data: connection } = await supabase
       .from("wa_connections")
-      .select("user_id, access_token, token_expires_at, billing_type, quality_paused_at")
+      .select(cols)
       .eq("phone_number_id", phoneNumberId)
       .single();
+
+    // Fall back to the WABA ID when the stored phone_number_id is stale or wrong,
+    // then correct it from the webhook payload — which carries the authoritative
+    // value — so subsequent lookups hit on the first try.
+    if (!connection && wabaId) {
+      const { data: byWaba } = await supabase
+        .from("wa_connections")
+        .select(cols)
+        .eq("waba_id", wabaId)
+        .single();
+
+      if (byWaba) {
+        await supabase
+          .from("wa_connections")
+          .update({ phone_number_id: phoneNumberId, updated_at: new Date().toISOString() })
+          .eq("user_id", byWaba.user_id);
+        console.warn(`[webhook] Repaired phone_number_id for waba_id=${wabaId} -> ${phoneNumberId}`);
+        connection = byWaba;
+      }
+    }
 
     if (!connection) continue;
 

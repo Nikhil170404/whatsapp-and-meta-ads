@@ -3,7 +3,13 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
 import { redirect } from "next/navigation";
 import { WaConnectClient } from "./WaConnectClient";
-import { resolveWabaFromToken, fetchPhoneDetails } from "@/lib/whatsapp/waba-lookup";
+import {
+  resolveWabaFromToken,
+  fetchPhoneDetails,
+  needsPhoneRepair,
+  needsProfileRefresh,
+  repairPhoneNumber,
+} from "@/lib/whatsapp/waba-lookup";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -115,11 +121,24 @@ export default async function WaConnectPage({
   }
 
   const supabase = getSupabaseAdmin() as any;
-  const { data: row } = await supabase
+  let { data: row } = await supabase
     .from("wa_connections")
     .select("*")
     .eq("user_id", session.id)
     .single();
+
+  // Heal rows whose phone_number_id is missing or was set to the WABA ID by an
+  // earlier build — the inbound webhook matches on this column, so a wrong value
+  // means every incoming message is dropped and no automation ever fires.
+  if (
+    row?.waba_id &&
+    row.waba_id !== "unknown" &&
+    row.access_token &&
+    (needsPhoneRepair(row) || needsProfileRefresh(row))
+  ) {
+    const repaired = await repairPhoneNumber(supabase, row);
+    if (repaired) row = { ...row, ...repaired };
+  }
 
   // A row with no real WABA ID is not a usable connection — older builds saved these
   // as "active". Surface it as not-connected so the user gets the signup button back,

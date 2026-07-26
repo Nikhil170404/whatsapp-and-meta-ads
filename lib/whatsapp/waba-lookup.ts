@@ -1,3 +1,5 @@
+import { isPlaceholderName } from "@/lib/auth/display-name";
+
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
 export interface WabaLookupResult {
@@ -44,9 +46,15 @@ export async function resolveWabaFromToken(
       if (scopes.length === 0) {
         diagnostics.push("debug_token returned no granular_scopes (token has no business assets attached).");
       }
+      // Both whatsapp_* scopes list WABA IDs in target_ids — never phone number IDs.
+      // The phone number ID is resolved separately from the WABA's phone_numbers edge.
       for (const s of scopes) {
-        if (s.scope === "whatsapp_business_management" && s.target_ids?.[0]) wabaId = s.target_ids[0];
-        if (s.scope === "whatsapp_business_messaging" && s.target_ids?.[0]) phoneNumberId = s.target_ids[0];
+        if (
+          (s.scope === "whatsapp_business_management" || s.scope === "whatsapp_business_messaging") &&
+          s.target_ids?.[0]
+        ) {
+          wabaId = wabaId || s.target_ids[0];
+        }
       }
       if (!wabaId) {
         const names = scopes.map((s: any) => s.scope).join(", ") || "none";
@@ -95,8 +103,8 @@ export async function resolveWabaFromToken(
     }
   }
 
-  // 4. Resolve a phone number from the WABA if the token scopes didn't name one.
-  if (wabaId && !phoneNumberId) {
+  // 4. Resolve the phone number ID from the WABA's phone_numbers edge.
+  if (wabaId) {
     try {
       const res = await fetch(`${WA_API_URL}/${wabaId}/phone_numbers?fields=id&access_token=${userToken}`);
       const json = await res.json();
@@ -109,6 +117,58 @@ export async function resolveWabaFromToken(
   }
 
   return { wabaId, phoneNumberId, diagnostics };
+}
+
+/**
+ * True when a stored row is missing a usable phone number ID. Rows written by
+ * earlier builds either left it as "unknown" or copied the WABA ID into it, both
+ * of which make the inbound webhook lookup miss and silently drop every message.
+ */
+export function needsPhoneRepair(row: { phone_number_id?: string | null; waba_id?: string | null }): boolean {
+  const { phone_number_id: pid, waba_id: wid } = row;
+  return !pid || pid === "unknown" || pid === wid;
+}
+
+/**
+ * True when the stored business name or phone number is still a placeholder.
+ * Meta populates verified_name only once the number clears business verification,
+ * so a row saved before that needs re-reading rather than being left generic —
+ * otherwise the UI keeps falling back to the Facebook account name.
+ */
+export function needsProfileRefresh(row: {
+  display_name?: string | null;
+  phone_number?: string | null;
+}): boolean {
+  return isPlaceholderName(row.display_name) || isPlaceholderName(row.phone_number);
+}
+
+/**
+ * Re-resolves the phone number for a connection whose stored ID is missing or wrong
+ * and writes the corrected values back. Returns the repaired row, or null if the
+ * WABA still has no usable phone number.
+ */
+export async function repairPhoneNumber(
+  supabase: any,
+  row: { user_id: string; waba_id: string; access_token: string },
+) {
+  const res = await fetch(
+    `${WA_API_URL}/${row.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${row.access_token}`
+  );
+  const json = await res.json().catch(() => null);
+  const phone = json?.data?.[0];
+  if (!phone?.id) return null;
+
+  // Only write values Meta actually returned, so an unverified number does not
+  // overwrite a good stored name with a placeholder on every page load.
+  const patch: Record<string, string> = {
+    phone_number_id: phone.id,
+    updated_at: new Date().toISOString(),
+  };
+  if (phone.display_phone_number) patch.phone_number = phone.display_phone_number;
+  if (phone.verified_name) patch.display_name = phone.verified_name;
+
+  await supabase.from("wa_connections").update(patch).eq("user_id", row.user_id);
+  return { ...row, ...patch };
 }
 
 /** Fetches display_phone_number and verified_name for a phone number ID. */

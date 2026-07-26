@@ -45,12 +45,13 @@ function planLabel(plan: string) {
   return plan.charAt(0).toUpperCase() + plan.slice(1);
 }
 
+// The layout already resolves this to the WhatsApp verified business name via
+// lib/auth/display-name. Keep the full value here — truncating to the first word
+// would turn a business name like "Acme Traders" into "Acme". Overflow is handled
+// by the `truncate` class on the containing element.
 function shortName(name: string | null | undefined, email: string | null | undefined): string {
-  if (name) {
-    // Strip common system-user suffixes and show first meaningful segment
-    const cleaned = name.replace(/\s+(system\s+user|admin|user)$/i, "").trim();
-    return cleaned.split(/\s+/)[0] || name;
-  }
+  const trimmed = (name ?? "").trim();
+  if (trimmed) return trimmed;
   if (email) return email.split("@")[0];
   return "User";
 }

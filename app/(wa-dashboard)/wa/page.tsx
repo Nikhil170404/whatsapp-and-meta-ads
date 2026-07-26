@@ -8,6 +8,7 @@ import {
   Plus, Power, BarChart3, ShieldCheck
 } from "lucide-react";
 import { RelativeTime } from "@/components/ui/relative-time";
+import { pickDisplayName } from "@/lib/auth/display-name";
 
 export default async function WaOverviewPage() {
   const session = await getSession();
@@ -21,13 +22,23 @@ export default async function WaOverviewPage() {
     { count: templateCount },
     { count: contactCount },
     { data: recentMessages },
+    { data: userRow },
   ] = await Promise.all([
     supabase.from("wa_connections").select("*").eq("user_id", session.id).single(),
     supabase.from("wa_automations").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(5),
     supabase.from("wa_templates").select("*", { count: "exact", head: true }).eq("user_id", session.id),
     supabase.from("wa_contacts").select("*", { count: "exact", head: true }).eq("user_id", session.id),
     supabase.from("wa_messages").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(4),
+    supabase.from("users").select("display_name, email").eq("id", session.id).maybeSingle(),
   ]);
+
+  // The WhatsApp verified business name, not the Facebook account name — that one
+  // is often the provider's System User and would read the same for every customer.
+  const displayName = pickDisplayName(
+    connection?.display_name,
+    userRow?.display_name ?? session.display_name,
+    userRow?.email ?? session.email
+  );
 
   const isConnected = connection?.status === "active";
   const isTokenExpired = connection?.status === "expired";
@@ -59,7 +70,7 @@ export default async function WaOverviewPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-            Welcome back, {session.display_name?.split(" ")[0] || "there"}
+            Welcome back, {displayName}
           </h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
             {activeAutomations.length > 0
