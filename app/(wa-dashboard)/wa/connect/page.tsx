@@ -10,6 +10,7 @@ import {
   needsProfileRefresh,
   repairPhoneNumber,
 } from "@/lib/whatsapp/waba-lookup";
+import { parseMessagingTier, tierOrdinal } from "@/lib/whatsapp/messaging-limits";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -63,10 +64,16 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
     // 5. Enrich with the phone number's display number and verified business name.
     let phoneNumber = "Verified Number";
     let displayName = "WhatsApp Business";
+    let qualityRating: string | null = null;
+    let limitTier: string | null = null;
     if (phoneNumberId) {
       const details = await fetchPhoneDetails(phoneNumberId, finalToken);
       if (details?.display_phone_number) phoneNumber = details.display_phone_number;
       if (details?.verified_name) displayName = details.verified_name;
+      if (details?.quality_rating) qualityRating = details.quality_rating;
+      // Capture the messaging limit now — the quality webhook only fires on change,
+      // so it would never deliver the starting value.
+      if (details?.messaging_limit_tier) limitTier = parseMessagingTier(details.messaging_limit_tier).tier;
     }
 
     // 6. Subscribe the app to this WABA's webhooks.
@@ -88,6 +95,8 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
         status: "active",
         last_error: null,
         last_error_at: null,
+        ...(qualityRating ? { quality_rating: qualityRating } : {}),
+        ...(limitTier ? { messaging_limit_tier: limitTier, messaging_tier: tierOrdinal(limitTier) } : {}),
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

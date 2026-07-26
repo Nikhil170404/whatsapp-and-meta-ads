@@ -1,4 +1,5 @@
 import { isPlaceholderName } from "@/lib/auth/display-name";
+import { parseMessagingTier, tierOrdinal } from "@/lib/whatsapp/messaging-limits";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -152,7 +153,7 @@ export async function repairPhoneNumber(
   row: { user_id: string; waba_id: string; access_token: string },
 ) {
   const res = await fetch(
-    `${WA_API_URL}/${row.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${row.access_token}`
+    `${WA_API_URL}/${row.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,messaging_limit_tier&access_token=${row.access_token}`
   );
   const json = await res.json().catch(() => null);
   const phone = json?.data?.[0];
@@ -166,22 +167,39 @@ export async function repairPhoneNumber(
   };
   if (phone.display_phone_number) patch.phone_number = phone.display_phone_number;
   if (phone.verified_name) patch.display_name = phone.verified_name;
+  if (phone.quality_rating) patch.quality_rating = phone.quality_rating;
+  if (phone.messaging_limit_tier) {
+    const { tier } = parseMessagingTier(phone.messaging_limit_tier);
+    patch.messaging_limit_tier = tier;
+    patch.messaging_tier = String(tierOrdinal(tier));
+  }
 
   await supabase.from("wa_connections").update(patch).eq("user_id", row.user_id);
   return { ...row, ...patch };
 }
 
-/** Fetches display_phone_number and verified_name for a phone number ID. */
+/**
+ * Fetches the phone number's profile plus its current Meta messaging limit and
+ * quality rating.
+ *
+ * The limit is read here, at connect time, rather than left to the quality-sync
+ * cron or the quality webhook: the webhook only fires when the tier *changes*, so
+ * it never delivers the initial value, and the cron requires an external scheduler
+ * that may not be configured. Reading it here means a freshly connected account
+ * shows its true limit straight away.
+ */
 export async function fetchPhoneDetails(phoneNumberId: string, token: string) {
   try {
     const res = await fetch(
-      `${WA_API_URL}/${phoneNumberId}?fields=display_phone_number,verified_name&access_token=${token}`
+      `${WA_API_URL}/${phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,messaging_limit_tier&access_token=${token}`
     );
     const json = await res.json();
     if (json?.error) return null;
     return {
       display_phone_number: json.display_phone_number as string | undefined,
       verified_name: json.verified_name as string | undefined,
+      quality_rating: json.quality_rating as string | undefined,
+      messaging_limit_tier: json.messaging_limit_tier as string | undefined,
     };
   } catch {
     return null;
