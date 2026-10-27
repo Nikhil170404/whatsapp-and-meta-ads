@@ -16,6 +16,10 @@ import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { recordConsent, recordMarketingPreference } from "@/lib/consent";
 import { describeInbound, extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
 import { DEFAULT_AWAY_MESSAGE, shouldSendAway } from "@/lib/whatsapp/hours";
+import { handleFlowInbound } from "@/lib/flows/runtime";
+import { whatsappFlowSender } from "@/lib/flows/sender";
+import { supabaseFlowStore } from "@/lib/flows/store";
+import type { Inbound } from "@/lib/flows/engine";
 import { parseAccountUpdate } from "@/lib/whatsapp/enforcement";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
@@ -415,7 +419,8 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
     }
 
     // ── Run automations on typed text and on button / list taps ──────────────
-    if (!inbound) continue;
+    // Location shares have no text but a flow can be waiting for one.
+    if (!inbound && message.type !== "location") continue;
 
     // Skip if opted out
     const { data: contactRow } = await supabase
@@ -446,6 +451,23 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       .eq("direction", "inbound");
 
     const isFirstMessage = (priorCount ?? 0) <= 1;
+
+    // ── Conversation flows come first: a flow in progress owns the conversation ──
+    const flowInbound: Inbound =
+      message.type === "location" ? { kind: "location", latitude: Number(message.location?.latitude), longitude: Number(message.location?.longitude), name: message.location?.name, address: message.location?.address }
+      : inbound?.isTap && inbound.replyId ? { kind: "reply", id: inbound.replyId, title: inbound.text }
+      : inbound ? { kind: "text", text: inbound.text }
+      : { kind: "other" };
+    try {
+      const handledByFlow = await handleFlowInbound(
+        { store: supabaseFlowStore(supabase), sender: whatsappFlowSender({ phoneNumberId, token: validToken, to: contact }) },
+        { userId: connection.user_id, phone: contact, contactName: person?.profile?.name ?? null, inbound: flowInbound, messageId: message.id, isFirstMessage }
+      );
+      if (handledByFlow) continue;
+    } catch (err) {
+      console.error("Flow handling failed, falling back to automations:", err);
+    }
+    if (!inbound) continue; // a location or media message that no flow was waiting for
 
     const matchedAutomation: any = pickAutomation((automations ?? []) as any[], inbound, isFirstMessage);
 

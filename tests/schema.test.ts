@@ -263,3 +263,56 @@ describe("webhook queue", () => {
     expect((await db.query("select * from claim_webhook_events(10, 120)")).rows.length).toBeGreaterThan(0);
   });
 });
+
+describe("conversation flows", () => {
+  async function setup() {
+    const db = new PGlite();
+    await db.exec(schema);
+    const u = (await db.query<{ id: string }>("insert into users(facebook_user_id) values('fbf') returning id")).rows[0];
+    const f = (await db.query<{ id: string }>("insert into wa_flows(user_id,name) values($1,'Lead flow') returning id", [u.id])).rows[0];
+    return { db, u, f };
+  }
+
+  it("allows one live conversation per customer, but a new one after it ends", async () => {
+    const { db, u, f } = await setup();
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone) values($1,$2,'919876543210')", [u.id, f.id]);
+    await expect(db.query("insert into wa_flow_sessions(user_id,flow_id,phone) values($1,$2,'919876543210')", [u.id, f.id])).rejects.toThrow();
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone) values($1,$2,'911111111111')", [u.id, f.id]); // another customer is fine
+    await db.query("update wa_flow_sessions set status='completed' where phone='919876543210'");
+    await expect(db.query("insert into wa_flow_sessions(user_id,flow_id,phone) values($1,$2,'919876543210')", [u.id, f.id])).resolves.toBeDefined();
+  });
+
+  it("hands each due wait to exactly one worker, and only when its time has come", async () => {
+    const { db, u, f } = await setup();
+    await db.query(`insert into wa_flow_sessions(user_id,flow_id,phone,status,waiting_until)
+      select $1,$2,'9100000000'||g,'waiting', now() - interval '1 minute' from generate_series(1,5) g`, [u.id, f.id]);
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone,status,waiting_until) values($1,$2,'9199999999','waiting', now() + interval '1 hour')", [u.id, f.id]);
+    const a = (await db.query("select * from claim_due_flow_sessions(3)")).rows;
+    const b = (await db.query("select * from claim_due_flow_sessions(10)")).rows;
+    expect(a).toHaveLength(3);
+    expect(b).toHaveLength(2); // the remaining due ones; the future one is untouched
+    expect((await db.query<{ n: number }>("select count(*)::int n from wa_flow_sessions where status='waiting'")).rows[0].n).toBe(1);
+  });
+
+  it("expires conversations the customer walked away from, and stuck waits", async () => {
+    const { db, u, f } = await setup();
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone,status,updated_at) values($1,$2,'911','active', now() - interval '30 hours')", [u.id, f.id]);
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone,status,updated_at) values($1,$2,'912','active', now() - interval '1 hour')", [u.id, f.id]);
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone,status,waiting_until) values($1,$2,'913','waiting', now() - interval '5 hours')", [u.id, f.id]);
+    expect((await db.query<{ n: number }>("select expire_stale_flow_sessions(23) n")).rows[0].n).toBe(2);
+    expect((await db.query<{ phone: string }>("select phone from wa_flow_sessions where status='active'")).rows.map((r) => r.phone)).toEqual(["912"]);
+  });
+
+  it("adds a label once, and reports per-flow results from the database", async () => {
+    const { db, u, f } = await setup();
+    await db.query("insert into wa_contacts(user_id,phone_number,labels) values($1,'919876543210','{vip}')", [u.id]);
+    await db.query("select add_contact_label($1,'919876543210','appointment')", [u.id]);
+    await db.query("select add_contact_label($1,'919876543210','appointment')", [u.id]);
+    expect((await db.query<{ labels: string[] }>("select labels from wa_contacts")).rows[0].labels).toEqual(["vip", "appointment"]);
+
+    await db.query("insert into wa_flow_sessions(user_id,flow_id,phone,status) values($1,$2,'a1','completed'),($1,$2,'a2','handoff'),($1,$2,'a3','abandoned'),($1,$2,'a4','active')", [u.id, f.id]);
+    await db.query("insert into wa_leads(user_id,flow_id,phone) values($1,$2,'a1'),($1,$2,'a2')", [u.id, f.id]);
+    const s = (await db.query<any>("select * from flow_stats($1)", [u.id])).rows[0];
+    expect(s).toMatchObject({ started: 4, completed: 1, handed_over: 1, abandoned: 1, in_progress: 1, leads: 2 });
+  });
+});

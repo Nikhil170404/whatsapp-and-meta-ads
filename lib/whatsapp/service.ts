@@ -239,6 +239,33 @@ export async function sendListMessage(
   return response.json();
 }
 
+export async function sendLocationRequest(
+  phoneNumberId: string,
+  to: string,
+  bodyText: string,
+  accessToken: string
+) {
+  const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+    method: "POST",
+    signal: AbortSignal.timeout(20_000),
+    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      ...addressTo(to),
+      type: "interactive",
+      interactive: { type: "location_request_message", body: { text: bodyText }, action: { name: "send_location" } },
+    }),
+  });
+  if (!response.ok) {
+    const raw = await response.json();
+    const e = new Error(`WhatsApp API Error: ${JSON.stringify(raw)}`) as any;
+    e.metaError = parseMetaError(raw);
+    throw e;
+  }
+  return response.json();
+}
+
 export async function sendImageMessage(
   phoneNumberId: string,
   to: string,
