@@ -10,6 +10,7 @@
  * (NEXT_PUBLIC_FACEBOOK_APP_ID) to read the token's expiry. Nothing is written without --yes.
  */
 import { createClient } from "@supabase/supabase-js";
+import { connectWithCredentials } from "../lib/whatsapp/connect-credentials";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const arg = (n: string) => { const i = process.argv.indexOf(`--${n}`); return i === -1 ? undefined : process.argv[i + 1]; };
@@ -74,21 +75,12 @@ async function main() {
 
   if (!has("yes")) { console.log("\nNothing written. Add --yes to link this number to that account.\n"); return; }
 
-  const { error } = await db.from("wa_connections").upsert({
-    user_id: user.id, phone_number_id: phone.id, waba_id: waba, phone_number: phone.display_phone_number,
-    display_name: phone.verified_name ?? null, access_token: token, token_expires_at: expiresAt, status: "active",
-    quality_rating: phone.quality_rating ?? "NA", messaging_limit_tier: phone.messaging_limit_tier ?? "TIER_NOT_SET",
-    token_refresh_failed_at: null, last_error: null, last_error_at: null,
-  }, { onConflict: "user_id" });
-  if (error) stop(/duplicate|unique/i.test(error.message) ? "That phone number is already linked to a different account." : `Could not save: ${error.message}`);
+  const result = await connectWithCredentials(db, user.id, { wabaId: waba!, token: token!, phoneNumberId: wanted }, { appId, appSecret });
+  if (!result.ok) stop(result.error);
+  const sum = (result as any).data;
   console.log("\n✓ Connection saved.");
-
-  try {
-    await graph(`${waba}/subscribed_apps`, { method: "POST" });
-    console.log("✓ App subscribed to this account's webhooks.");
-  } catch (e: any) {
-    console.log(`! Could not subscribe the app to webhooks (${e.message}). Subscribe it in Meta → WhatsApp → Configuration.`);
-  }
+  console.log(sum.webhook_subscribed ? "✓ App subscribed to this account's webhooks." : "! Could not subscribe the app to webhooks. Subscribe it in Meta → WhatsApp → Configuration.");
+  if (sum.token_expires_warning) console.log(`! ${sum.token_expires_warning}`);
   console.log("\nDone. Open the dashboard: Overview should show this number. Test with: npm run wa:check -- --send --to <number>\n");
 }
 

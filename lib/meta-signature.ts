@@ -1,17 +1,24 @@
 import crypto from "crypto";
-import { env } from "@/lib/env";
 
 /**
  * Verify Meta's `x-hub-signature-256` header against the raw request body.
  *
- * Meta signs every webhook payload with the app secret. Verifying it ensures
- * only genuine Meta callbacks can trigger actions that cost money (auto-replies,
- * comment-to-DM). Verification is enforced only when FACEBOOK_APP_SECRET is set,
- * so deployments that haven't configured it continue to work unchanged.
+ * Meta signs every webhook payload with the app secret. Verifying it ensures only genuine Meta
+ * callbacks can trigger actions that cost money (auto-replies, template sends).
+ *
+ * In production a missing FACEBOOK_APP_SECRET REJECTS every webhook: skipping verification would
+ * let anyone on the internet post fake messages and make the app send paid replies. Outside
+ * production (local testing) verification is skipped when no secret is configured.
  */
 export function verifyMetaSignature(rawBody: string, signatureHeader: string | null): boolean {
-  const appSecret = env.FACEBOOK_APP_SECRET;
-  if (!appSecret) return true; // not configured — skip verification
+  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  if (!appSecret) {
+    if (process.env.NODE_ENV === "production") {
+      console.error("FACEBOOK_APP_SECRET is not set: rejecting webhook because its signature cannot be verified.");
+      return false;
+    }
+    return true;
+  }
   if (!signatureHeader?.startsWith("sha256=")) return false;
 
   const expected = crypto.createHmac("sha256", appSecret).update(rawBody).digest("hex");

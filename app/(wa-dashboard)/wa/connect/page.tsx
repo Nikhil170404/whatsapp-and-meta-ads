@@ -3,6 +3,8 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
 import { redirect } from "next/navigation";
 import { WaConnectClient } from "./WaConnectClient";
+import { ConnectWithCredentials } from "@/components/wa-dashboard/ConnectWithCredentials";
+import { isAdminEmail, serverCredentials } from "@/lib/whatsapp/connect-credentials";
 import {
   resolveWabaFromToken,
   fetchPhoneDetails,
@@ -147,6 +149,11 @@ export default async function WaConnectPage({
   const connection = isUsable ? row : null;
   const previousError: string | null = !isUsable ? row?.last_error ?? null : null;
 
+  // The one-click "use the server's test account" option is only for admins (ADMIN_EMAILS).
+  const { data: me } = await supabase.from("users").select("email").eq("id", session.id).maybeSingle();
+  const server = isAdminEmail(me?.email) ? serverCredentials() : null;
+  const serverHint = server ? `${server.wabaId.slice(0, 4)}…${server.wabaId.slice(-4)}` : null;
+
   return (
     <div className="max-w-3xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -155,6 +162,7 @@ export default async function WaConnectPage({
       </div>
 
       <WaConnectClient initialConnection={connection} previousError={previousError} />
+      <ConnectWithCredentials serverCredentialsHint={serverHint} />
     </div>
   );
 }
