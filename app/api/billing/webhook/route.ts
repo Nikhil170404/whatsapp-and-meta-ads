@@ -6,8 +6,10 @@ import { clearUserCache } from "@/lib/cache";
 function verifySignature(body: string, signature: string): boolean {
   const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!secret) return false;
-  const expected = crypto.createHmac("sha256", secret).update(body).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  const expected = Buffer.from(crypto.createHmac("sha256", secret).update(body).digest("hex"));
+  const provided = Buffer.from(signature);
+  // timingSafeEqual throws on different lengths, which would turn a bad signature into a 500.
+  return expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
 }
 
 function planTypeFromKey(planKey: string): "starter" | "pro" {

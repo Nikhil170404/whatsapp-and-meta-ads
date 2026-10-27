@@ -2,9 +2,21 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 
-const sessionSecret = process.env.SESSION_SECRET || (process.env.NODE_ENV === "production" ? "" : "temporary_secret_for_build_purposes_only_32_chars");
+const encoder = new TextEncoder();
 
-const SECRET = new TextEncoder().encode(sessionSecret || "temporary_secret_for_build_purposes_only_32_chars");
+/**
+ * The key that signs login sessions. In production it MUST come from SESSION_SECRET: falling
+ * back to a value written in the source code would let anyone forge a session for any user.
+ * Resolved when a session is created or read (not at import) so a build never needs it.
+ */
+function getSecret(): Uint8Array {
+  const configured = process.env.SESSION_SECRET;
+  if (configured && configured.length >= 32) return encoder.encode(configured);
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SESSION_SECRET is not set (it must be at least 32 characters). Refusing to sign or accept sessions without it.");
+  }
+  return encoder.encode("temporary_secret_for_local_development_only_32_chars");
+}
 const COOKIE_NAME = "replykaro_session";
 
 export interface SessionUser {
@@ -30,7 +42,7 @@ export async function createSession(user: any): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(SECRET);
+    .sign(getSecret());
 
   return token;
 }
@@ -52,8 +64,9 @@ export async function getSession(): Promise<SessionUser | null> {
 
   if (!token) return null;
 
+  const secret = getSecret(); // outside the try: a missing secret must be loud, not "logged out"
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, secret);
     return payload as unknown as SessionUser;
   } catch {
     return null;

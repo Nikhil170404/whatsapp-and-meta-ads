@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ApiDocs } from "@/components/wa-dashboard/ApiDocs";
 import { KeyRound, Copy, Check, RefreshCw, Code2, Zap, ShoppingCart, Calendar, AlertCircle, Eye, EyeOff } from "lucide-react";
 
-const BASE_URL = "https://replykaro.com";
+// Set from the real site address when the page renders, so the examples always show your own domain.
+let BASE_URL = "";
 
 function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
   const [copied, setCopied] = useState(false);
@@ -176,7 +177,8 @@ send_whatsapp("+919876543210", "order_confirmed", ["Rahul", "#1234", "₹999"])`
 
 type Lang = keyof typeof CODE_SNIPPETS;
 
-export function IntegrateClient({ initialKey, existingPrefix, lastUsed }: { initialKey: string | null; existingPrefix?: string | null; lastUsed: string | null }) {
+export function IntegrateClient({ initialKey, existingPrefix, lastUsed, baseUrl }: { initialKey: string | null; existingPrefix?: string | null; lastUsed: string | null; baseUrl: string }) {
+  BASE_URL = baseUrl;
   const [apiKey, setApiKey] = useState<string | null>(initialKey);
   const [generating, setGenerating] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
@@ -417,11 +419,11 @@ export function IntegrateClient({ initialKey, existingPrefix, lastUsed }: { init
             </li>
             <li className="flex gap-3">
               <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
-              <span>Set the Callback URL to the webhook URL above and Verify Token to your token from Connect page</span>
+              <span>Set the Callback URL to the webhook URL above and Verify token to the value of <code>WEBHOOK_VERIFY_TOKEN</code> set on your server</span>
             </li>
             <li className="flex gap-3">
               <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
-              <span>Subscribe to <strong>messages</strong> and <strong>message_deliveries</strong> fields</span>
+              <span>Subscribe to the <strong>messages</strong>, <strong>message_template_status_update</strong>, <strong>template_category_update</strong>, <strong>account_update</strong>, <strong>phone_number_quality_update</strong> and <strong>user_preferences</strong> fields</span>
             </li>
             <li className="flex gap-3">
               <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
@@ -435,8 +437,7 @@ export function IntegrateClient({ initialKey, existingPrefix, lastUsed }: { init
       <div className="bg-amber-50 border border-amber-100 rounded-2xl p-5">
         <p className="text-sm font-bold text-amber-800 mb-1">Rate Limits</p>
         <p className="text-xs text-amber-700 font-medium">
-          The API allows <strong>100 requests per minute</strong> per API key. This matches Meta&apos;s own messaging throughput limits.
-          For high-volume sends, use the Broadcasts feature instead — it handles queuing automatically.
+          The API allows <strong>100 requests per minute</strong> per API key. For large sends use Broadcasts instead: they queue, pace themselves under Meta&apos;s limits and keep going in the background.
         </p>
       </div>
 
@@ -458,7 +459,7 @@ export function IntegrateClient({ initialKey, existingPrefix, lastUsed }: { init
             <span className="font-bold">4. No prohibited content.</span> Do not send spam, adult content, weapons, gambling promotions, or misleading offers. Your account will be banned by Meta if reports exceed quality thresholds.
           </p>
           <p>
-            <span className="font-bold">5. Daily limits.</span> New numbers are limited to 1,000 unique recipients per day (Tier 1). This limit is enforced by Meta, not by ReplyKaro.
+            <span className="font-bold">5. Daily limits.</span> Meta limits how many different customers you can message with templates in 24 hours. New accounts start at 250 and Meta raises the limit (2,000, 10,000, 100,000, unlimited) as quality stays good. Your current limit and usage are on the Overview page. This limit is enforced by Meta.
           </p>
         </div>
         <a
