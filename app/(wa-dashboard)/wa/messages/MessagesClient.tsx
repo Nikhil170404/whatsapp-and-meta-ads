@@ -3,6 +3,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { MessageSquare, Search, X, Send, ChevronLeft, AlertCircle, Zap, Loader2, UserCheck, ChevronDown, UserX, ArrowDownLeft, ArrowUpRight, CheckCheck, Check } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { TemplateSender, type SendableTemplate } from "@/components/wa-dashboard/TemplateSender";
+import { describeTimeLeft, windowState } from "@/lib/whatsapp/window";
+import { displayPhone } from "@/lib/whatsapp/phone";
 import { RelativeTime } from "@/components/ui/relative-time";
 
 interface Message {
@@ -36,8 +40,18 @@ const QUICK_REPLIES = [
   "Thank you for contacting us!",
 ];
 
-export function MessagesClient({ initialMessages, teamMembers = [] }: { initialMessages: Message[]; teamMembers?: TeamMember[] }) {
+export function MessagesClient({
+  initialMessages, teamMembers = [], templates = [], initialAssignments = {},
+}: { initialMessages: Message[]; teamMembers?: TeamMember[]; templates?: SendableTemplate[]; initialAssignments?: Record<string, string | null> }) {
+  const router = useRouter();
   const [messages, setMessages] = useState(initialMessages);
+
+  // New messages arrive while the page is open: refetch quietly while the tab is visible.
+  useEffect(() => { setMessages(initialMessages); }, [initialMessages]);
+  useEffect(() => {
+    const id = setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, 15000);
+    return () => clearInterval(id);
+  }, [router]);
   const [search, setSearch] = useState("");
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [showMobileChat, setShowMobileChat] = useState(false);
@@ -45,7 +59,7 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
-  const [assignedMembers, setAssignedMembers] = useState<Record<string, string | null>>({});
+  const [assignedMembers, setAssignedMembers] = useState<Record<string, string | null>>(initialAssignments);
   const [showAssignDropdown, setShowAssignDropdown] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -176,6 +190,10 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
     }
   };
 
+  const selectedConversation = selectedPhone ? conversations[selectedPhone] : null;
+  const lastInbound = selectedConversation?.messages.find((m) => m.direction === "inbound");
+  const win = windowState(lastInbound?.created_at ?? null);
+
   const currentAssignedId = selectedPhone ? (assignedMembers[selectedPhone] ?? null) : null;
   const currentAssignedMember = teamMembers.find((m) => m.id === currentAssignedId) ?? null;
 
@@ -236,7 +254,7 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-0.5 gap-2">
-                          <p className={`font-bold text-sm truncate ${isActive ? "text-[#25D366]" : "text-slate-900"}`}>{phone}</p>
+                          <p className={`font-bold text-sm truncate ${isActive ? "text-[#25D366]" : "text-slate-900"}`}>{displayPhone(phone)}</p>
                           <RelativeTime date={convo.lastMessage.created_at} className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0" />
                         </div>
                         <p className="text-xs text-slate-500 line-clamp-1">{convo.lastMessage.content}</p>
@@ -276,7 +294,7 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                   {activeConvo.phone.charAt(activeConvo.phone.length - 2)}
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-slate-900 text-sm">{activeConvo.phone}</h3>
+                  <h3 className="font-bold text-slate-900 text-sm">{displayPhone(activeConvo.phone)}</h3>
                   <p className="text-xs text-slate-400">{activeConvo.messages.length} messages</p>
                 </div>
 
@@ -354,7 +372,7 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         {msg.direction === "outbound" && (
                           <span className="inline-flex items-center">
-                            {msg.status === "sending" ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : msg.status === "read" ? <CheckCheck className="w-3 h-3 text-[#53bdeb]" /> : <Check className="w-3 h-3" />}
+                            {msg.status === "sending" ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : msg.status === "read" ? <CheckCheck className="w-3 h-3 text-[#53bdeb]" /> : msg.status === "delivered" ? <CheckCheck className="w-3 h-3" /> : <Check className="w-3 h-3" />}
                           </span>
                         )}
                       </div>
@@ -366,6 +384,8 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
 
               {/* Send area */}
               <div className="bg-white border-t border-slate-100 shrink-0">
+                {win.open ? (
+                  <>
                 {/* Quick replies */}
                 {showQuickReplies && (
                   <div className="px-4 py-2 border-t border-slate-100 flex gap-2 overflow-x-auto scrollbar-hide">
@@ -421,8 +441,17 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-400 px-4 pb-2 text-center">
-                  Only works within 24h of the customer&apos;s last message (WhatsApp policy)
+                  Chat window open: {describeTimeLeft(win.msLeft)}
                 </p>
+                  </>
+                ) : (
+                  <TemplateSender
+                    key={selectedPhone ?? "none"}
+                    phone={selectedPhone ?? ""}
+                    templates={templates}
+                    onSent={(preview, id) => setMessages((prev) => [...prev, { id: id ?? `tpl_${Date.now()}`, direction: "outbound", to_phone: selectedPhone ?? "", content: preview, status: "sent", created_at: new Date().toISOString() }])}
+                  />
+                )}
               </div>
             </>
           ) : (

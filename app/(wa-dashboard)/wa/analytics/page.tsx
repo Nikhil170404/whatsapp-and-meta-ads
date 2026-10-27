@@ -9,19 +9,15 @@ export default async function WaAnalyticsPage() {
 
   const supabase = getSupabaseAdmin() as any;
 
-  const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
-    { data: allMessages },
-    { data: recentMessages },
+    { data: daily },
     { data: automations },
     { count: contactCount },
     { data: broadcasts },
   ] = await Promise.all([
-    supabase.from("wa_messages").select("direction, created_at").eq("user_id", session.id).gte("created_at", thirtyDaysAgo),
-    supabase.from("wa_messages").select("direction, created_at").eq("user_id", session.id).gte("created_at", sevenDaysAgo),
+    // Counted in the database: correct for any number of messages.
+    supabase.rpc("message_daily_counts", { p_user: session.id, p_days: 30 }),
     supabase.from("wa_automations").select("name, sent_count, is_active").eq("user_id", session.id),
     supabase.from("wa_contacts").select("*", { count: "exact", head: true }).eq("user_id", session.id),
     supabase.from("wa_broadcasts").select("name, status, total_recipients, sent_count, delivered_count, read_count, failed_count, created_at").eq("user_id", session.id).order("created_at", { ascending: false }).limit(10),
@@ -29,8 +25,7 @@ export default async function WaAnalyticsPage() {
 
   return (
     <AnalyticsClient
-      allMessages={allMessages ?? []}
-      recentMessages={recentMessages ?? []}
+      daily={daily ?? []}
       automations={automations ?? []}
       contactCount={contactCount ?? 0}
       broadcasts={broadcasts ?? []}

@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { MessageSquare, Send, Inbox, Zap, Users, TrendingUp, BarChart3, CheckCircle2, Clock, AlertCircle, Eye } from "lucide-react";
 
 interface Props {
-  allMessages: { direction: string; created_at: string }[];
-  recentMessages: { direction: string; created_at: string }[];
+  /** One row per day for the last 30 days, oldest first, counted in the database. */
+  daily: { day: string; inbound: number; outbound: number }[];
   automations: { name: string; sent_count: number; is_active: boolean }[];
   contactCount: number;
   broadcasts: {
@@ -14,39 +14,30 @@ interface Props {
   }[];
 }
 
-export function AnalyticsClient({ allMessages, recentMessages, automations, contactCount, broadcasts }: Props) {
+export function AnalyticsClient({ daily, automations, contactCount, broadcasts }: Props) {
   // Compute stats
-  const sent30d = allMessages.filter(m => m.direction === "outbound").length;
-  const received30d = allMessages.filter(m => m.direction === "inbound").length;
-  const total30d = allMessages.length;
+  const sum = (rows: Props["daily"], key: "inbound" | "outbound") => rows.reduce((n, r) => n + (r[key] ?? 0), 0);
+  const last7 = daily.slice(-7);
+  const sent30d = sum(daily, "outbound");
+  const received30d = sum(daily, "inbound");
+  const total30d = sent30d + received30d;
 
-  const sent7d = recentMessages.filter(m => m.direction === "outbound").length;
-  const received7d = recentMessages.filter(m => m.direction === "inbound").length;
+  const sent7d = sum(last7, "outbound");
+  const received7d = sum(last7, "inbound");
 
   const automationsFired = automations.reduce((sum, a) => sum + (a.sent_count ?? 0), 0);
   const activeAutomations = automations.filter(a => a.is_active).length;
 
-  // Build 7-day message chart data
-  const dailyData = useMemo(() => {
-    const days = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      return {
-        label: d.toLocaleDateString("en-IN", { weekday: "short" }),
-        date: d.toISOString().split("T")[0],
-        sent: 0,
-        received: 0,
-      };
-    });
-    for (const msg of recentMessages) {
-      const date = msg.created_at.split("T")[0];
-      const day = days.find(d => d.date === date);
-      if (!day) continue;
-      if (msg.direction === "outbound") day.sent++;
-      else day.received++;
-    }
-    return days;
-  }, [recentMessages]);
+  // 7-day chart straight from the daily counts
+  const dailyData = useMemo(
+    () => last7.map((r) => ({
+      label: new Date(`${r.day}T12:00:00`).toLocaleDateString("en-IN", { weekday: "short" }),
+      date: r.day,
+      sent: r.outbound ?? 0,
+      received: r.inbound ?? 0,
+    })),
+    [daily] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const maxVal = Math.max(...dailyData.map(d => d.sent + d.received), 1);
 

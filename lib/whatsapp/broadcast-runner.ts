@@ -1,361 +1,231 @@
 import { sendTemplateMessage, sleep } from "@/lib/whatsapp/service";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
-import { hasMarketingConsent } from "@/lib/consent";
-
-// Delay between each message send to stay well under Meta's 80 msg/s API cap.
-// At 200 ms we cap at ~5 msg/s — safe even on Tier 1 accounts.
-const SEND_DELAY_MS = 200;
-
-// Daily messaging limits per tier (unique users / 24 h)
-const TIER_LIMITS: Record<number, number> = {
-  1: 1_000,
-  2: 10_000,
-  3: 100_000,
-  4: Infinity,
-};
-
-export interface BroadcastRunResult {
-  status: number;
-  body: Record<string, unknown>;
-}
-
-const json = (body: Record<string, unknown>, init?: { status?: number }): BroadcastRunResult => ({
-  status: init?.status ?? 200,
-  body,
-});
+import { resolveBodyParameters } from "@/lib/whatsapp/template-builder";
+import { mapWithConcurrency, pacingDelayMs } from "@/lib/whatsapp/pacing";
+import { parseMessagingLimit, parseQuality, remainingCapacity } from "@/lib/whatsapp/limits";
+import { classifyMetaError } from "@/lib/whatsapp/errors";
+import { isRestricted } from "@/lib/whatsapp/enforcement";
+import { recordMarketingPreference } from "@/lib/consent";
 
 /**
- * Sends a broadcast to its pending recipients. Shared by the dashboard API
- * route and the Railway worker so the compliance checks (opt-out, marketing
- * consent, quality gate, tier limits) live in one place.
+ * Broadcast engine, built for very large audiences.
+ *
+ *  - Sending is a background job: the web app only queues a broadcast; a worker
+ *    (Railway) claims it and sends. Nothing waits on a web request.
+ *  - Recipients are processed in batches pulled straight from the database, and
+ *    every outcome is written back in bulk, so memory use and database calls do
+ *    not grow with the audience.
+ *  - Several messages are in flight at once, paced to stay inside Meta's limit.
+ *  - A broadcast carries a lease. If the worker stops (deploy, crash), another
+ *    worker resumes where it left off.
+ *  - Problems that need the owner (expired token, payment issue, daily limit)
+ *    pause the broadcast with a plain explanation instead of failing silently.
  */
-export async function runBroadcast(
-  supabase: any,
-  userId: string,
-  broadcastId: string
-): Promise<BroadcastRunResult> {
-  try {
-    const { data: broadcast } = await supabase
-      .from("wa_broadcasts")
-      .select("*")
-      .eq("id", broadcastId)
-      .eq("user_id", userId)
-      .single();
 
-    if (!broadcast) return json({ error: "Broadcast not found" }, { status: 404 });
-    if (broadcast.status === "sending" || broadcast.status === "completed") {
-      return json({ error: "Broadcast already sent" }, { status: 400 });
-    }
+// Meta allows 80 messages per second per number by default. Stay well inside it.
+const RATE_PER_SECOND = Number(process.env.BROADCAST_RATE_PER_SECOND) || 40;
+const CONCURRENCY = Number(process.env.BROADCAST_CONCURRENCY) || 20;
+const CHUNK_SIZE = 200;
+const MIN_RATE = 5;
 
-    const { data: conn } = await supabase
-      .from("wa_connections")
-      .select("phone_number_id, access_token, token_expires_at, waba_id, quality_rating, messaging_tier, quality_paused_at, daily_unique_sent, daily_sent_reset_at")
-      .eq("user_id", userId)
-      .single();
+export interface JobOutcome {
+  status: "completed" | "paused" | "failed";
+  sent: number;
+  failed: number;
+  message?: string;
+}
 
-    if (!conn) return json({ error: "WhatsApp not connected" }, { status: 400 });
+export interface PreflightResult {
+  ok: boolean;
+  status?: number;
+  error?: string;
+  code?: string;
+}
 
-    // ── Quality gate: block broadcasts when quality is LOW ──────────────────
-    if (conn.quality_paused_at || conn.quality_rating === "LOW") {
-      return json({
-        error: "Broadcast blocked: your phone number quality rating is LOW. Sending marketing messages now would worsen your account standing. Improve quality first.",
-        code: "QUALITY_LOW",
-      }, { status: 403 });
-    }
-
-    // ── Token refresh ───────────────────────────────────────────────────────
-    const validToken = await refreshWaTokenIfNeeded(supabase, {
-      access_token: conn.access_token,
-      token_expires_at: conn.token_expires_at,
-      phone_number_id: conn.phone_number_id,
-    });
-
-    const { data: template } = await supabase
-      .from("wa_templates")
-      .select("name, language, status, body_text, category")
-      .eq("id", broadcast.template_id)
-      .single();
-
-    if (!template) return json({ error: "Template not found" }, { status: 404 });
-
-    // ── Template must be approved — never send an unapproved template ───────
-    if (template.status !== "approved") {
-      return json({
-        error: `Template "${template.name}" is not approved by Meta (current status: ${template.status}). Only approved templates can be used in broadcasts.`,
-        code: "TEMPLATE_NOT_APPROVED",
-      }, { status: 400 });
-    }
-
-    // ── Get pending recipients (opted-in only) ───────────────────────────────
-    const { data: recipients } = await supabase
-      .from("wa_broadcast_recipients")
-      .select("id, contact_id")
-      .eq("broadcast_id", broadcastId)
-      .eq("status", "pending");
-
-    if (!recipients?.length) {
-      return json({ error: "No pending recipients" }, { status: 400 });
-    }
-
-    // Fetch contacts — only opted-in, valid phone numbers
-    const contactIds = recipients.map((r: any) => r.contact_id);
-    const { data: contacts } = await supabase
-      .from("wa_contacts")
-      .select("id, phone_number, display_name, is_opted_in, consent_purposes")
-      .eq("user_id", userId)
-      .in("id", contactIds);
-
-    // Build lookup maps; filter out opted-out contacts
-    const phoneMap: Record<string, string> = {};
-    const nameMap: Record<string, string> = {};
-    const optedOutIds = new Set<string>();
-
-    for (const c of contacts ?? []) {
-      if (c.is_opted_in === false) {
-        optedOutIds.add(c.id);
-        continue;
-      }
-      // DPDP: promotional templates need purpose-specific marketing consent.
-      if (template.category === "MARKETING" && !hasMarketingConsent(c)) {
-        optedOutIds.add(c.id);
-        continue;
-      }
-      phoneMap[c.id] = c.phone_number;
-      nameMap[c.id] = c.display_name || c.phone_number;
-    }
-
-    // ── Tier-limit check ────────────────────────────────────────────────────
-    const tier = conn.messaging_tier ?? 1;
-    const dailyLimit = TIER_LIMITS[tier] ?? TIER_LIMITS[1];
-
-    // Reset daily counter if it's a new day
-    const lastReset = conn.daily_sent_reset_at ? new Date(conn.daily_sent_reset_at) : new Date(0);
-    const now = new Date();
-    const isNewDay =
-      now.getUTCFullYear() !== lastReset.getUTCFullYear() ||
-      now.getUTCMonth() !== lastReset.getUTCMonth() ||
-      now.getUTCDate() !== lastReset.getUTCDate();
-
-    let dailyUsed = isNewDay ? 0 : (conn.daily_unique_sent ?? 0);
-
-    const eligibleRecipients = recipients.filter((r: any) => !optedOutIds.has(r.contact_id));
-    const remaining = dailyLimit - dailyUsed;
-
-    if (remaining <= 0) {
-      return json({
-        error: `Daily messaging limit reached for Tier ${tier} (${dailyLimit.toLocaleString()} unique users/day). Try again tomorrow or upgrade your Meta messaging tier.`,
-        code: "DAILY_LIMIT_REACHED",
-        tier,
-        dailyLimit,
-        dailyUsed,
-      }, { status: 429 });
-    }
-
-    const recipientsToSend = eligibleRecipients.slice(0, remaining);
-    const skippedByLimit = eligibleRecipients.length - recipientsToSend.length;
-    const skippedOptOut = recipients.length - eligibleRecipients.length;
-
-    // Mark opted-out recipients as skipped immediately
-    if (optedOutIds.size > 0) {
-      const optedOutRecipientIds = recipients
-        .filter((r: any) => optedOutIds.has(r.contact_id))
-        .map((r: any) => r.id);
-      await supabase
-        .from("wa_broadcast_recipients")
-        .update({ status: "skipped", error: "Contact opted out" })
-        .in("id", optedOutRecipientIds);
-    }
-
-    // Mark tier-limited recipients as skipped
-    if (skippedByLimit > 0) {
-      const limitedIds = eligibleRecipients
-        .slice(remaining)
-        .map((r: any) => r.id);
-      await supabase
-        .from("wa_broadcast_recipients")
-        .update({ status: "skipped", error: `Daily tier limit (Tier ${tier}: ${dailyLimit.toLocaleString()}/day) reached` })
-        .in("id", limitedIds);
-    }
-
-    // Mark as sending
-    await supabase
-      .from("wa_broadcasts")
-      .update({ status: "sending", updated_at: new Date().toISOString() })
-      .eq("id", broadcastId);
-
-    // Reset daily counter if new day
-    if (isNewDay) {
-      await supabase
-        .from("wa_connections")
-        .update({ daily_unique_sent: 0, daily_sent_reset_at: now.toISOString() })
-        .eq("user_id", userId);
-      dailyUsed = 0;
-    }
-
-    let sentCount = 0;
-    let failedCount = 0;
-
-    // Determine if this is a MARKETING template (US ban applies since April 1, 2025)
-    const isMarketingTemplate =
-      (template.category ?? "").toUpperCase() === "MARKETING";
-
-    for (const recipient of recipientsToSend) {
-      const phone = phoneMap[recipient.contact_id]?.replace(/\D/g, "");
-      if (!phone) {
-        await supabase
-          .from("wa_broadcast_recipients")
-          .update({ status: "failed", error: "No phone number" })
-          .eq("id", recipient.id);
-        failedCount++;
-        continue;
-      }
-
-      // US marketing ban: Meta error 63049. Marketing templates to US numbers
-      // (+1 country code) fail since April 1, 2025. Skip upfront to avoid wasting sends.
-      const isUSNumber = phone.startsWith("1") && phone.length === 11;
-      if (isMarketingTemplate && isUSNumber) {
-        await supabase
-          .from("wa_broadcast_recipients")
-          .update({
-            status: "skipped",
-            error: "US marketing ban: Meta does not allow marketing templates to +1 numbers (effective April 1, 2025, error 63049)",
-          })
-          .eq("id", recipient.id);
-        failedCount++;
-        continue;
-      }
-
-      try {
-        // Build template component parameters from numbered placeholders ({{1}}, {{2}}, …)
-        const contactName = nameMap[recipient.contact_id] || phone;
-        const numberedParams = (template.body_text || "").match(/\{\{\d+\}\}/g) || [];
-        const paramValues: string[] = [
-          contactName,
-          phone,
-          ...Array(Math.max(0, numberedParams.length - 2)).fill(""),
-        ];
-        const components =
-          numberedParams.length > 0
-            ? [
-                {
-                  type: "body",
-                  parameters: paramValues
-                    .slice(0, numberedParams.length)
-                    .map(v => ({ type: "text", text: v })),
-                },
-              ]
-            : undefined;
-
-        const result = await sendTemplateMessage(
-          conn.phone_number_id,
-          phone,
-          template.name,
-          template.language || "en_US",
-          validToken,
-          components
-        );
-
-        await supabase
-          .from("wa_broadcast_recipients")
-          .update({
-            status: "sent",
-            wa_message_id: result.messages?.[0]?.id,
-            sent_at: new Date().toISOString(),
-          })
-          .eq("id", recipient.id);
-
-        sentCount++;
-        dailyUsed++;
-
-        // Throttle: wait between sends to avoid API rate-limit errors
-        await sleep(SEND_DELAY_MS);
-      } catch (err: any) {
-        const metaErr = err?.metaError;
-        let errorText = err.message?.slice(0, 200) ?? "Unknown error";
-
-        if (metaErr) {
-          errorText = `(#${metaErr.code}) ${metaErr.message}`;
-
-          // Token expired mid-broadcast — mark connection and stop
-          if (metaErr.isTokenExpired) {
-            await supabase
-              .from("wa_connections")
-              .update({ status: "expired", last_error: errorText, last_error_at: new Date().toISOString() })
-              .eq("user_id", userId);
-            await supabase
-              .from("wa_broadcast_recipients")
-              .update({ status: "failed", error: "Token expired — reconnect WhatsApp" })
-              .eq("id", recipient.id);
-            failedCount++;
-            break;
-          }
-
-          // Meta cannot charge the business (error 131042): stop and explain the fix.
-          if (metaErr.code === 131042) {
-            await supabase
-              .from("wa_broadcast_recipients")
-              .update({ status: "failed", error: "Meta payment issue: add a payment method in Meta Business Manager" })
-              .eq("id", recipient.id);
-            failedCount++;
-            break;
-          }
-
-          // Rate-limit hit — stop and let user retry later
-          if (metaErr.isRateLimit) {
-            await supabase
-              .from("wa_broadcast_recipients")
-              .update({ status: "failed", error: "Rate limit — retry later" })
-              .eq("id", recipient.id);
-            failedCount++;
-            break;
-          }
-
-          // Unreachable number — log and continue (don't count against quality)
-          if (metaErr.isUnreachable) {
-            await supabase
-              .from("wa_broadcast_recipients")
-              .update({ status: "failed", error: errorText })
-              .eq("id", recipient.id);
-            failedCount++;
-            await sleep(SEND_DELAY_MS);
-            continue;
-          }
-        }
-
-        await supabase
-          .from("wa_broadcast_recipients")
-          .update({ status: "failed", error: errorText })
-          .eq("id", recipient.id);
-        failedCount++;
-        await sleep(SEND_DELAY_MS);
-      }
-    }
-
-    // Update daily counter
-    await supabase
-      .from("wa_connections")
-      .update({ daily_unique_sent: dailyUsed })
-      .eq("user_id", userId);
-
-    await supabase
-      .from("wa_broadcasts")
-      .update({
-        status: "completed",
-        sent_count: sentCount,
-        failed_count: failedCount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", broadcastId);
-
-    return json({
-      success: true,
-      sent: sentCount,
-      failed: failedCount,
-      skipped_opt_out: skippedOptOut,
-      skipped_tier_limit: skippedByLimit,
-    });
-  } catch (error: any) {
-    console.error("Broadcast send error:", error);
-    return json({ error: error.message }, { status: 500 });
+/** Checks that would stop a broadcast, so the user hears about them when they press Send. */
+export async function preflightBroadcast(db: any, userId: string, templateId: string | null): Promise<PreflightResult> {
+  const { data: conn } = await db.from("wa_connections")
+    .select("status, quality_rating, quality_paused_at, restriction_blocks, restricted_until, restriction_summary")
+    .eq("user_id", userId).maybeSingle();
+  if (!conn || conn.status === "disconnected") return { ok: false, status: 400, error: "WhatsApp is not connected." };
+  if (conn.status === "expired") return { ok: false, status: 400, error: "Your WhatsApp connection expired. Reconnect it first.", code: "TOKEN_EXPIRED" };
+  if (isRestricted(conn)) {
+    return { ok: false, status: 403, code: "ACCOUNT_RESTRICTED", error: conn.restriction_summary || "Meta has restricted this account, so messages cannot be sent right now." };
   }
+  if (conn.quality_paused_at || parseQuality(conn.quality_rating).level === "poor") {
+    return {
+      ok: false, status: 403, code: "QUALITY_LOW",
+      error: "Your number's quality rating is Poor (red), so promotions are paused to protect your account. Improve your content and audience, then wait for the rating to recover.",
+    };
+  }
+  const { data: template } = templateId
+    ? await db.from("wa_templates").select("name, status").eq("id", templateId).maybeSingle()
+    : { data: null };
+  if (!template) return { ok: false, status: 404, error: "Template not found." };
+  if (template.status !== "approved") {
+    return { ok: false, status: 400, code: "TEMPLATE_NOT_APPROVED", error: `Template "${template.name}" is ${template.status}, not approved by Meta. Only approved templates can be sent.` };
+  }
+  return { ok: true };
+}
+
+/** Puts a broadcast in line for the worker. Safe to call again on a paused or failed one to resume it. */
+export async function queueBroadcast(db: any, userId: string, broadcastId: string) {
+  const { data: b } = await db.from("wa_broadcasts").select("id, status, template_id").eq("id", broadcastId).eq("user_id", userId).maybeSingle();
+  if (!b) return { ok: false as const, status: 404, error: "Broadcast not found." };
+  if (b.status === "completed") return { ok: false as const, status: 400, error: "This broadcast was already sent." };
+  if (b.status === "queued" || b.status === "sending") return { ok: true as const, queued: true, already: true };
+
+  const pre = await preflightBroadcast(db, userId, b.template_id);
+  if (!pre.ok) return { ok: false as const, status: pre.status ?? 400, error: pre.error!, code: pre.code };
+
+  const { error } = await db.from("wa_broadcasts")
+    .update({ status: "queued", error: null, scheduled_at: null })
+    .eq("id", broadcastId).in("status", ["draft", "scheduled", "paused", "failed"]);
+  if (error) return { ok: false as const, status: 500, error: error.message };
+  return { ok: true as const, queued: true, already: false };
+}
+
+/** Moves broadcasts whose scheduled time has passed into the queue. */
+export async function queueDueBroadcasts(db: any): Promise<number> {
+  const { data, error } = await db.from("wa_broadcasts")
+    .update({ status: "queued" })
+    .eq("status", "scheduled").lte("scheduled_at", new Date().toISOString())
+    .select("id");
+  if (error) throw error;
+  return data?.length ?? 0;
+}
+
+type SendResult = { id: string; status: "sent" | "failed" | "skipped" | "pending"; wamid?: string | null; error?: string | null };
+
+/**
+ * Claims one queued (or abandoned) broadcast and sends it to completion.
+ * Returns null when there is nothing to claim.
+ */
+export async function runBroadcastJob(db: any, broadcastId: string): Promise<JobOutcome | null> {
+  const { data: claimed } = await db.rpc("claim_broadcast", { p_id: broadcastId, p_stale_seconds: 120 });
+  if (!claimed) return null;
+
+  const stop = async (status: "paused" | "failed" | "completed", message: string | null, sent = 0, failed = 0): Promise<JobOutcome> => {
+    await db.from("wa_broadcasts").update({ status, error: message, locked_at: null }).eq("id", broadcastId);
+    return { status, sent, failed, message: message ?? undefined };
+  };
+
+  try {
+    const { data: broadcast } = await db.from("wa_broadcasts").select("*").eq("id", broadcastId).single();
+    const pre = await preflightBroadcast(db, broadcast.user_id, broadcast.template_id);
+    if (!pre.ok) return stop(pre.code === "TEMPLATE_NOT_APPROVED" ? "failed" : "paused", pre.error!);
+
+    const { data: conn } = await db.from("wa_connections")
+      .select("phone_number_id, access_token, token_expires_at, messaging_limit_tier")
+      .eq("user_id", broadcast.user_id).single();
+    const { data: template } = await db.from("wa_templates").select("name, language, body_text, category").eq("id", broadcast.template_id).single();
+
+    const token = await refreshWaTokenIfNeeded(db, {
+      access_token: conn.access_token, token_expires_at: conn.token_expires_at, phone_number_id: conn.phone_number_id,
+    });
+
+    // Opted-out contacts and (for promotions) contacts without marketing consent are skipped in one statement.
+    await db.rpc("skip_ineligible_recipients", { p_broadcast: broadcastId, p_marketing: template.category === "MARKETING" });
+
+    // Meta's messaging limit: distinct customers messaged in a rolling 24 hours. Stop at the limit and
+    // leave the rest waiting, so nobody is dropped and the account never pushes past what Meta allows.
+    const limit = parseMessagingLimit(conn.messaging_limit_tier);
+    const { data: used } = await db.rpc("unique_template_recipients_24h", { p_user: broadcast.user_id });
+    let capacity = remainingCapacity({ limit, usedLast24h: used ?? 0 });
+    if (capacity <= 0) {
+      return stop("paused", `Meta's daily limit is reached: ${limit.label} customers per 24 hours on your account. Nothing was lost. Press Send again later and the rest will go out as the limit frees up.`);
+    }
+    const startingCapacity = capacity;
+
+    let rate = RATE_PER_SECOND;
+    let sentTotal = 0, failedTotal = 0;
+    let abortReason: string | null = null;
+    let limitReached = false;
+
+    while (!abortReason) {
+      if (capacity <= 0) { limitReached = true; break; }
+      const take = Math.min(CHUNK_SIZE, Number.isFinite(capacity) ? capacity : CHUNK_SIZE);
+      const { data: chunk, error } = await db.rpc("next_broadcast_chunk", { p_broadcast: broadcastId, p_limit: take });
+      if (error) throw error;
+      if (!chunk?.length) break;
+
+      const startedAt = Date.now();
+      let throttled = false;
+
+      const results: SendResult[] = await mapWithConcurrency<any, SendResult>(chunk, CONCURRENCY, async (r) => {
+        if (abortReason) return { id: r.recipient_id, status: "pending" }; // not attempted: back in line
+        try {
+          const params = resolveBodyParameters(template.body_text || "", broadcast.variables, {
+            name: r.display_name && r.display_name !== r.phone_number ? r.display_name : null,
+            phone: r.phone_number,
+          });
+          const res = await sendTemplateMessage(
+            conn.phone_number_id, r.phone_number, template.name, template.language || "en_US", token,
+            params.length ? [{ type: "body", parameters: params.map((v) => ({ type: "text", text: v })) }] : undefined
+          );
+          return { id: r.recipient_id, status: "sent", wamid: res.messages?.[0]?.id ?? null };
+        } catch (err: any) {
+          const m = err?.metaError;
+          const verdict = classifyMetaError(m?.code, m ? `(#${m.code}) ${m.message}` : String(err?.message ?? "Unknown error"));
+          if (verdict.action === "abort") {
+            abortReason = verdict.reason;
+            if (verdict.tokenExpired) {
+              await db.from("wa_connections").update({ status: "expired", last_error: verdict.reason, last_error_at: new Date().toISOString() }).eq("user_id", broadcast.user_id);
+            }
+            if (verdict.templateProblem && (m?.code === 132015 || m?.code === 132016)) {
+              await db.from("wa_templates").update({ status: "low_quality" }).eq("id", broadcast.template_id);
+            }
+            return { id: r.recipient_id, status: "pending" }; // not sent: stays in line for the resume
+          }
+          if (verdict.action === "throttle") { // Meta says slow down: retry this one later at a lower rate
+            throttled = true;
+            return { id: r.recipient_id, status: "pending" };
+          }
+          if (verdict.action === "skip") {
+            if (verdict.marketingOptOut) {
+              // They stopped promotions inside WhatsApp: remember it so no later broadcast tries again.
+              await recordMarketingPreference(db, { userId: broadcast.user_id, phoneNumber: r.phone_number, value: "stop", evidence: { meta_error: 131050 } }).catch(() => {});
+            }
+            return { id: r.recipient_id, status: "skipped", error: verdict.reason };
+          }
+          return { id: r.recipient_id, status: "failed", error: verdict.reason };
+        }
+      });
+
+      await db.rpc("record_recipient_results", { p_broadcast: broadcastId, p_results: results });
+      for (const r of results) { if (r.status === "sent") sentTotal++; else if (r.status === "failed") failedTotal++; }
+      // Every attempt may count toward Meta's limit, so spend capacity on attempts, not just successes.
+      if (Number.isFinite(capacity)) capacity -= results.filter((r) => r.status !== "pending" && r.status !== "skipped").length;
+
+      if (throttled) {
+        rate = Math.max(MIN_RATE, Math.floor(rate / 2));
+        await sleep(5000);
+      } else {
+        await sleep(pacingDelayMs(chunk.length, startedAt, rate));
+      }
+    }
+
+    if (abortReason) return stop("paused", abortReason, sentTotal, failedTotal);
+
+    if (limitReached) {
+      const progress = (await db.rpc("broadcast_progress", { p_broadcast: broadcastId })).data ?? {};
+      if ((progress.pending ?? 0) > 0) {
+        return stop("paused", `Sent ${sentTotal.toLocaleString()} of today's ${startingCapacity.toLocaleString()} allowed by Meta (${limit.label} customers per 24 hours). ${(progress.pending as number).toLocaleString()} are waiting. Press Send again later and they will go out as the limit frees up.`, sentTotal, failedTotal);
+      }
+    }
+    return stop("completed", null, sentTotal, failedTotal);
+  } catch (err: any) {
+    // Unexpected failure: leave the lease to expire so another worker retries.
+    console.error(`[broadcast ${broadcastId}] job error:`, err);
+    return { status: "failed", sent: 0, failed: 0, message: err?.message };
+  }
+}
+
+/** Finds the next broadcast waiting for a worker (queued, or abandoned mid-send). */
+export async function nextBroadcastToRun(db: any): Promise<string | null> {
+  const stale = new Date(Date.now() - 120_000).toISOString();
+  const { data } = await db.from("wa_broadcasts").select("id")
+    .or(`status.eq.queued,and(status.eq.sending,locked_at.lt.${stale})`)
+    .order("created_at", { ascending: true }).limit(1);
+  return data?.[0]?.id ?? null;
 }

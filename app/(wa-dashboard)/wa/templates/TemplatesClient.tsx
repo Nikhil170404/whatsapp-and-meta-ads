@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { TemplateEditor } from "@/components/wa-dashboard/TemplateEditor";
+import { applyFix, defaultExamples, validateTemplate } from "@/lib/whatsapp/template-builder";
 import { Plus, FileText, CheckCircle2, Clock, XCircle, X, Loader2, Eye, Search, ArrowRight, Package, Trash2, Lock, ShoppingBag, Heart, UtensilsCrossed, Home, Scissors, GraduationCap } from "lucide-react";
 
 interface Template {
@@ -8,7 +10,9 @@ interface Template {
   name: string;
   category: string;
   language: string;
-  body_text: string;
+  body_text: string | null;
+  template_type?: string;
+  rejection_reason?: string | null;
   status: "pending" | "approved" | "rejected";
   created_at: string;
 }
@@ -283,7 +287,15 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
   const applyTemplate = (tpl: typeof TEMPLATE_LIBRARY[0]) => {
     if (!isPaidPlan) { setShowUpgradeGate(true); setShowLibrary(false); return; }
     const nameSlug = tpl.label.toLowerCase().replace(/[^a-z0-9]+/g, "_");
-    setForm((f) => ({ ...f, body_text: tpl.text, category: tpl.category, name: f.name || nameSlug }));
+    // Library text is written for readability; fix what Meta would reject (variable at the
+    // start or end, gaps in numbering) before the user ever sees an error.
+    let text = tpl.text;
+    for (let pass = 0; pass < 3; pass++) {
+      const fixable = validateTemplate({ name: nameSlug, category: "UTILITY", language: "en_US", body_text: text, examples: defaultExamples(text) }).find((i) => i.fix);
+      if (!fixable) break;
+      text = applyFix(text, fixable.fix!);
+    }
+    setForm((f) => ({ ...f, body_text: text, category: tpl.category, name: f.name || nameSlug }));
     setShowLibrary(false);
     setShowFlows(false);
     setShowForm(true);
@@ -575,111 +587,16 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
 
       {/* Create Form */}
       {showForm && (
-        <div className="bg-white rounded-3xl border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-slate-900">Create Template</h2>
-            <button onClick={resetForm} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-5">
-            <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between">
-              <p className="text-xs text-slate-500 font-medium">Want a head start?</p>
-              <button
-                onClick={() => { setShowLibrary(true); setShowForm(false); }}
-                className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-1"
-              >
-                Browse {TEMPLATE_LIBRARY.length}+ prebuilt templates →
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Template Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. order_confirmation"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_") })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366]"
-                />
-                <p className="text-xs text-slate-400 mt-1">Lowercase letters, numbers, underscores only</p>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Language</label>
-                <select
-                  value={form.language}
-                  onChange={(e) => setForm({ ...form, language: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366] bg-white"
-                >
-                  {LANGUAGES.map((l) => (
-                    <option key={l.value} value={l.value}>{l.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Category</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    onClick={() => setForm({ ...form, category: cat.value })}
-                    className={`text-left p-4 rounded-xl border-2 transition-all ${form.category === cat.value ? "border-[#25D366] bg-[#25D366]/5" : "border-slate-100 hover:border-slate-200"}`}
-                  >
-                    <p className={`text-sm font-bold ${form.category === cat.value ? "text-[#25D366]" : "text-slate-700"}`}>{cat.label}</p>
-                    <p className="text-xs text-slate-400 font-medium mt-0.5">{cat.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Template Body</label>
-              <textarea
-                rows={6}
-                placeholder="Hi {{1}}, your order #{{2}} is confirmed! Delivery expected by {{3}}."
-                value={form.body_text}
-                onChange={(e) => setForm({ ...form, body_text: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366] resize-none"
-              />
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="text-xs text-slate-400 font-medium">Use {`{{1}}`}, {`{{2}}`} for dynamic values (name, order no, etc.)</p>
-                <p className={`text-xs font-medium ${form.body_text.length > 900 ? "text-rose-500" : "text-slate-400"}`}>{form.body_text.length}/1024</p>
-              </div>
-            </div>
-
-            {form.body_text && (
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">WhatsApp Preview</label>
-                <div className="bg-[#E5DDD5] rounded-2xl p-4">
-                  <div className="bg-white rounded-xl rounded-tl-none p-3 max-w-xs shadow-sm">
-                    <p className="text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{form.body_text}</p>
-                    <p className="text-[10px] text-slate-400 text-right mt-1">12:00 PM ✓✓</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {error && <p className="text-sm font-bold text-rose-600 bg-rose-50 px-4 py-3 rounded-xl">{error}</p>}
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={handleCreate}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] disabled:opacity-60 transition-all"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                {saving ? "Submitting..." : "Submit for Meta Approval"}
-              </button>
-              <button onClick={resetForm} className="px-6 py-3 text-slate-500 font-bold text-sm hover:text-slate-700 transition-colors">
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
+        <TemplateEditor
+          key={`${form.name}|${form.category}|${form.body_text.length}`}
+          initial={{ name: form.name, category: form.category, body_text: form.body_text }}
+          onCancel={resetForm}
+          onCreated={(template, metaError) => {
+            setTemplates((prev) => [template, ...prev.filter((t) => t.id !== template.id)]);
+            if (metaError) setError(`Saved, but Meta did not accept it yet: ${metaError}`);
+            resetForm();
+          }}
+        />
       )}
 
       {/* Templates Grid */}
@@ -726,9 +643,22 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
               </p>
               <div className="bg-[#E5DDD5] rounded-xl p-3 flex-1 mb-3">
                 <div className="bg-white rounded-xl rounded-tl-none p-2.5 shadow-sm">
-                  <p className="text-xs text-slate-700 font-medium leading-relaxed line-clamp-3 whitespace-pre-line">{tpl.body_text}</p>
+                  <p className="text-xs text-slate-700 font-medium leading-relaxed line-clamp-3 whitespace-pre-line">
+                    {tpl.template_type === "otp" || tpl.category === "AUTHENTICATION" ? "123456 is your verification code. For your security, do not share this code." : tpl.body_text}
+                  </p>
                 </div>
               </div>
+              {tpl.status === "pending" && (
+                <p className="text-xs text-slate-500 mb-3">Waiting for Meta. This usually takes a few minutes and up to 24 hours. You can send it once it shows Approved.</p>
+              )}
+              {tpl.status === "rejected" && (
+                <p className="text-xs font-medium text-rose-700 bg-rose-50 rounded-lg px-3 py-2 mb-3">
+                  Meta rejected this{tpl.rejection_reason ? ` (${tpl.rejection_reason.replace(/_/g, " ").toLowerCase()})` : ""}. Delete it and create a new version with the checks in the editor.
+                </p>
+              )}
+              {tpl.category === "AUTHENTICATION" && tpl.status === "approved" && (
+                <p className="text-xs text-slate-500 mb-3">Send codes with the API: see <a href="/wa/integrate" className="font-bold text-[#128C7E] underline">API &amp; integrations</a>.</p>
+              )}
               <button
                 onClick={() => setPreview(tpl)}
                 className="text-xs font-bold text-[#25D366] hover:text-[#1DA851] flex items-center gap-1 transition-colors"

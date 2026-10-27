@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import { createTemplate } from "@/lib/api/ops";
+import { respond } from "@/lib/api/http";
+import {
+  buildAuthComponents, buildMetaComponents, defaultExamples, toMetaName, validateTemplate,
+  type TemplateInput,
+} from "@/lib/whatsapp/template-builder";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -24,7 +30,7 @@ export async function GET() {
 
     if (conn?.waba_id && conn?.access_token) {
       try {
-        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?fields=name,status,category,language,components&limit=50`, {
+        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?fields=name,status,category,language,components,rejected_reason&limit=100`, {
           headers: { Authorization: `Bearer ${conn.access_token}` },
         });
         if (metaRes.ok) {
@@ -36,8 +42,10 @@ export async function GET() {
               name: t.name,
               category: t.category,
               language: t.language,
-              body_text: bodyComp?.text || "",
+              body_text: bodyComp?.text || null,
+              template_type: t.category === "AUTHENTICATION" ? "otp" : "standard",
               status: t.status?.toLowerCase() === "approved" ? "approved" : t.status?.toLowerCase() || "pending",
+              rejection_reason: t.status?.toLowerCase() === "rejected" && t.rejected_reason && t.rejected_reason !== "NONE" ? t.rejected_reason : null,
               meta_template_id: t.id || null,
             }, { onConflict: "user_id,name" });
           }
@@ -67,84 +75,8 @@ export async function POST(req: Request) {
     if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const body = await req.json();
-    const { name, category, language, body_text } = body;
-
-    if (!name || !body_text) {
-      return NextResponse.json({ error: "Name and body text are required" }, { status: 400 });
-    }
-
-    const supabase = getSupabaseAdmin() as any;
-
-    // Template creation requires STARTER or PRO — read fresh from DB (JWT is stale)
-    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
-    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE");
-    if (planKey === "FREE" || planKey === "EXPIRED") {
-      return NextResponse.json({
-        error: "Message templates require a paid plan. Upgrade to Growth or Pro to create and submit templates to Meta.",
-        code: "PLAN_REQUIRED",
-      }, { status: 403 });
-    }
-
-    // Template names must be lowercase with underscores for Meta
-    const metaName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-
-    // Save to DB first
-    const { data, error } = await supabase
-      .from("wa_templates")
-      .upsert({
-        user_id: session.id,
-        name: metaName,
-        category: category || "UTILITY",
-        language: language || "en_US",
-        body_text,
-        status: "pending",
-      }, { onConflict: "user_id,name" })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Submit to Meta for approval
-    const { data: conn } = await supabase
-      .from("wa_connections")
-      .select("waba_id, access_token")
-      .eq("user_id", session.id)
-      .maybeSingle();
-
-    let metaError: string | null = null;
-    if (conn?.waba_id && conn?.access_token) {
-      try {
-        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${conn.access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: metaName,
-            category: category || "UTILITY",
-            language: language || "en_US",
-            components: [{ type: "BODY", text: body_text }],
-          }),
-        });
-        const metaData = await metaRes.json();
-        if (metaData.id) {
-          await supabase
-            .from("wa_templates")
-            .update({ meta_template_id: metaData.id, status: "pending" })
-            .eq("id", data.id);
-          data.meta_template_id = metaData.id;
-        } else {
-          metaError = metaData.error?.message || "Meta rejected the template";
-        }
-      } catch (err: any) {
-        metaError = err.message;
-      }
-    } else {
-      metaError = "WhatsApp not connected — template saved locally only";
-    }
-
-    return NextResponse.json({ template: data, meta_error: metaError });
+    const result = await createTemplate(getSupabaseAdmin() as any, session.id, body);
+    return respond(result, (r) => ({ template: r.template, meta_error: r.meta_error }));
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
