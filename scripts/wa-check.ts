@@ -116,8 +116,13 @@ async function main() {
   }
 
   console.log("\n5. Send a test message");
-  const to = normalizePhone(arg("to"));
+  let to = normalizePhone(arg("to"));
   if (!to) { bad("Give the recipient with --to, including the country code, for example --to 919876543210"); process.exit(1); }
+  // A bare 10-digit Indian mobile number (starts 6-9) has no country code, so WhatsApp could not find it.
+  if (/^[6-9]\d{9}$/.test(to)) {
+    info(`${to} has no country code; assuming India and using 91${to}. Pass the full number to avoid this.`);
+    to = `91${to}`;
+  }
   if (!phoneNumberId) { bad("No phone number to send from."); process.exit(1); }
 
   const template = arg("template") ?? "hello_world";
