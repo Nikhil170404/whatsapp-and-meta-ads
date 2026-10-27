@@ -15,6 +15,7 @@ import { verifyMetaSignature } from "@/lib/meta-signature";
 import { recordConsent, recordMarketingPreference } from "@/lib/consent";
 import { describeInbound, extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
 import { DEFAULT_AWAY_MESSAGE, shouldSendAway } from "@/lib/whatsapp/hours";
+import { parseAccountUpdate } from "@/lib/whatsapp/enforcement";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
 // window after the customer's last inbound message. Outside it, use templates.
@@ -52,10 +53,17 @@ export async function POST(req: Request) {
     for (const entry of body.entry) {
       for (const change of entry.changes) {
         // ── Quality-rating update ────────────────────────────────────────────
-        // Meta fires this when phone number quality changes (HIGH/MEDIUM/LOW).
-        // LOW quality means too many users are blocking/reporting messages.
+        // Despite its name this webhook reports the messaging LIMIT (and throughput) changing
+        // (current_limit / max_daily_conversations_per_business, e.g. TIER_2K). Quality is read
+        // from the Graph API by the quality-sync job.
         if (change.field === "phone_number_quality_update") {
-          await handleQualityUpdate(supabase, change.value);
+          await handleLimitUpdate(supabase, entry.id, change.value);
+          continue;
+        }
+
+        // ── Policy enforcement: violations, timed restrictions, bans ─────────
+        if (change.field === "account_update") {
+          await handleAccountUpdate(supabase, entry.id, change.value);
           continue;
         }
 
@@ -108,51 +116,49 @@ export async function POST(req: Request) {
 
 // ─── Quality update handler ──────────────────────────────────────────────────
 
-async function handleQualityUpdate(supabase: any, value: any) {
-  const phoneNumberId: string = value.phone_number_id ?? value.display_phone_number;
-  const newRating: string = value.current_limit ?? value.quality_score?.score ?? "UNKNOWN";
+async function handleLimitUpdate(supabase: any, wabaId: string, value: any) {
+  const tier: string | undefined = value.max_daily_conversations_per_business ?? value.current_limit;
+  if (!tier) return;
 
-  if (!phoneNumberId) return;
+  // The event names the number by its display phone number; match it to this account's connection.
+  const digits = String(value.display_phone_number ?? "").replace(/\D/g, "");
+  const { data: conns } = await supabase.from("wa_connections").select("user_id, phone_number").eq("waba_id", wabaId);
+  const match = (conns ?? []).find((c: any) => !digits || String(c.phone_number ?? "").replace(/\D/g, "") === digits) ?? (conns ?? [])[0];
+  if (!match) return;
 
-  const { data: conn } = await supabase
-    .from("wa_connections")
-    .select("user_id, quality_paused_at")
-    .eq("phone_number_id", phoneNumberId)
-    .single();
+  await supabase.from("wa_connections").update({ messaging_limit_tier: tier, quality_synced_at: new Date().toISOString() }).eq("user_id", match.user_id);
+}
 
-  if (!conn) return;
+// ─── Policy enforcement (account_update) ─────────────────────────────────────
 
-  const isLow = newRating === "LOW";
-  const update: Record<string, any> = {
-    quality_rating: newRating,
-    quality_synced_at: new Date().toISOString(),
-  };
+async function handleAccountUpdate(supabase: any, wabaId: string, value: any) {
+  const state = parseAccountUpdate(value);
+  if (!state) return;
 
-  if (isLow && !conn.quality_paused_at) {
-    // Quality just dropped to LOW — pause all automations immediately
-    update.quality_paused_at = new Date().toISOString();
-    update.last_error = "Automations auto-paused: phone number quality is LOW. Too many users are blocking or reporting messages. Improve content quality before re-enabling.";
-    update.last_error_at = new Date().toISOString();
+  const userId = await userIdForWaba(supabase, wabaId);
+  if (!userId) return;
 
-    await supabase
-      .from("wa_automations")
-      .update({ is_active: false, last_error: "Auto-paused: phone number quality is LOW (Meta policy protection)" })
-      .eq("user_id", conn.user_id)
-      .eq("is_active", true);
-
-    console.warn(`[webhook] Quality dropped to LOW for phone_number_id=${phoneNumberId}`);
-  } else if (!isLow && conn.quality_paused_at) {
-    // Quality recovered
-    update.quality_paused_at = null;
-    update.last_error = null;
-    update.last_error_at = null;
+  if (!state.summary && !state.blocksBusinessInitiated) {
+    // Reinstated: clear any earlier restriction.
+    await supabase.from("wa_connections").update({ restriction_summary: null, restriction_blocks: false, restricted_until: null }).eq("user_id", userId);
+    return;
   }
 
-  await supabase
-    .from("wa_connections")
-    .update(update)
-    .eq("phone_number_id", phoneNumberId);
+  await supabase.from("wa_connections").update({
+    restriction_summary: state.summary,
+    restriction_blocks: state.blocksBusinessInitiated,
+    restricted_until: state.until ? state.until.toISOString() : null,
+    last_error: state.summary,
+    last_error_at: new Date().toISOString(),
+  }).eq("user_id", userId);
+
+  // Stop automatic sending while Meta has the account restricted, so we never make it worse.
+  if (state.blocksBusinessInitiated) {
+    await supabase.from("wa_broadcasts").update({ status: "paused", error: state.summary, locked_at: null })
+      .eq("user_id", userId).in("status", ["queued", "sending", "scheduled"]);
+  }
 }
+
 
 // ─── Account alert handler ───────────────────────────────────────────────────
 

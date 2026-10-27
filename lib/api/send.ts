@@ -3,6 +3,8 @@ import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import type { OpResult } from "@/lib/api/ops";
 import { normalizePhone, phoneVariants } from "@/lib/whatsapp/phone";
 import { addressTo, isBsuid } from "@/lib/whatsapp/service";
+import { parseQuality } from "@/lib/whatsapp/limits";
+import { isRestricted } from "@/lib/whatsapp/enforcement";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 const fail = (status: number, error: string, code?: string): OpResult<never> => ({ ok: false, status, error, code });
@@ -31,10 +33,14 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
   const to = digits;
 
   const { data: conn } = await db.from("wa_connections")
-    .select("phone_number_id, access_token, token_expires_at, status, quality_paused_at")
+    .select("phone_number_id, access_token, token_expires_at, status, quality_paused_at, quality_rating, restriction_blocks, restricted_until, restriction_summary")
     .eq("user_id", userId).eq("status", "active").maybeSingle();
   if (!conn) return fail(400, "WhatsApp is not connected. Connect your number in the dashboard first.", "NOT_CONNECTED");
 
+  // While Meta has the account restricted, nothing may be started. Replies inside a customer's
+  // open window are still fine unless Meta also blocked those, which we cannot tell, so we only
+  // stop template sends and let Meta answer for free text.
+  const restricted = isRestricted(conn);
   const isOtp = input.type === "otp" || input.otp !== undefined;
   if (isOtp && bsuid) return fail(400, "Verification codes cannot be sent to this customer because WhatsApp is hiding their phone number.", "OTP_NEEDS_PHONE");
   const isText = !isOtp && (input.type === "text" || (!input.template?.trim() && !!input.text));
@@ -54,6 +60,7 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
     let q = db.from("wa_templates").select("name, language").eq("user_id", userId).eq("category", "AUTHENTICATION").eq("status", "approved");
     if (input.template) q = q.eq("name", input.template);
     const { data: tpl } = await q.limit(1).maybeSingle();
+    if (restricted) return fail(403, conn.restriction_summary || "Meta has restricted this account.", "ACCOUNT_RESTRICTED");
     if (!tpl) return fail(400, "No approved verification template. Create one under Message templates > Verification code (OTP) and wait for Meta to approve it.", "OTP_TEMPLATE_REQUIRED");
 
     const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
@@ -65,13 +72,12 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
       template: { name: tpl.name, language: { code: tpl.language || "en_US" }, components: buildOtpSendComponents(input.otp!) } };
   } else if (isText) {
     if (!input.text?.trim()) return fail(400, "text is required for a text message.");
-    // Free text only works while the customer's chat window is open.
+    // Meta: free-form messages are allowed only within 24 hours of the customer's last message
+    // (or call). The window resets each time they write again.
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count } = await db.from("wa_messages").select("id", { count: "exact", head: true })
       .eq("user_id", userId).eq("from_phone", digits).eq("direction", "inbound").gte("created_at", since);
-    const { data: c } = await db.from("wa_contacts").select("ctwa_window_expires_at").eq("user_id", userId).in("phone_number", phoneVariants(digits)).limit(1).maybeSingle();
-    const adWindow = c?.ctwa_window_expires_at && new Date(c.ctwa_window_expires_at) > new Date();
-    if ((count ?? 0) === 0 && !adWindow) {
+    if ((count ?? 0) === 0) {
       return fail(409, "This customer has not messaged you in the last 24 hours, so WhatsApp will not deliver free text. Send an approved template instead.", "OUTSIDE_24H_WINDOW");
     }
     payload = { messaging_product: "whatsapp", recipient_type: "individual", ...addressTo(to), type: "text", text: { body: input.text } };
@@ -82,8 +88,9 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
     if (!tpl) return fail(404, `No template named "${input.template}". List templates to see what you have.`, "TEMPLATE_NOT_FOUND");
     if (tpl.status !== "approved") return fail(409, `Template "${tpl.name}" is ${tpl.status}, not approved by Meta yet.`, "TEMPLATE_NOT_APPROVED");
     if (tpl.category === "AUTHENTICATION") return fail(400, 'Use type "otp" with the code for verification templates.');
-    if (conn.quality_paused_at && tpl.category === "MARKETING") {
-      return fail(403, "Marketing messages are paused because your number quality is low.", "QUALITY_LOW");
+    if (restricted) return fail(403, conn.restriction_summary || "Meta has restricted this account, so templates cannot be sent right now.", "ACCOUNT_RESTRICTED");
+    if (tpl.category === "MARKETING" && (conn.quality_paused_at || parseQuality(conn.quality_rating).level === "poor")) {
+      return fail(403, "Promotions are paused because your number's quality rating is Poor (red).", "QUALITY_LOW");
     }
     const params = Array.isArray(input.params) ? input.params.map(String) : [];
     if (params.some((p) => !p.trim())) return fail(400, "params cannot contain empty values.");

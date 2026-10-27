@@ -1,8 +1,11 @@
 /**
- * WhatsApp lets a business send free-form messages only while the customer's
- * "service window" is open: 24 hours after their last message (72 hours when
- * they came from a Click-to-WhatsApp ad). After that, only approved templates
- * can be sent. Showing this in the inbox prevents the most common mistake.
+ * Meta: a 24-hour customer service window opens when a customer messages or calls
+ * the business, and resets each time they do again. Inside it any supported
+ * message type may be sent; outside it only approved templates. Showing this in
+ * the inbox prevents the most common mistake.
+ *
+ * Note: a Click-to-WhatsApp ad opens a free *pricing* window, not a longer sending
+ * window, so the optional adWindowEndsAt below is not used by the app.
  */
 export const WINDOW_MS = 24 * 60 * 60 * 1000;
 

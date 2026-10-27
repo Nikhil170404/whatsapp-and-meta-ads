@@ -12,22 +12,28 @@ export async function GET(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get("search") || "";
+    const search = (searchParams.get("search") || "").replace(/[%,()]/g, " ").trim();
+    const label = searchParams.get("label") || "";
+    const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 100, 1), 1000);
+    const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
 
     const supabase = getSupabaseAdmin() as any;
     let query = supabase
       .from("wa_contacts")
-      .select("*")
+      .select("*", { count: "exact" })
       .eq("user_id", session.id)
-      .order("last_message_at", { ascending: false });
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .order("id")
+      .range(offset, offset + limit - 1);
 
-    if (search) {
-      query = query.or(`phone_number.ilike.%${search}%,display_name.ilike.%${search}%`);
-    }
+    if (label) query = query.contains("labels", [label]);
+    if (search) query = query.or(`phone_number.ilike.%${search}%,display_name.ilike.%${search}%`);
 
-    const { data, error } = await query;
+    // Paged on purpose: the database never returns more than 1,000 rows at once, so asking
+    // for "everything" silently returned only the first 1,000 contacts.
+    const { data, error, count } = await query;
     if (error) throw error;
-    return NextResponse.json({ contacts: data });
+    return NextResponse.json({ contacts: data, total: count ?? data?.length ?? 0, limit, offset });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

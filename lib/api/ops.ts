@@ -11,8 +11,10 @@ import {
   buildAuthComponents, buildMetaComponents, defaultExamples, toMetaName, validateTemplate,
   validateVariablePlan, type TemplateInput,
 } from "@/lib/whatsapp/template-builder";
-import { runBroadcast } from "@/lib/whatsapp/broadcast-runner";
+import { queueBroadcast } from "@/lib/whatsapp/broadcast-runner";
 import { normalizePhone, phoneVariants } from "@/lib/whatsapp/phone";
+import { parseMessagingLimit, parseQuality, remainingCapacity } from "@/lib/whatsapp/limits";
+import { isRestricted } from "@/lib/whatsapp/enforcement";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -33,25 +35,43 @@ const isFree = (plan: string) => plan === "FREE" || plan === "EXPIRED";
 
 // ── Connection ───────────────────────────────────────────────────────────────
 
-export async function getStatus(db: Db, userId: string) {
+/**
+ * Everything a business needs to send safely: connection, Meta's quality rating, the
+ * messaging limit and how much of it is used in the last 24 hours, and any restriction.
+ */
+export async function getAccountHealth(db: Db, userId: string) {
   const { data: c } = await db.from("wa_connections")
-    .select("status, phone_number, display_name, quality_rating, messaging_tier, quality_paused_at, token_expires_at, last_error")
+    .select("status, phone_number, display_name, quality_rating, messaging_limit_tier, quality_paused_at, token_expires_at, last_error, restriction_summary, restriction_blocks, restricted_until")
     .eq("user_id", userId).maybeSingle();
   const plan = (await planOf(db, userId)).toLowerCase();
-  if (!c) return ok({ connected: false, plan });
-  const tierLimits: Record<number, string> = { 1: "1,000", 2: "10,000", 3: "100,000", 4: "unlimited" };
-  return ok({
+  if (!c) return { connected: false, plan } as const;
+
+  const { data: used } = await db.rpc("unique_template_recipients_24h", { p_user: userId });
+  const limit = parseMessagingLimit(c.messaging_limit_tier);
+  const usedLast24h: number = used ?? 0;
+  const remaining = remainingCapacity({ limit, usedLast24h });
+  const quality = parseQuality(c.quality_rating);
+  const restricted = isRestricted(c);
+
+  return {
     connected: c.status === "active",
-    status: c.status,
-    phone_number: c.phone_number,
-    business_name: c.display_name,
-    quality_rating: c.quality_rating,
-    daily_unique_customer_limit: tierLimits[c.messaging_tier ?? 1] ?? "1,000",
-    marketing_paused_for_quality: !!c.quality_paused_at,
-    token_expires_at: c.token_expires_at,
-    last_error: c.last_error,
+    status: c.status as string,
+    phone_number: c.phone_number as string,
+    business_name: c.display_name as string | null,
     plan,
-  });
+    quality: { level: quality.level, label: quality.label, rating: c.quality_rating as string | null, promotions_paused: !!c.quality_paused_at },
+    messaging_limit: {
+      per_24_hours: limit.limit, label: limit.label, assumed: limit.assumed,
+      used_last_24h: usedLast24h, remaining: Number.isFinite(remaining) ? remaining : null,
+    },
+    restriction: restricted ? { summary: c.restriction_summary as string, until: c.restricted_until as string | null } : null,
+    token_expires_at: c.token_expires_at as string | null,
+    last_error: c.last_error as string | null,
+  };
+}
+
+export async function getStatus(db: Db, userId: string) {
+  return ok(await getAccountHealth(db, userId));
 }
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
@@ -276,41 +296,53 @@ export interface AudienceInput {
   contact_ids?: string[];
   phones?: string[];
   label?: string;
+  /** Every contact in the account. Resolved inside the database, so any audience size is fine. */
+  all_contacts?: boolean;
 }
 
-async function resolveAudience(db: Db, userId: string, a: AudienceInput): Promise<string[]> {
+const CHUNK = 5000;
+
+/** Contact ids named explicitly (ids and phone numbers). Label and "all" are resolved by SQL instead. */
+async function explicitContactIds(db: Db, userId: string, a: AudienceInput): Promise<string[]> {
   const ids = new Set<string>(a.contact_ids ?? []);
-  if (a.phones?.length) {
-    const phones = a.phones.map(normalizePhone).filter((p): p is string => !!p).flatMap(phoneVariants);
-    const { data } = await db.from("wa_contacts").select("id").eq("user_id", userId).in("phone_number", phones);
-    (data ?? []).forEach((c: any) => ids.add(c.id));
-  }
-  if (a.label) {
-    const { data } = await db.from("wa_contacts").select("id").eq("user_id", userId).contains("labels", [a.label]);
+  const phones = (a.phones ?? []).map(normalizePhone).filter((p): p is string => !!p).flatMap(phoneVariants);
+  for (let i = 0; i < phones.length; i += 500) {
+    const { data } = await db.from("wa_contacts").select("id").eq("user_id", userId).in("phone_number", phones.slice(i, i + 500));
     (data ?? []).forEach((c: any) => ids.add(c.id));
   }
   return [...ids];
 }
 
+const hasAudience = (a: AudienceInput) => !!(a.all_contacts || a.label || a.contact_ids?.length || a.phones?.length);
+
 /** Who a broadcast would reach and who would be skipped, without creating anything. */
 export async function previewBroadcast(db: Db, userId: string, input: { template_id?: string; template_name?: string } & AudienceInput) {
   const tpl = await findTemplate(db, userId, input);
   if (!tpl) return fail(404, "Template not found.");
-  const ids = await resolveAudience(db, userId, input);
-  if (!ids.length) return fail(400, "No matching contacts. Add contacts first, or check the phones/label.");
-  const { data: contacts } = await db.from("wa_contacts").select("id, is_opted_in, consent_purposes").eq("user_id", userId).in("id", ids);
-  let eligible = 0, optedOut = 0, noMarketing = 0;
-  for (const c of contacts ?? []) {
-    if (c.is_opted_in === false) optedOut++;
-    else if (tpl.category === "MARKETING" && !hasMarketingConsent(c)) noMarketing++;
-    else eligible++;
+  if (!hasAudience(input)) return fail(400, "Choose who to send to: all contacts, a label, or specific contacts.");
+
+  const ids = await explicitContactIds(db, userId, input);
+  let totals = { selected: 0, will_send: 0, opted_out: 0, no_marketing_consent: 0 };
+  const marketing = tpl.category === "MARKETING";
+  // Set-based sources (label / all) are counted once; explicit ids in chunks.
+  const parts: Array<{ ids: string[] | null; label?: string; all?: boolean }> = [];
+  if (input.all_contacts) parts.push({ ids: null, all: true });
+  else {
+    if (input.label) parts.push({ ids: null, label: input.label });
+    for (let i = 0; i < ids.length; i += CHUNK) parts.push({ ids: ids.slice(i, i + CHUNK) });
   }
+  for (const part of parts) {
+    const { data, error } = await db.rpc("audience_preview", { p_user: userId, p_contact_ids: part.ids, p_label: part.label ?? null, p_all: !!part.all, p_marketing: marketing });
+    if (error) return fail(500, error.message);
+    totals = { selected: totals.selected + data.selected, will_send: totals.will_send + data.will_send, opted_out: totals.opted_out + data.opted_out, no_marketing_consent: totals.no_marketing_consent + data.no_marketing_consent };
+  }
+  if (totals.selected === 0) return fail(400, "No matching contacts. Check the label or phone numbers.");
   return ok({
     template: { id: tpl.id, name: tpl.name, category: tpl.category, status: tpl.status },
-    selected: ids.length, will_send: eligible,
-    skipped_opted_out: optedOut, skipped_no_marketing_consent: noMarketing,
+    selected: totals.selected, will_send: totals.will_send,
+    skipped_opted_out: totals.opted_out, skipped_no_marketing_consent: totals.no_marketing_consent,
     template_approved: tpl.status === "approved",
-    note: tpl.category === "MARKETING" ? "Marketing templates are billed by Meta at its marketing rate." : "Billed by Meta at its template rate.",
+    note: marketing ? "Marketing templates are billed by Meta at its marketing rate." : "Billed by Meta at its template rate.",
   });
 }
 
@@ -336,28 +368,47 @@ export async function createBroadcast(db: Db, userId: string, input: {
   const planError = validateVariablePlan(tpl.body_text ?? "", input.variables as any);
   if (planError) return fail(400, planError, "INVALID_VARIABLES");
 
-  const ids = await resolveAudience(db, userId, input);
-  if (!ids.length) return fail(400, "Choose at least one contact.");
-  const { data: owned } = await db.from("wa_contacts").select("id").eq("user_id", userId).in("id", ids);
-  if ((owned ?? []).length !== ids.length) return fail(400, "One or more contacts are invalid.");
+  if (!hasAudience(input)) return fail(400, "Choose who to send to: all contacts, a label, or specific contacts.");
+  const ids = await explicitContactIds(db, userId, input);
 
   const scheduled = input.scheduled_at && new Date(input.scheduled_at) > new Date();
   const { data: broadcast, error } = await db.from("wa_broadcasts").insert({
     user_id: userId, name: input.name.trim(), template_id: tpl.id,
     status: scheduled ? "scheduled" : "draft", scheduled_at: input.scheduled_at || null,
-    variables: Array.isArray(input.variables) ? input.variables : null, total_recipients: ids.length,
+    variables: Array.isArray(input.variables) ? input.variables : null, total_recipients: 0,
   }).select().single();
   if (error) return fail(500, error.message);
 
-  const { error: rErr } = await db.from("wa_broadcast_recipients").insert(ids.map((cid) => ({ broadcast_id: broadcast.id, contact_id: cid, status: "pending" })));
-  if (rErr) return fail(500, rErr.message);
+  // Recipients are added by the database in a few statements, whatever the audience size.
+  let total = 0;
+  const add = async (p: { ids?: string[] | null; label?: string | null; all?: boolean }) => {
+    const { data, error: e } = await db.rpc("add_broadcast_recipients", { p_broadcast: broadcast.id, p_user: userId, p_contact_ids: p.ids ?? null, p_label: p.label ?? null, p_all: !!p.all });
+    if (e) throw new Error(e.message);
+    total = data;
+  };
+  try {
+    if (input.all_contacts) await add({ all: true });
+    else {
+      if (input.label) await add({ label: input.label });
+      for (let i = 0; i < ids.length; i += CHUNK) await add({ ids: ids.slice(i, i + CHUNK) });
+    }
+  } catch (e: any) {
+    await db.from("wa_broadcasts").delete().eq("id", broadcast.id);
+    return fail(500, e.message);
+  }
+  if (total === 0) {
+    await db.from("wa_broadcasts").delete().eq("id", broadcast.id);
+    return fail(400, "No matching contacts. Check the label or phone numbers.");
+  }
+  broadcast.total_recipients = total;
   return ok({ broadcast, scheduled: !!scheduled });
 }
 
+/** Puts the broadcast in line; a background worker sends it. Returns at once, whatever the audience size. */
 export async function sendBroadcastNow(db: Db, userId: string, id: string) {
-  const r = await runBroadcast(db, userId, id);
-  if (r.status >= 400) return fail(r.status, String((r.body as any).error ?? "Could not send the broadcast."), (r.body as any).code);
-  return ok(r.body);
+  const r = await queueBroadcast(db, userId, id);
+  if (!r.ok) return fail(r.status, r.error, (r as any).code);
+  return ok({ queued: true, already_queued: r.already, message: r.already ? "Already queued or sending." : "Queued. Sending starts within seconds and continues in the background. Check list_broadcasts for progress." });
 }
 
 export async function listBroadcasts(db: Db, userId: string, limit = 20) {

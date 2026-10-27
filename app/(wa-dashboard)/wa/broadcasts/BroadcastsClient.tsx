@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   bodyVariables, defaultVariablePlan, resolveBodyParameters, validateVariablePlan,
   type VariableSource,
@@ -8,6 +8,7 @@ import {
 import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2, Lock, Tag } from "lucide-react";
 
 interface Broadcast {
+  error?: string | null;
   id: string;
   name: string;
   status: string;
@@ -39,10 +40,16 @@ export function BroadcastsClient({
   initialBroadcasts,
   templates,
   planType,
+  health,
+  contactTotal = 0,
+  labels = [],
 }: {
   initialBroadcasts: Broadcast[];
   templates: Template[];
   planType?: string;
+  health?: any;
+  contactTotal?: number;
+  labels?: string[];
 }) {
   const isPaidPlan = planType !== undefined && planType !== "free" && planType !== "expired";
   const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
@@ -66,6 +73,8 @@ export function BroadcastsClient({
     contact_ids: [] as string[],
     scheduled_at: "",
     variables: [] as VariableSource[],
+    audience: "pick" as "pick" | "all" | "label",
+    label: "",
   });
 
   const selectedTemplate = templates.find((t) => t.id === form.template_id);
@@ -93,7 +102,7 @@ export function BroadcastsClient({
     }
     setShowForm(true);
     setStep(1);
-    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "", variables: [] });
+    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "", variables: [], audience: "pick", label: "" });
     setError(null);
 
     setLoadingContacts(true);
@@ -112,7 +121,7 @@ export function BroadcastsClient({
   const resetForm = () => {
     setShowForm(false);
     setStep(1);
-    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "", variables: [] });
+    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "", variables: [], audience: "pick", label: "" });
     setError(null);
   };
 
@@ -125,7 +134,9 @@ export function BroadcastsClient({
       setError(null);
       setStep(2);
     } else if (step === 2) {
-      if (form.contact_ids.length === 0) return setError("Select at least one contact.");
+      if (form.audience === "pick" && form.contact_ids.length === 0) return setError("Select at least one contact.");
+      if (form.audience === "label" && !form.label) return setError("Choose a label.");
+      if (form.audience === "all" && contactTotal === 0) return setError("You have no contacts yet.");
       setError(null);
       setStep(3);
     }
@@ -156,7 +167,11 @@ export function BroadcastsClient({
     setError(null);
     try {
       const isScheduled = !!form.scheduled_at;
-      const payload: Record<string, any> = { ...form };
+      const { audience, label, contact_ids, ...rest } = form;
+      const payload: Record<string, any> = { ...rest };
+      if (audience === "all") payload.all_contacts = true;
+      else if (audience === "label") payload.label = label;
+      else payload.contact_ids = contact_ids;
       if (!payload.scheduled_at) delete payload.scheduled_at;
       const res = await fetch("/api/whatsapp/broadcasts", {
         method: "POST",
@@ -167,13 +182,13 @@ export function BroadcastsClient({
       if (!res.ok) throw new Error(data.error);
 
       if (isScheduled) {
-        // Don't send now — it's queued for later
         setBroadcasts((prev) => [{ ...data.broadcast, status: "scheduled" }, ...prev]);
       } else {
+        // Sending happens in the background; this only puts the broadcast in line.
         const execRes = await fetch(`/api/whatsapp/broadcasts/${data.broadcast.id}/send`, { method: "POST" });
         const execData = await execRes.json();
         if (!execRes.ok) throw new Error(execData.error);
-        setBroadcasts((prev) => [{ ...data.broadcast, status: execData.failed === data.broadcast.total_recipients ? "failed" : "completed", sent_count: execData.sent, failed_count: execData.failed }, ...prev]);
+        setBroadcasts((prev) => [{ ...data.broadcast, status: "queued" }, ...prev]);
       }
       resetForm();
     } catch (e: any) {
@@ -200,18 +215,34 @@ export function BroadcastsClient({
     }
   };
 
+  // Queue (or resume) a broadcast. It is sent in the background, so this returns at once.
   const executeBroadcast = async (id: string) => {
-    setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "sending" } : b));
+    const before = broadcasts.find((b) => b.id === id)?.status ?? "draft";
+    setError(null);
+    setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "queued", error: null } : b));
     try {
       const res = await fetch(`/api/whatsapp/broadcasts/${id}/send`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "completed", sent_count: data.sent, failed_count: data.failed } : b));
     } catch (e: any) {
-      setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: "draft" } : b));
+      setBroadcasts((prev) => prev.map((b) => b.id === id ? { ...b, status: before } : b));
       setError(e.message);
     }
   };
+
+  // While anything is waiting or sending, refresh progress every few seconds.
+  const active = broadcasts.some((b) => b.status === "queued" || b.status === "sending");
+  useEffect(() => {
+    if (!active) return;
+    const timer = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/whatsapp/broadcasts");
+        if (res.ok) setBroadcasts((await res.json()).broadcasts ?? []);
+      } catch { /* try again on the next tick */ }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [active]);
 
   // OTP (authentication) templates are for one-to-one codes, never bulk sending.
   const approvedTemplates = templates.filter((t) => t.status === "approved" && t.category !== "AUTHENTICATION");
@@ -411,9 +442,9 @@ export function BroadcastsClient({
                 <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs font-bold text-amber-700">Marketing template frequency cap</p>
+                    <p className="text-xs font-bold text-amber-700">Promotions can be limited per person</p>
                     <p className="text-[11px] text-amber-600 font-medium mt-0.5 leading-snug">
-                      Meta allows a maximum of 2 marketing messages per user per 24 hours globally. Sending too frequently increases block rates and degrades your quality score.
+                      Meta may withhold a promotion if a person has recently received many from businesses. Those people are skipped, not retried, and you can try them again after 24 hours. Sending too often to the same people raises blocks and lowers your quality rating.
                     </p>
                   </div>
                 </div>
@@ -446,11 +477,37 @@ export function BroadcastsClient({
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-slate-900">Choose recipients</h2>
                 <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
-                  {form.contact_ids.length} selected
+                  {form.audience === "pick" ? `${form.contact_ids.length} selected` : form.audience === "all" ? `${contactTotal.toLocaleString()} contacts` : form.label || "no label"}
                 </span>
               </div>
 
-              {loadingContacts ? (
+              <div role="group" aria-label="Who to send to" className="grid gap-2 sm:grid-cols-3">
+                {([
+                  ["pick", "Pick contacts", "Choose people one by one"],
+                  ["all", `Everyone (${contactTotal.toLocaleString()})`, "All contacts, however many"],
+                  ["label", "A label", "For example “vip” or “leads”"],
+                ] as const).map(([mode, title, hint]) => (
+                  <button key={mode} type="button" aria-pressed={form.audience === mode} onClick={() => setForm((f) => ({ ...f, audience: mode }))}
+                    className={`rounded-xl border-2 p-3 text-left transition ${form.audience === mode ? "border-[#25D366] bg-[#25D366]/5" : "border-slate-100 hover:border-slate-200"}`}>
+                    <p className="text-sm font-bold text-slate-900">{title}</p>
+                    <p className="text-xs text-slate-500">{hint}</p>
+                  </button>
+                ))}
+              </div>
+              {form.audience === "label" && (
+                <select aria-label="Label" value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-base sm:text-sm">
+                  <option value="">Choose a label…</option>
+                  {labels.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              )}
+              {form.audience !== "pick" && (
+                <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+                  People who opted out are skipped automatically{selectedTemplate?.category === "MARKETING" ? ", and so is anyone who has not agreed to promotions" : ""}. You will see the final count before anything is sent.
+                </p>
+              )}
+
+              {form.audience !== "pick" ? null : loadingContacts ? (
                 <div className="py-8 text-center"><Loader2 className="w-6 h-6 animate-spin text-[#25D366] mx-auto" /></div>
               ) : contacts.length === 0 ? (
                 <div className="py-8 text-center">
@@ -553,7 +610,9 @@ export function BroadcastsClient({
                 </div>
                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
                   <p className="text-sm font-bold text-slate-500">Recipients</p>
-                  <p className="text-sm font-bold text-[#25D366]">{form.contact_ids.length} contacts</p>
+                  <p className="text-sm font-bold text-[#25D366]">
+                    {form.audience === "pick" ? `${form.contact_ids.length} contacts` : form.audience === "all" ? `Everyone (${contactTotal.toLocaleString()})` : `Label “${form.label}”`}
+                  </p>
                 </div>
                 {form.scheduled_at && (
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
@@ -562,6 +621,30 @@ export function BroadcastsClient({
                   </div>
                 )}
               </div>
+
+              {(() => {
+                const h = health;
+                if (!h?.connected) return null;
+                const remaining: number | null = h.messaging_limit?.remaining;
+                const planned = form.audience === "pick" ? form.contact_ids.length : form.audience === "all" ? contactTotal : null;
+                return (
+                  <div className="space-y-2" aria-label="Sending safety">
+                    {h.restriction && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">{h.restriction.summary}</p>}
+                    {h.quality?.level === "poor" && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">Your number&apos;s quality rating is Poor (red). Promotions are paused until it recovers.</p>}
+                    <p className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                      Meta lets your account message <strong>{h.messaging_limit.label}</strong> different people per 24 hours. You have messaged{" "}
+                      <strong>{h.messaging_limit.used_last_24h.toLocaleString()}</strong> in the last 24 hours
+                      {remaining !== null && <>, so you can reach <strong>{remaining.toLocaleString()}</strong> more now</>}.
+                      {planned !== null && remaining !== null && planned > remaining && (
+                        <span className="mt-1 block font-semibold text-amber-800">
+                          This broadcast is bigger than that. The first {remaining.toLocaleString()} go out now; the rest wait, and you press Send again later to continue. Nobody is dropped.
+                        </span>
+                      )}
+                      {h.messaging_limit.assumed && <span className="mt-1 block text-slate-500">We could not read your exact limit from Meta yet, so we assume the lowest (250) to keep you safe.</span>}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {selectedTemplate && (
                 <div>
@@ -585,7 +668,7 @@ export function BroadcastsClient({
                   className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] disabled:opacity-60 transition-all"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  {saving ? "Sending..." : `Send to ${form.contact_ids.length} contacts`}
+                  {saving ? "Queuing..." : form.scheduled_at ? "Schedule broadcast" : form.audience === "pick" ? `Send to ${form.contact_ids.length} contacts` : "Send broadcast"}
                 </button>
               </div>
             </div>
@@ -616,13 +699,15 @@ export function BroadcastsClient({
                 <div className="flex items-center gap-2 shrink-0">
                   <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
                     bc.status === "completed" ? "bg-green-50 text-green-700" :
-                    bc.status === "sending" ? "bg-amber-50 text-amber-600" :
+                    bc.status === "sending" || bc.status === "queued" ? "bg-amber-50 text-amber-600" :
+                    bc.status === "paused" ? "bg-orange-50 text-orange-700" :
                     bc.status === "scheduled" ? "bg-violet-50 text-violet-600" :
                     bc.status === "failed" ? "bg-rose-50 text-rose-600" :
                     "bg-slate-50 text-slate-600"
                   }`}>
                     {bc.status === "completed" && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    {bc.status === "sending" && <Clock className="w-3.5 h-3.5" />}
+                    {(bc.status === "sending" || bc.status === "queued") && <Clock className="w-3.5 h-3.5" />}
+                    {bc.status === "paused" && <AlertCircle className="w-3.5 h-3.5" />}
                     {bc.status === "scheduled" && <Clock className="w-3.5 h-3.5" />}
                     {bc.status === "failed" && <AlertCircle className="w-3.5 h-3.5" />}
                     {bc.status}
@@ -667,12 +752,20 @@ export function BroadcastsClient({
                   </div>
                 ))}
               </div>
-              {bc.status === "draft" && (
+              {bc.status === "paused" && bc.error && (
+                <p className="mt-4 rounded-xl bg-orange-50 px-4 py-3 text-sm font-medium text-orange-900">{bc.error}</p>
+              )}
+              {(bc.status === "queued" || bc.status === "sending") && (
+                <p className="mt-4 text-xs font-medium text-slate-500">
+                  {bc.status === "queued" ? "Waiting for the sender. It starts within seconds and keeps going in the background, so you can close this page." : "Sending in the background. This page updates by itself."}
+                </p>
+              )}
+              {(bc.status === "draft" || bc.status === "paused" || bc.status === "failed") && (
                 <button
                   onClick={() => executeBroadcast(bc.id)}
                   className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all"
                 >
-                  <Send className="w-4 h-4" /> Send Now
+                  <Send className="w-4 h-4" /> {bc.status === "paused" ? "Resume" : bc.status === "failed" ? "Try again" : "Send Now"}
                 </button>
               )}
             </div>

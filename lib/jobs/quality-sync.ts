@@ -1,16 +1,12 @@
 import { getPhoneNumberQuality } from "@/lib/whatsapp/service";
+import { parseQuality } from "@/lib/whatsapp/limits";
 
 /**
- * Quality-sync cron — runs once daily.
- *
- * Fetches phone-number quality rating and messaging tier from Meta for every
- * active connection and writes them to wa_connections. If quality drops to LOW:
- *   1. Writes quality_paused_at timestamp.
- *   2. Deactivates all automations for that user so no further auto-replies
- *      are sent (which would worsen the quality score).
- *
- * Users see the paused state in their dashboard and can re-enable automations
- * once Meta restores the quality rating.
+ * Reads each active number's quality rating (GREEN / YELLOW / RED) and messaging limit
+ * from Meta and stores them as reported. When a number turns RED:
+ *   1. promotions are paused (quality_paused_at is set), and
+ *   2. keyword automations are switched off so no further auto-replies make it worse.
+ * When quality recovers the pause marker is cleared; the owner turns automations back on.
  */
 export async function runQualitySync(supabase: any) {
   const { data: connections } = await supabase
@@ -20,57 +16,37 @@ export async function runQualitySync(supabase: any) {
 
   if (!connections?.length) return { synced: 0, paused: 0, restored: 0 };
 
-  let synced = 0;
-  let paused = 0;
-  let restored = 0;
+  let synced = 0, paused = 0, restored = 0;
 
   for (const conn of connections) {
     const quality = await getPhoneNumberQuality(conn.phone_number_id, conn.access_token);
     if (!quality) continue;
 
-    const { qualityRating, messagingTier } = quality;
-    const wasLow = conn.quality_rating === "LOW";
-    const isLow = qualityRating === "LOW";
-
+    const isPoor = parseQuality(quality.qualityRating).level === "poor";
     const update: Record<string, any> = {
-      quality_rating: qualityRating,
-      messaging_tier: messagingTier,
+      quality_rating: quality.qualityRating,
+      messaging_limit_tier: quality.messagingLimitTier,
       quality_synced_at: new Date().toISOString(),
     };
 
-    if (isLow && !conn.quality_paused_at) {
-      // Quality just dropped to LOW — pause all automations to protect the account
+    if (isPoor && !conn.quality_paused_at) {
       update.quality_paused_at = new Date().toISOString();
-      update.last_error = "Automations paused: phone number quality dropped to LOW. Improve quality before re-enabling.";
+      update.last_error = "Promotions and auto-replies paused: your number's quality rating is Poor (red). Too many people blocked or reported messages. Improve content and audience before resuming.";
       update.last_error_at = new Date().toISOString();
-
-      await supabase
-        .from("wa_automations")
-        .update({ is_active: false, last_error: "Auto-paused: phone number quality is LOW (Meta policy)" })
-        .eq("user_id", conn.user_id)
-        .eq("is_active", true);
-
+      await supabase.from("wa_automations")
+        .update({ is_active: false, last_error: "Auto-paused: phone number quality is Poor (Meta policy protection)" })
+        .eq("user_id", conn.user_id).eq("is_active", true);
       paused++;
-    } else if (!isLow && conn.quality_paused_at) {
-      // Quality restored — clear the pause marker (user can manually re-enable automations)
+    } else if (!isPoor && conn.quality_paused_at) {
       update.quality_paused_at = null;
       update.last_error = null;
       update.last_error_at = null;
       restored++;
     }
 
-    await supabase
-      .from("wa_connections")
-      .update(update)
-      .eq("phone_number_id", conn.phone_number_id);
-
+    await supabase.from("wa_connections").update(update).eq("phone_number_id", conn.phone_number_id);
     synced++;
-
-    if (isLow) {
-      console.warn(
-        `[quality-sync] LOW quality for phone_number_id=${conn.phone_number_id} user_id=${conn.user_id}`
-      );
-    }
+    if (isPoor) console.warn(`[quality-sync] Poor quality for phone_number_id=${conn.phone_number_id} user_id=${conn.user_id}`);
   }
 
   console.log(`[quality-sync] synced=${synced} paused=${paused} restored=${restored}`);

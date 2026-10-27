@@ -1,24 +1,23 @@
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
-// ─── Meta error codes that indicate the token has expired ────────────────────
+// ─── Meta error codes (see lib/whatsapp/errors.ts for what to do about each) ──
+// Token expired / access denied
 export const TOKEN_EXPIRED_CODES = new Set([190, 131005]);
 
-// ─── Meta error codes that mean the customer is unreachable ──────────────────
-// These should not count against quality but should be logged.
+// The recipient cannot be reached or must not be messaged. Not a quality problem.
 export const UNREACHABLE_CODES = new Set([
-  131026, // Message undeliverable (number doesn't exist / not on WA)
-  131047, // Re-engagement outside 24-hour window — must use template
-  131056, // User opted out of receiving messages from this business
-  133016, // Customer phone number changed
-  131049, // Meta withheld a marketing message to protect the user (per-user marketing limit)
-  63049,  // US marketing ban — marketing templates to +1 numbers (since April 1, 2025)
+  131026, // Undeliverable: not on WhatsApp, or outdated app
+  131047, // More than 24 hours since the customer last replied: use a template
+  131050, // Customer stopped marketing messages from this business
+  131049, // Marketing message withheld to protect the customer ("healthy ecosystem")
+  63049,  // Marketing templates to US numbers are blocked
 ]);
 
-// ─── Rate-limit error codes ───────────────────────────────────────────────────
+// Slow down and retry. 131056 is a per-recipient limit and is NOT an opt-out.
 export const RATE_LIMIT_CODES = new Set([
-  130429, // Rate limit hit — back off exponentially
-  131056, // Duplicate: also opts-out but surfaces as rate-signal
+  130429, // Cloud API throughput reached
+  80007,  // WhatsApp Business Account rate limit
 ]);
 
 export interface MetaApiError {
@@ -91,6 +90,7 @@ export async function sendTextMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: {
       "Authorization": `Bearer ${accessToken}`,
       "Content-Type": "application/json",
@@ -125,6 +125,7 @@ export async function sendTemplateMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: {
       "Authorization": `Bearer ${accessToken}`,
       "Content-Type": "application/json",
@@ -168,6 +169,7 @@ export async function sendButtonMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -202,6 +204,7 @@ export async function sendListMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -245,6 +248,7 @@ export async function sendImageMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -272,6 +276,7 @@ export async function sendVideoMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -300,6 +305,7 @@ export async function sendDocumentMessage(
 ) {
   const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
     method: "POST",
+    signal: AbortSignal.timeout(20_000),
     headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
@@ -354,15 +360,15 @@ export async function getMessageTemplates(wabaId: string, accessToken: string) {
 export async function getPhoneNumberQuality(
   phoneNumberId: string,
   accessToken: string
-): Promise<{ qualityRating: string; messagingTier: number } | null> {
+): Promise<{ qualityRating: string; messagingLimitTier: string } | null> {
   try {
     const data = await getPhoneNumberInfo(phoneNumberId, accessToken);
-    // Meta returns e.g. "HIGH", "MEDIUM", "LOW", "UNKNOWN"
-    const qualityRating: string = data.quality_rating ?? "UNKNOWN";
-    // messaging_limit_tier: "TIER_1" (1k/day), "TIER_2" (10k), "TIER_3" (100k), "TIER_4" (unlimited)
-    const tierStr: string = data.messaging_limit_tier ?? "TIER_1";
-    const messagingTier = parseInt(tierStr.replace("TIER_", ""), 10) || 1;
-    return { qualityRating, messagingTier };
+    // Raw values as Meta reports them: quality GREEN / YELLOW / RED / NA, limit TIER_250 ... TIER_UNLIMITED.
+    // They are interpreted in lib/whatsapp/limits.ts.
+    return {
+      qualityRating: String(data.quality_rating ?? "NA"),
+      messagingLimitTier: String(data.messaging_limit_tier ?? "TIER_NOT_SET"),
+    };
   } catch {
     return null;
   }

@@ -8,6 +8,8 @@ import {
   Plus, Power, BarChart3, ShieldCheck
 } from "lucide-react";
 import { MetaBillingCard } from "@/components/wa-dashboard/MetaBillingCard";
+import { AccountHealthCard } from "@/components/wa-dashboard/AccountHealthCard";
+import { getAccountHealth } from "@/lib/api/ops";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { pickDisplayName } from "@/lib/auth/display-name";
 
@@ -42,6 +44,7 @@ export default async function WaOverviewPage() {
   );
 
   const isConnected = connection?.status === "active";
+  const health = isConnected ? await getAccountHealth(supabase, session.id) : null;
   const isTokenExpired = connection?.status === "expired";
   const activeAutomations = automations?.filter((a: any) => a.is_active) ?? [];
   const allAutomations = automations ?? [];
@@ -194,6 +197,8 @@ export default async function WaOverviewPage() {
           </div>
         )}
       </div>
+
+      {health && <AccountHealthCard health={health} />}
 
       {isConnected && <MetaBillingCard compact />}
 

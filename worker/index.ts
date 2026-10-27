@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import cron from "node-cron";
 import { createClient } from "@supabase/supabase-js";
 import { JOBS, type JobDefinition } from "./jobs";
+import { startBroadcastQueue } from "./queue";
 
 /**
  * Railway worker: runs every scheduled and long-running job so the Vercel app
@@ -71,6 +72,8 @@ async function execute(job: JobDefinition) {
   }
 }
 
+const queue = startBroadcastQueue(supabase, () => shuttingDown);
+
 const tasks = JOBS.map((job) =>
   cron.schedule(job.schedule, () => void execute(job), { timezone: "Asia/Kolkata" })
 );
@@ -79,7 +82,7 @@ const tasks = JOBS.map((job) =>
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, instance: instanceId, jobs: JOBS.map((j) => j.name), running: [...running] }));
+    res.end(JSON.stringify({ ok: true, instance: instanceId, jobs: JOBS.map((j) => j.name), running: [...running], broadcastsSending: queue.running() }));
     return;
   }
   res.writeHead(404).end();
@@ -89,11 +92,12 @@ server.listen(Number(process.env.PORT ?? 8080));
 async function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`${signal} received, waiting for ${running.size} running job(s)`);
+  console.log(`${signal} received, waiting for ${running.size + queue.running()} running job(s)`);
   tasks.forEach((t) => t.stop());
+  queue.stop();
   server.close();
   const deadline = Date.now() + 25_000;
-  while (running.size > 0 && Date.now() < deadline) {
+  while ((running.size > 0 || queue.running() > 0) && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 250));
   }
   process.exit(0);
