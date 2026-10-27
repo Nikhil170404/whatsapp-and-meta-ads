@@ -1,6 +1,8 @@
 import { buildOtpSendComponents, isValidOtpCode } from "@/lib/whatsapp/template-builder";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import type { OpResult } from "@/lib/api/ops";
+import { normalizePhone, phoneVariants } from "@/lib/whatsapp/phone";
+import { addressTo, isBsuid } from "@/lib/whatsapp/service";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 const fail = (status: number, error: string, code?: string): OpResult<never> => ({ ok: false, status, error, code });
@@ -22,10 +24,11 @@ export interface SendInput {
  * missing templates, and OTP code spamming.
  */
 export async function sendApiMessage(db: any, userId: string, input: SendInput): Promise<OpResult<{ message_id: string | null; to: string }>> {
-  const raw = String(input.phone ?? "").replace(/[\s()-]/g, "");
-  if (!/^\+?[0-9]{7,15}$/.test(raw)) return fail(400, "phone must include the country code, for example +919876543210.");
-  const to = raw.startsWith("+") ? raw : `+${raw}`;
-  const digits = to.slice(1);
+  // Customers with a WhatsApp username may only be reachable by a business-scoped user id.
+  const bsuid = isBsuid(String(input.phone ?? ""));
+  const digits = bsuid ? String(input.phone) : normalizePhone(input.phone);
+  if (!digits) return fail(400, "phone must include the country code, for example +919876543210.");
+  const to = digits;
 
   const { data: conn } = await db.from("wa_connections")
     .select("phone_number_id, access_token, token_expires_at, status, quality_paused_at")
@@ -33,11 +36,12 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
   if (!conn) return fail(400, "WhatsApp is not connected. Connect your number in the dashboard first.", "NOT_CONNECTED");
 
   const isOtp = input.type === "otp" || input.otp !== undefined;
+  if (isOtp && bsuid) return fail(400, "Verification codes cannot be sent to this customer because WhatsApp is hiding their phone number.", "OTP_NEEDS_PHONE");
   const isText = !isOtp && (input.type === "text" || (!input.template?.trim() && !!input.text));
 
   // Consent: a code requested by the person is always allowed; anything else respects STOP.
   if (!isOtp) {
-    const { data: contact } = await db.from("wa_contacts").select("is_opted_in").eq("user_id", userId).eq("phone_number", to).maybeSingle();
+    const { data: contact } = await db.from("wa_contacts").select("is_opted_in").eq("user_id", userId).in("phone_number", phoneVariants(digits)).limit(1).maybeSingle();
     if (contact?.is_opted_in === false) {
       return fail(403, "This contact opted out. Messaging resumes only if they text START.", "OPTED_OUT");
     }
@@ -57,7 +61,7 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
       .eq("user_id", userId).eq("to_phone", digits).eq("content", "[Verification code sent]").gte("created_at", since);
     if ((count ?? 0) >= 5) return fail(429, "Too many codes sent to this number. Try again in a few minutes.", "OTP_RATE_LIMIT");
 
-    payload = { messaging_product: "whatsapp", to, type: "template",
+    payload = { messaging_product: "whatsapp", ...addressTo(to), type: "template",
       template: { name: tpl.name, language: { code: tpl.language || "en_US" }, components: buildOtpSendComponents(input.otp!) } };
   } else if (isText) {
     if (!input.text?.trim()) return fail(400, "text is required for a text message.");
@@ -65,12 +69,12 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count } = await db.from("wa_messages").select("id", { count: "exact", head: true })
       .eq("user_id", userId).eq("from_phone", digits).eq("direction", "inbound").gte("created_at", since);
-    const { data: c } = await db.from("wa_contacts").select("ctwa_window_expires_at").eq("user_id", userId).eq("phone_number", to).maybeSingle();
+    const { data: c } = await db.from("wa_contacts").select("ctwa_window_expires_at").eq("user_id", userId).in("phone_number", phoneVariants(digits)).limit(1).maybeSingle();
     const adWindow = c?.ctwa_window_expires_at && new Date(c.ctwa_window_expires_at) > new Date();
     if ((count ?? 0) === 0 && !adWindow) {
       return fail(409, "This customer has not messaged you in the last 24 hours, so WhatsApp will not deliver free text. Send an approved template instead.", "OUTSIDE_24H_WINDOW");
     }
-    payload = { messaging_product: "whatsapp", recipient_type: "individual", to, type: "text", text: { body: input.text } };
+    payload = { messaging_product: "whatsapp", recipient_type: "individual", ...addressTo(to), type: "text", text: { body: input.text } };
   } else {
     if (!input.template?.trim()) return fail(400, "Provide template (a template name), or type \"text\" with text.");
     const { data: tpl } = await db.from("wa_templates").select("name, language, status, category")
@@ -83,7 +87,7 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
     }
     const params = Array.isArray(input.params) ? input.params.map(String) : [];
     if (params.some((p) => !p.trim())) return fail(400, "params cannot contain empty values.");
-    payload = { messaging_product: "whatsapp", to, type: "template",
+    payload = { messaging_product: "whatsapp", ...addressTo(to), type: "template",
       template: { name: tpl.name, language: { code: input.language || tpl.language || "en_US" },
         ...(params.length ? { components: [{ type: "body", parameters: params.map((p) => ({ type: "text", text: p })) }] } : {}) } };
   }
@@ -106,5 +110,5 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
     content: isOtp ? "[Verification code sent]" : isText ? input.text : `[Template] ${input.template}`,
     status: "sent",
   });
-  return { ok: true, data: { message_id: messageId, to } };
+  return { ok: true, data: { message_id: messageId, to: bsuid ? digits : `+${digits}` } };
 }

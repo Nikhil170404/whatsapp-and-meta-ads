@@ -6,6 +6,8 @@
  * data principal agreed (or withdrew).
  */
 
+import { contactKey } from "@/lib/whatsapp/phone";
+
 export const CONSENT_NOTICE_VERSION = "2026-10";
 
 export const CONSENT_PURPOSES = {
@@ -38,7 +40,8 @@ interface RecordConsentInput {
  * Updates the contact row and appends a consent log entry.
  * Withdrawal always applies to every purpose; grant applies to the purposes given.
  */
-export async function recordConsent(supabase: any, input: RecordConsentInput) {
+export async function recordConsent(supabase: any, rawInput: RecordConsentInput) {
+  const input = { ...rawInput, phoneNumber: contactKey(rawInput.phoneNumber) };
   const now = new Date().toISOString();
   const purposes = input.action === "withdrawn" ? [] : input.purposes ?? ["service_messages"];
 
@@ -101,8 +104,9 @@ export function hasMarketingConsent(contact: {
  */
 export async function recordMarketingPreference(
   supabase: any,
-  input: { userId: string; phoneNumber: string; value: "stop" | "resume"; evidence?: Record<string, unknown> }
+  rawInput: { userId: string; phoneNumber: string; value: "stop" | "resume"; evidence?: Record<string, unknown> }
 ) {
+  const input = { ...rawInput, phoneNumber: contactKey(rawInput.phoneNumber) };
   const { data: existing } = await supabase
     .from("wa_contacts")
     .select("consent_purposes")

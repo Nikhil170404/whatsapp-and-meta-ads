@@ -79,3 +79,28 @@ describe("template and broadcast columns", () => {
     expect(r.rows[0].n).toBe(1);
   });
 });
+
+describe("phone format migration", () => {
+  it("merges '+91…' and '91…' contacts, keeping any opt-out and combined labels", async () => {
+    const db = new PGlite();
+    await db.exec(schema);
+    const u = (await db.query<{ id: string }>("insert into users(facebook_user_id) values('fbp') returning id")).rows[0];
+    const plus = (await db.query<{ id: string }>(
+      "insert into wa_contacts(user_id,phone_number,labels,is_opted_in) values($1,'+919876543210','{vip}',false) returning id", [u.id])).rows[0];
+    await db.query("insert into wa_contacts(user_id,phone_number,labels,is_opted_in) values($1,'919876543210','{lead}',true)", [u.id]);
+    await db.query("insert into wa_contacts(user_id,phone_number) values($1,'+911111111111')", [u.id]);
+    await db.query("insert into wa_consent_logs(user_id,contact_id,phone_number,action,source) values($1,$2,'+919876543210','withdrawn','test')", [u.id, plus.id]);
+
+    await db.exec(schema); // re-running the schema performs the merge
+
+    const rows = (await db.query<{ phone_number: string; labels: string[]; is_opted_in: boolean }>(
+      "select phone_number, labels, is_opted_in from wa_contacts order by phone_number")).rows;
+    expect(rows.map((r) => r.phone_number)).toEqual(["911111111111", "919876543210"]);
+    const merged = rows.find((r) => r.phone_number === "919876543210")!;
+    expect(merged.is_opted_in).toBe(false);
+    expect([...merged.labels].sort()).toEqual(["lead", "vip"]);
+    // The consent history now points at the surviving contact instead of being orphaned.
+    const logs = await db.query<{ contact_id: string | null }>("select contact_id from wa_consent_logs");
+    expect(logs.rows[0].contact_id).not.toBeNull();
+  });
+});

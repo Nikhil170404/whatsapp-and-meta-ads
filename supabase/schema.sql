@@ -105,6 +105,10 @@ CREATE TABLE IF NOT EXISTS wa_connections (
   daily_sent_reset_at      TIMESTAMPTZ DEFAULT NOW(),
   last_error               TEXT,
   last_error_at            TIMESTAMPTZ,
+  hours_enabled            BOOLEAN     NOT NULL DEFAULT false,
+  hours                    JSONB,
+  hours_timezone           TEXT        NOT NULL DEFAULT 'Asia/Kolkata',
+  away_message             TEXT,
   created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -122,6 +126,11 @@ ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS daily_unique_sent        INT
 ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS daily_sent_reset_at      TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS last_error               TEXT;
 ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS last_error_at            TIMESTAMPTZ;
+-- Business hours and away message
+ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS hours_enabled            BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS hours                    JSONB;
+ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS hours_timezone           TEXT NOT NULL DEFAULT 'Asia/Kolkata';
+ALTER TABLE wa_connections ADD COLUMN IF NOT EXISTS away_message             TEXT;
 
 -- The webhook resolves the account from phone_number_id, so two accounts must
 -- never share one real number. "unknown" is the placeholder used before Meta
@@ -245,6 +254,7 @@ CREATE TABLE IF NOT EXISTS wa_contacts (
   consent_source            TEXT,
   consent_purposes          TEXT[]      DEFAULT '{}',
   consent_notice_version    TEXT,
+  last_away_at              TIMESTAMPTZ,
   created_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (user_id, phone_number)
 );
@@ -256,6 +266,42 @@ ALTER TABLE wa_contacts ADD COLUMN IF NOT EXISTS opted_out_at             TIMEST
 ALTER TABLE wa_contacts ADD COLUMN IF NOT EXISTS consent_source           TEXT;
 ALTER TABLE wa_contacts ADD COLUMN IF NOT EXISTS consent_purposes         TEXT[] DEFAULT '{}';
 ALTER TABLE wa_contacts ADD COLUMN IF NOT EXISTS consent_notice_version   TEXT;
+ALTER TABLE wa_contacts ADD COLUMN IF NOT EXISTS last_away_at             TIMESTAMPTZ;
+
+-- One phone format: digits only ("919876543210"), as WhatsApp reports customers.
+-- Contacts added as "+91…" used to split from the same person created by an
+-- incoming message ("91…"), so an opt-out could miss the contact broadcasts use.
+-- Merge each pair into the digits record (an opt-out on either side wins, labels
+-- are combined, marketing consent needs both), then strip the "+" from the rest.
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT p.id AS plus_id, d.id AS digit_id
+    FROM wa_contacts p
+    JOIN wa_contacts d ON d.user_id = p.user_id AND d.phone_number = ltrim(p.phone_number, '+')
+    WHERE p.phone_number LIKE '+%'
+  LOOP
+    UPDATE wa_broadcast_recipients SET contact_id = r.digit_id WHERE contact_id = r.plus_id;
+    UPDATE wa_consent_logs SET contact_id = r.digit_id WHERE contact_id = r.plus_id;
+    UPDATE wa_contacts d SET
+      labels = ARRAY(SELECT DISTINCT x FROM unnest(COALESCE(d.labels, '{}') || COALESCE(p.labels, '{}')) AS x),
+      display_name = COALESCE(d.display_name, p.display_name),
+      is_opted_in = d.is_opted_in AND p.is_opted_in,
+      opted_out_at = CASE WHEN d.is_opted_in AND p.is_opted_in THEN d.opted_out_at
+                          ELSE COALESCE(d.opted_out_at, p.opted_out_at, NOW()) END,
+      consent_purposes = CASE
+        WHEN COALESCE(array_length(d.consent_purposes, 1), 0) > 0 AND COALESCE(array_length(p.consent_purposes, 1), 0) > 0
+          THEN ARRAY(SELECT x FROM unnest(d.consent_purposes) AS x WHERE x = ANY(p.consent_purposes))
+        ELSE COALESCE(NULLIF(d.consent_purposes, '{}'), p.consent_purposes) END
+    FROM wa_contacts p
+    WHERE d.id = r.digit_id AND p.id = r.plus_id;
+    DELETE FROM wa_contacts WHERE id = r.plus_id;
+  END LOOP;
+
+  UPDATE wa_contacts SET phone_number = ltrim(phone_number, '+') WHERE phone_number LIKE '+%';
+END $$;
 
 -- Existing opted-in contacts that messaged first are treated as opted in from creation.
 UPDATE wa_contacts SET opted_in_at = created_at WHERE opted_in_at IS NULL AND is_opted_in = true;

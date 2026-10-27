@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { displayPhone } from "@/lib/whatsapp/phone";
 import { Users, Search, Plus, Tag, MessageSquare, Phone, X, Loader2, UserPlus, Download, Upload, Trash2, CheckSquare, Square, Filter, Send } from "lucide-react";
 
 interface Contact {
@@ -385,9 +386,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                     {(contact.display_name || contact.phone_number || "?").charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-900 truncate">{contact.display_name || contact.phone_number}</h3>
+                    <h3 className="font-bold text-slate-900 truncate">{contact.display_name || displayPhone(contact.phone_number)}</h3>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <p className="text-xs text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" />{contact.phone_number}</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1"><Phone className="w-3 h-3" />{displayPhone(contact.phone_number)}</p>
                       {(contact.message_count ?? 0) > 0 && <span className="text-xs text-slate-400">{contact.message_count} msgs</span>}
                       {contact.last_message_at && (
                         <span className="text-xs text-slate-400">Last: {new Date(contact.last_message_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>

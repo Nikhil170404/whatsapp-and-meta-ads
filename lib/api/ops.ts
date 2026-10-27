@@ -12,6 +12,7 @@ import {
   validateVariablePlan, type TemplateInput,
 } from "@/lib/whatsapp/template-builder";
 import { runBroadcast } from "@/lib/whatsapp/broadcast-runner";
+import { normalizePhone, phoneVariants } from "@/lib/whatsapp/phone";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -81,8 +82,8 @@ export interface AddContactInput {
 }
 
 export async function addContact(db: Db, userId: string, input: AddContactInput) {
-  const phone = String(input.phone_number ?? "").replace(/[\s()-]/g, "");
-  if (!/^\+?[0-9]{7,15}$/.test(phone)) return fail(400, "phone_number must include the country code, for example +919876543210.");
+  const phone = normalizePhone(input.phone_number);
+  if (!phone) return fail(400, "phone_number must include the country code, for example +919876543210.");
   if (input.consent_confirmed !== true) {
     return fail(400, "Confirm that this person agreed to receive WhatsApp messages (consent_confirmed: true).", "CONSENT_REQUIRED");
   }
@@ -90,7 +91,7 @@ export async function addContact(db: Db, userId: string, input: AddContactInput)
   const plan = await planOf(db, userId);
   const key = (plan in PRICING_PLANS ? plan : "FREE") as keyof typeof PRICING_PLANS;
   const limit = PRICING_PLANS[key]?.limits?.contacts ?? PRICING_PLANS.FREE.limits.contacts;
-  const { data: existing } = await db.from("wa_contacts").select("id").eq("user_id", userId).eq("phone_number", phone).maybeSingle();
+  const { data: existing } = await db.from("wa_contacts").select("id").eq("user_id", userId).in("phone_number", phoneVariants(phone)).limit(1).maybeSingle();
   if (!existing) {
     const { count } = await db.from("wa_contacts").select("id", { count: "exact", head: true }).eq("user_id", userId);
     if ((count ?? 0) >= limit) return fail(403, `Contact limit reached (${limit} on your plan). Upgrade to add more.`, "LIMIT_REACHED");
@@ -115,8 +116,9 @@ export async function addContact(db: Db, userId: string, input: AddContactInput)
 }
 
 export async function setContactConsent(db: Db, userId: string, phone: string, optedIn: boolean, purposes?: ConsentPurpose[]) {
-  const p = String(phone ?? "").replace(/[\s()-]/g, "");
-  const { data: contact } = await db.from("wa_contacts").select("id").eq("user_id", userId).eq("phone_number", p).maybeSingle();
+  const p = normalizePhone(phone);
+  if (!p) return fail(400, "phone_number must include the country code.");
+  const { data: contact } = await db.from("wa_contacts").select("id").eq("user_id", userId).in("phone_number", phoneVariants(p)).limit(1).maybeSingle();
   if (!contact) return fail(404, "No contact with that phone number.");
   try {
     await recordConsent(db, {
@@ -279,7 +281,7 @@ export interface AudienceInput {
 async function resolveAudience(db: Db, userId: string, a: AudienceInput): Promise<string[]> {
   const ids = new Set<string>(a.contact_ids ?? []);
   if (a.phones?.length) {
-    const phones = a.phones.map((p) => p.replace(/[\s()-]/g, ""));
+    const phones = a.phones.map(normalizePhone).filter((p): p is string => !!p).flatMap(phoneVariants);
     const { data } = await db.from("wa_contacts").select("id").eq("user_id", userId).in("phone_number", phones);
     (data ?? []).forEach((c: any) => ids.add(c.id));
   }
@@ -373,8 +375,8 @@ export async function listMessages(db: Db, userId: string, opts: { phone?: strin
     .select("direction, from_phone, to_phone, message_type, content, status, created_at")
     .eq("user_id", userId).order("created_at", { ascending: false }).limit(Math.min(Math.max(opts.limit ?? 30, 1), 100));
   if (opts.phone) {
-    const p = opts.phone.replace(/[\s()+-]/g, "");
-    q = q.or(`from_phone.eq.${p},to_phone.eq.${p}`);
+    const p = normalizePhone(opts.phone);
+    if (p) q = q.or(`from_phone.eq.${p},to_phone.eq.${p}`);
   }
   const { data, error } = await q;
   if (error) return fail(500, error.message);

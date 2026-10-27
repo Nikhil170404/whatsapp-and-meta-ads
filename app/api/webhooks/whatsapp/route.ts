@@ -14,6 +14,7 @@ import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyMetaSignature } from "@/lib/meta-signature";
 import { recordConsent, recordMarketingPreference } from "@/lib/consent";
 import { describeInbound, extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
+import { DEFAULT_AWAY_MESSAGE, shouldSendAway } from "@/lib/whatsapp/hours";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
 // window after the customer's last inbound message. Outside it, use templates.
@@ -296,7 +297,7 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
     const content = describeInbound(message);
 
     // Find the connected user by phone_number_id
-    const cols = "user_id, access_token, token_expires_at, quality_paused_at";
+    const cols = "user_id, access_token, token_expires_at, quality_paused_at, hours_enabled, hours, hours_timezone, away_message";
     let { data: connection } = await supabase
       .from("wa_connections")
       .select(cols)
@@ -460,7 +461,7 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       .eq("user_id", connection.user_id)
       .eq("is_active", true);
 
-    if (!automations?.length) continue;
+    // No automations is fine: the away message below can still apply.
 
     // First-ever inbound message detection (for "welcome" trigger)
     const { count: priorCount } = await supabase
@@ -472,9 +473,33 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
 
     const isFirstMessage = (priorCount ?? 0) <= 1;
 
-    const matchedAutomation: any = pickAutomation(automations as any[], inbound, isFirstMessage);
+    const matchedAutomation: any = pickAutomation((automations ?? []) as any[], inbound, isFirstMessage);
 
-    if (!matchedAutomation) continue;
+    if (!matchedAutomation) {
+      // Nothing answered, and the business is closed: tell the customer when to expect a reply (once per 12 hours).
+      const { data: awayContact } = await supabase.from("wa_contacts").select("last_away_at")
+        .eq("user_id", connection.user_id).eq("phone_number", contact).maybeSingle();
+      if (shouldSendAway({
+        enabled: connection.hours_enabled === true, week: connection.hours, timeZone: connection.hours_timezone,
+        lastAwayAt: awayContact?.last_away_at,
+      })) {
+        const awayText: string = connection.away_message || DEFAULT_AWAY_MESSAGE;
+        try {
+          await markReadWithTyping(phoneNumberId, message.id, validToken);
+          const sent = await sendTextMessage(phoneNumberId, contact, awayText, validToken);
+          await supabase.from("wa_contacts").update({ last_away_at: new Date().toISOString() })
+            .eq("user_id", connection.user_id).eq("phone_number", contact);
+          await supabase.from("wa_messages").insert({
+            user_id: connection.user_id, wa_message_id: sent?.messages?.[0]?.id ?? `away-${Date.now()}`,
+            from_phone: value.metadata.display_phone_number, to_phone: contact, direction: "outbound",
+            message_type: "text", content: awayText, status: "sent",
+          });
+        } catch (err) {
+          console.error("Failed to send away message:", err);
+        }
+      }
+      continue;
+    }
 
     // Blue ticks and "typing…" while the reply is prepared.
     await markReadWithTyping(phoneNumberId, message.id, validToken);
