@@ -11,6 +11,7 @@ export const UNREACHABLE_CODES = new Set([
   131047, // Re-engagement outside 24-hour window — must use template
   131056, // User opted out of receiving messages from this business
   133016, // Customer phone number changed
+  131049, // Meta withheld a marketing message to protect the user (per-user marketing limit)
   63049,  // US marketing ban — marketing templates to +1 numbers (since April 1, 2025)
 ]);
 
@@ -44,6 +45,39 @@ export function parseMetaError(raw: any): MetaApiError {
   };
 }
 
+// ─── Recipient addressing ────────────────────────────────────────────────────
+// WhatsApp users who adopt a username may have no visible phone number. Meta then
+// identifies them by a business-scoped user ID (BSUID, e.g. "IN.13491208655302741918")
+// and accepts it in `recipient` instead of `to`.
+const BSUID_RE = /^[A-Z]{2}\.(?:ENT\.)?[A-Za-z0-9]{1,128}$/;
+
+export const isBsuid = (target: string) => BSUID_RE.test(target);
+
+export function addressTo(target: string): { to: string } | { recipient: string } {
+  return isBsuid(target) ? { recipient: target } : { to: target };
+}
+
+/**
+ * Marks an inbound message as read (blue ticks) and shows "typing…" until the
+ * reply arrives. Best effort: a failure here must never block the reply.
+ */
+export async function markReadWithTyping(phoneNumberId: string, messageId: string, accessToken: string) {
+  try {
+    await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        status: "read",
+        message_id: messageId,
+        typing_indicator: { type: "text" },
+      }),
+    });
+  } catch {
+    /* cosmetic only */
+  }
+}
+
 /** Wait `ms` milliseconds — used to throttle broadcast sends. */
 export const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -64,7 +98,7 @@ export async function sendTextMessage(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to,
+      ...addressTo(to),
       type: "text",
       text: { body: text },
     }),
@@ -97,7 +131,7 @@ export async function sendTemplateMessage(
     },
     body: JSON.stringify({
       messaging_product: "whatsapp",
-      to,
+      ...addressTo(to),
       type: "template",
       template: {
         name: templateName,
@@ -138,7 +172,7 @@ export async function sendButtonMessage(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to,
+      ...addressTo(to),
       type: "interactive",
       interactive: {
         type: "button",
@@ -172,7 +206,7 @@ export async function sendListMessage(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to,
+      ...addressTo(to),
       type: "interactive",
       interactive: {
         type: "list",
@@ -215,7 +249,7 @@ export async function sendImageMessage(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to,
+      ...addressTo(to),
       type: "image",
       image: { link: imageUrl, ...(caption ? { caption } : {}) },
     }),
@@ -242,7 +276,7 @@ export async function sendVideoMessage(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to,
+      ...addressTo(to),
       type: "video",
       video: { link: videoUrl, ...(caption ? { caption } : {}) },
     }),
@@ -270,7 +304,7 @@ export async function sendDocumentMessage(
     body: JSON.stringify({
       messaging_product: "whatsapp",
       recipient_type: "individual",
-      to,
+      ...addressTo(to),
       type: "document",
       document: { link: docUrl, filename, ...(caption ? { caption } : {}) },
     }),

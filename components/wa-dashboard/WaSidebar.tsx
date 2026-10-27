@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
+import { QrCode,
   LayoutDashboard,
   Zap,
   MessageSquare,
@@ -72,6 +72,7 @@ const navGroups = [
       { name: "Contacts", href: "/wa/contacts", icon: Users },
       { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
       { name: "Message templates", href: "/wa/templates", icon: FileText },
+      { name: "Chat link & QR", href: "/wa/links", icon: QrCode },
       { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
     ],
   },

@@ -103,3 +103,38 @@ describe("analyzeFlows", () => {
     expect(analyzeFlows([kw("a", "hi")]).some((i) => /very short/.test(i.message))).toBe(true);
   });
 });
+
+import { describeInbound } from "../lib/whatsapp/flow";
+import { addressTo, isBsuid } from "../lib/whatsapp/service";
+
+describe("describeInbound", () => {
+  it("describes media with captions", () => {
+    expect(describeInbound({ type: "image", image: { caption: "my order" } })).toBe("📷 Photo: my order");
+    expect(describeInbound({ type: "image", image: {} })).toBe("📷 Photo");
+    expect(describeInbound({ type: "audio", audio: { voice: true } })).toBe("🎤 Voice message");
+    expect(describeInbound({ type: "document", document: { filename: "bill.pdf" } })).toBe("📄 Document: bill.pdf");
+  });
+  it("describes locations and taps", () => {
+    expect(describeInbound({ type: "location", location: { name: "Shop", address: "Pune" } })).toBe("📍 Location: Shop, Pune");
+    expect(describeInbound({ type: "interactive", interactive: { list_reply: { id: "a", title: "Pricing" } } })).toBe("Pricing");
+  });
+  it("never shows a raw placeholder for known types", () => {
+    expect(describeInbound({ type: "text", text: { body: "hi" } })).toBe("hi");
+  });
+});
+
+describe("recipient addressing", () => {
+  it("uses `to` for phone numbers", () => {
+    expect(addressTo("919876543210")).toEqual({ to: "919876543210" });
+    expect(addressTo("+919876543210")).toEqual({ to: "+919876543210" });
+  });
+  it("uses `recipient` for business-scoped user ids", () => {
+    expect(isBsuid("IN.13491208655302741918")).toBe(true);
+    expect(addressTo("US.13491208655302741918")).toEqual({ recipient: "US.13491208655302741918" });
+    expect(isBsuid("US.ENT.11815799212886844830")).toBe(true);
+  });
+  it("does not mistake other text for a user id", () => {
+    expect(isBsuid("hello.world")).toBe(false);
+    expect(isBsuid("919876543210")).toBe(false);
+  });
+});

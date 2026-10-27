@@ -4,6 +4,7 @@ import {
   sendTextMessage,
   sendButtonMessage,
   sendListMessage,
+  markReadWithTyping,
   sendImageMessage,
   sendVideoMessage,
   sendDocumentMessage,
@@ -11,8 +12,8 @@ import {
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyMetaSignature } from "@/lib/meta-signature";
-import { recordConsent } from "@/lib/consent";
-import { extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
+import { recordConsent, recordMarketingPreference } from "@/lib/consent";
+import { describeInbound, extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
 // window after the customer's last inbound message. Outside it, use templates.
@@ -66,13 +67,25 @@ export async function POST(req: Request) {
 
         // ── Template approval / rejection ────────────────────────────────────
         if (change.field === "message_template_status_update") {
-          await handleTemplateStatusUpdate(supabase, change.value);
+          await handleTemplateStatusUpdate(supabase, entry.id, change.value);
+          continue;
+        }
+
+        // ── Meta changed a template's category (this changes what it costs) ──
+        if (change.field === "template_category_update") {
+          await handleTemplateCategoryUpdate(supabase, entry.id, change.value);
+          continue;
+        }
+
+        // ── Customer stopped/resumed marketing from WhatsApp's own settings ──
+        if (change.field === "user_preferences") {
+          await handleUserPreferences(supabase, entry.id, change.value);
           continue;
         }
 
         // ── Template quality update ──────────────────────────────────────────
         if (change.field === "message_template_quality_update") {
-          await handleTemplateQualityUpdate(supabase, change.value);
+          await handleTemplateQualityUpdate(supabase, entry.id, change.value);
           continue;
         }
 
@@ -157,34 +170,81 @@ async function handleAccountAlert(supabase: any, wabaId: string, value: any) {
   console.warn(`[webhook] Account alert for waba_id=${wabaId}: ${alertType} — ${description}`);
 }
 
-// ─── Template status update handler ─────────────────────────────────────────
+// ─── Template handlers ───────────────────────────────────────────────────────
+// Template names are only unique per account, so every update is scoped to the
+// account that owns the WABA that sent the event.
 
-async function handleTemplateStatusUpdate(supabase: any, value: any) {
-  const templateName: string = value.message_template_name ?? "";
-  const newStatus: string = (value.event ?? "").toLowerCase(); // APPROVED / REJECTED / DISABLED
-
-  if (!templateName) return;
-
-  await supabase
-    .from("wa_templates")
-    .update({ status: newStatus, updated_at: new Date().toISOString() })
-    .eq("name", templateName);
+async function userIdForWaba(supabase: any, wabaId: string): Promise<string | null> {
+  const { data } = await supabase.from("wa_connections").select("user_id").eq("waba_id", wabaId).maybeSingle();
+  return data?.user_id ?? null;
 }
 
-// ─── Template quality update handler ────────────────────────────────────────
+async function handleTemplateStatusUpdate(supabase: any, wabaId: string, value: any) {
+  const templateName: string = value.message_template_name ?? "";
+  const event: string = (value.event ?? "").toLowerCase(); // approved / rejected / disabled / paused / pending...
+  if (!templateName || !event) return;
 
-async function handleTemplateQualityUpdate(supabase: any, value: any) {
+  const userId = await userIdForWaba(supabase, wabaId);
+  if (!userId) return;
+
+  const rejected = event === "rejected" || event === "disabled";
+  const reason = value.reason && value.reason !== "NONE" ? String(value.reason) : null;
+
+  let q = supabase
+    .from("wa_templates")
+    .update({ status: event, rejection_reason: rejected ? reason : null })
+    .eq("user_id", userId)
+    .eq("name", templateName);
+  if (value.message_template_language) q = q.eq("language", value.message_template_language);
+  await q;
+}
+
+async function handleTemplateCategoryUpdate(supabase: any, wabaId: string, value: any) {
+  const templateName: string = value.message_template_name ?? "";
+  const category: string = (value.new_category ?? "").toUpperCase();
+  if (!templateName || !["MARKETING", "UTILITY", "AUTHENTICATION"].includes(category)) return;
+
+  const userId = await userIdForWaba(supabase, wabaId);
+  if (!userId) return;
+
+  await supabase.from("wa_templates").update({ category }).eq("user_id", userId).eq("name", templateName);
+}
+
+async function handleTemplateQualityUpdate(supabase: any, wabaId: string, value: any) {
   const templateName: string = value.message_template_name ?? "";
   const qualityScore: string = value.new_quality_score ?? "UNKNOWN";
-
   if (!templateName) return;
 
-  // If Meta flags a template as LOW quality, pause it to prevent further use
+  const userId = await userIdForWaba(supabase, wabaId);
+  if (!userId) return;
+
   if (qualityScore === "LOW") {
-    await supabase
-      .from("wa_templates")
-      .update({ status: "low_quality" })
-      .eq("name", templateName);
+    // Pause use of a template Meta flags as low quality.
+    await supabase.from("wa_templates").update({ status: "low_quality" }).eq("user_id", userId).eq("name", templateName).eq("status", "approved");
+  } else if (qualityScore === "HIGH" || qualityScore === "MEDIUM") {
+    // Quality recovered: make it usable again.
+    await supabase.from("wa_templates").update({ status: "approved" }).eq("user_id", userId).eq("name", templateName).eq("status", "low_quality");
+  }
+}
+
+// ─── Customer marketing preference (from WhatsApp's own settings) ────────────
+
+async function handleUserPreferences(supabase: any, wabaId: string, value: any) {
+  const userId = await userIdForWaba(supabase, wabaId);
+  if (!userId) return;
+
+  const person = value.contacts?.[0];
+  const key: string | undefined = person?.wa_id ?? person?.user_id;
+  if (!key) return;
+
+  for (const pref of value.user_preferences ?? []) {
+    if (pref.category !== "marketing_messages" || !["stop", "resume"].includes(pref.value)) continue;
+    await recordMarketingPreference(supabase, {
+      userId,
+      phoneNumber: key,
+      value: pref.value,
+      evidence: { detail: pref.detail ?? null, timestamp: pref.timestamp ?? null },
+    });
   }
 }
 
@@ -222,13 +282,18 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
   if (!value.messages?.length) return;
 
   for (const message of value.messages) {
-    const contact: string = value.contacts?.[0]?.wa_id;
+    // Customers with a WhatsApp username may have no phone number in the webhook;
+    // Meta then identifies them by a business-scoped user ID, which we use instead.
+    const person = value.contacts?.[0];
+    const contact: string = person?.wa_id ?? person?.user_id ?? message.from ?? message.user_id;
     if (!contact) continue;
+    // Identity-change notices (for example a customer changing number) are not conversation.
+    if (message.type === "system") continue;
 
     // Typed text, or the label of a tapped button / list option, so taps can
     // continue a flow exactly like a typed keyword.
     const inbound = extractInboundText(message);
-    const content = inbound ? inbound.text : `[${message.type} message]`;
+    const content = describeInbound(message);
 
     // Find the connected user by phone_number_id
     const cols = "user_id, access_token, token_expires_at, quality_paused_at";
@@ -410,6 +475,9 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
     const matchedAutomation: any = pickAutomation(automations as any[], inbound, isFirstMessage);
 
     if (!matchedAutomation) continue;
+
+    // Blue ticks and "typing…" while the reply is prepared.
+    await markReadWithTyping(phoneNumberId, message.id, validToken);
 
     try {
       const msgType: string = matchedAutomation.message_type || "text";

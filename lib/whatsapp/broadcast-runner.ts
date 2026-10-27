@@ -302,6 +302,17 @@ export async function runBroadcast(
             break;
           }
 
+          // Meta withheld a marketing message to protect the person from too many (131049).
+          // Not an error on your side and not a quality problem: skip and carry on.
+          if (metaErr.code === 131049) {
+            await supabase
+              .from("wa_broadcast_recipients")
+              .update({ status: "skipped", error: "Meta limited promotional messages to this person today" })
+              .eq("id", recipient.id);
+            await sleep(SEND_DELAY_MS);
+            continue;
+          }
+
           // Unreachable number — log and continue (don't count against quality)
           if (metaErr.isUnreachable) {
             await supabase

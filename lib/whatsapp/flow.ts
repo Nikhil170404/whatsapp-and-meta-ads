@@ -206,3 +206,35 @@ export function analyzeFlows(automations: CheckableAutomation[]): FlowIssue[] {
 
   return issues;
 }
+
+/**
+ * A readable line for the inbox when a customer sends something other than
+ * plain text, so media and locations are never shown as "[image message]".
+ */
+export function describeInbound(message: any): string {
+  const cap = (c?: string) => (c?.trim() ? `: ${c.trim()}` : "");
+  switch (message?.type) {
+    case "text": return String(message.text?.body ?? "");
+    case "image": return `📷 Photo${cap(message.image?.caption)}`;
+    case "video": return `🎥 Video${cap(message.video?.caption)}`;
+    case "audio": return message.audio?.voice ? "🎤 Voice message" : "🎧 Audio";
+    case "document": return `📄 Document${cap(message.document?.filename ?? message.document?.caption)}`;
+    case "sticker": return "Sticker";
+    case "location": {
+      const l = message.location ?? {};
+      const place = [l.name, l.address].filter(Boolean).join(", ");
+      return `📍 Location${place ? `: ${place}` : l.latitude != null ? `: ${l.latitude}, ${l.longitude}` : ""}`;
+    }
+    case "contacts": return `👤 Shared ${message.contacts?.length ?? 1} contact(s)`;
+    case "reaction": return `Reacted ${message.reaction?.emoji ?? ""}`.trim();
+    case "order": return "🛒 Sent an order";
+    case "interactive": {
+      const r = message.interactive?.button_reply ?? message.interactive?.list_reply;
+      if (r?.title) return String(r.title);
+      return message.interactive?.nfm_reply ? "Submitted a form" : "Interactive reply";
+    }
+    case "button": return String(message.button?.text ?? "Button reply");
+    case "system": return "";
+    default: return `[${message?.type ?? "unknown"} message]`;
+  }
+}
