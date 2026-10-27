@@ -1,5 +1,6 @@
 import { processWebhookBody } from "@/lib/whatsapp/webhook-processor";
 import { mapWithConcurrency } from "@/lib/whatsapp/pacing";
+import { FailureBackoff } from "./backoff";
 
 /**
  * Consumes the webhook queue. The web endpoint only stores payloads; this does the work.
@@ -23,6 +24,7 @@ export function startWebhookConsumer(db: any, isShuttingDown: () => boolean) {
   let busy = 0;
   let stopped = false;
   let processed = 0;
+  const backoff = new FailureBackoff();
 
   async function handle(e: QueuedEvent) {
     try {
@@ -38,11 +40,13 @@ export function startWebhookConsumer(db: any, isShuttingDown: () => boolean) {
   async function loop() {
     while (!stopped && !isShuttingDown()) {
       let claimed = 0;
+      let waitMs = 0;
       try {
         const { data, error } = await db.rpc("claim_webhook_events", { p_limit: BATCH, p_lease_seconds: 120 });
         if (error) throw error;
         const events: QueuedEvent[] = data ?? [];
         claimed = events.length;
+        backoff.ok();
         if (claimed) {
           busy += claimed;
           const groups = new Map<string, QueuedEvent[]>();
@@ -53,10 +57,11 @@ export function startWebhookConsumer(db: any, isShuttingDown: () => boolean) {
           busy -= claimed;
         }
       } catch (err) {
-        console.error("[webhook-consumer] tick failed:", err);
+        waitMs = backoff.fail("webhook-consumer", err);
       }
-      // Drain quickly while there is work; rest briefly when the queue is empty.
-      if (claimed < BATCH) await new Promise((r) => setTimeout(r, IDLE_MS));
+      // Drain quickly while there is work; rest briefly when the queue is empty or after a failure.
+      if (waitMs > 0) await new Promise((r) => setTimeout(r, waitMs));
+      else if (claimed < BATCH) await new Promise((r) => setTimeout(r, IDLE_MS));
     }
   }
 

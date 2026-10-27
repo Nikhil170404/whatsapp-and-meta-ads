@@ -1,4 +1,5 @@
 import { nextBroadcastToRun, runBroadcastJob } from "@/lib/whatsapp/broadcast-runner";
+import { FailureBackoff } from "./backoff";
 
 /**
  * Pulls broadcasts off the queue and sends them. Each broadcast carries a lease in
@@ -11,13 +12,16 @@ const POLL_MS = 3000;
 export function startBroadcastQueue(db: any, isShuttingDown: () => boolean) {
   let running = 0;
   let ticking = false;
+  let pausedUntil = 0;
+  const backoff = new FailureBackoff();
 
   async function tick() {
-    if (ticking || isShuttingDown()) return;
+    if (ticking || isShuttingDown() || Date.now() < pausedUntil) return;
     ticking = true;
     try {
       while (running < MAX_PARALLEL && !isShuttingDown()) {
         const id = await nextBroadcastToRun(db);
+        backoff.ok();
         if (!id) break;
         running++;
         runBroadcastJob(db, id)
@@ -30,7 +34,7 @@ export function startBroadcastQueue(db: any, isShuttingDown: () => boolean) {
         await new Promise((r) => setTimeout(r, 250));
       }
     } catch (err) {
-      console.error("[broadcast-queue] tick failed:", err);
+      pausedUntil = Date.now() + backoff.fail("broadcast-queue", err);
     } finally {
       ticking = false;
     }
