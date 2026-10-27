@@ -69,3 +69,16 @@ Run more worker replicas to go faster; they coordinate through the database. Tun
 - **Error codes** are handled per Meta's reference in `lib/whatsapp/errors.ts`.
 
 **Honest limits of this design.** The messaging limit is portfolio-wide, but the app can only count what it sent, so if the same portfolio also messages through another tool the app under-counts. Meta's exact per-user promotion cap was not stated in the documentation we could read, so it is handled by reacting to error 131049 rather than predicting it. At very high sustained volume the next steps are partitioning `wa_messages` by month (so retention becomes dropping a partition) and a read replica for dashboards.
+
+## Testing with your own WhatsApp number
+
+Set `WHATSAPP_ACCESS_TOKEN` and `WHATSAPP_BUSINESS_ACCOUNT_ID` (optionally `WHATSAPP_PHONE_NUMBER_ID`) where you run the commands, for example the Railway service variables, then use the Railway **Console** tab:
+
+```bash
+npm run wa:check                                   # read-only: account, numbers, quality, limit, templates, webhook subscription
+npm run wa:check -- --send --to 919876543210       # also sends the hello_world template to that number
+npm run wa:link                                    # lists accounts
+npm run wa:link -- --user you@example.com --yes    # links the number to that ReplyKaro account
+```
+
+These variables are read only by these two commands. The app itself sends through the connection stored in the database, which `wa:link` (or Facebook login) creates. Use a permanent System User token for anything beyond a quick test: temporary tokens from the API Setup page last about 24 hours.
