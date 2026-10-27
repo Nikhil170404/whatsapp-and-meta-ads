@@ -85,7 +85,7 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
       {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Team Inbox</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Team Inbox</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
             Invite agents to handle conversations on your behalf.
           </p>
@@ -261,7 +261,7 @@ export function TeamClient({ members: initialMembers, isPaidPlan }: TeamClientPr
                 </div>
 
                 {/* Role badge */}
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-[#25D366]/10 text-[#25D366] shrink-0">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-[#25D366]/10 text-[#25D366] shrink-0">
                   {member.role}
                 </span>
 

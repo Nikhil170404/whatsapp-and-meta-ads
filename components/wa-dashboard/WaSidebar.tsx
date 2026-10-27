@@ -56,27 +56,42 @@ function shortName(name: string | null | undefined, email: string | null | undef
   return "User";
 }
 
-const navigation = [
-  { name: "Overview", href: "/wa", icon: LayoutDashboard },
-  { name: "Automations", href: "/wa/automations", icon: Zap },
-  { name: "Messages", href: "/wa/messages", icon: MessageSquare },
-  { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
-  { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
-  { name: "Contacts", href: "/wa/contacts", icon: Users },
-  { name: "Team", href: "/wa/team", icon: Users },
-  { name: "Templates", href: "/wa/templates", icon: FileText },
-  { name: "Connect", href: "/wa/connect", icon: Link2 },
-  { name: "Integrate", href: "/wa/integrate", icon: Code2 },
-  { name: "Billing", href: "/wa/billing", icon: CreditCard },
-  { name: "Wallet", href: "/wa/wallet", icon: Coins },
+// Grouped by what the user is trying to do, with plain-language labels.
+const navGroups = [
+  {
+    title: "Reply to customers",
+    items: [
+      { name: "Overview", href: "/wa", icon: LayoutDashboard },
+      { name: "Messages", href: "/wa/messages", icon: MessageSquare },
+      { name: "Automations", href: "/wa/automations", icon: Zap },
+    ],
+  },
+  {
+    title: "Reach your audience",
+    items: [
+      { name: "Contacts", href: "/wa/contacts", icon: Users },
+      { name: "Broadcasts", href: "/wa/broadcasts", icon: Send },
+      { name: "Message templates", href: "/wa/templates", icon: FileText },
+      { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { name: "WhatsApp number", href: "/wa/connect", icon: Link2 },
+      { name: "Team members", href: "/wa/team", icon: Users },
+      { name: "Plan & billing", href: "/wa/billing", icon: CreditCard },
+      { name: "API & integrations", href: "/wa/integrate", icon: Code2 },
+    ],
+  },
 ];
 
 // Bottom tab items for mobile — most-used features first
 const bottomTabs = [
   { name: "Home", href: "/wa", icon: Home },
-  { name: "Auto", href: "/wa/automations", icon: Zap },
-  { name: "Chat", href: "/wa/messages", icon: MessageSquare },
-  { name: "Broadcast", href: "/wa/broadcasts", icon: Send },
+  { name: "Messages", href: "/wa/messages", icon: MessageSquare },
+  { name: "Automations", href: "/wa/automations", icon: Zap },
+  { name: "Contacts", href: "/wa/contacts", icon: Users },
   { name: "More", href: "__more__", icon: MoreHorizontal },
 ];
 
@@ -98,59 +113,52 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
           {/* Logo Section */}
           <div className="flex items-center h-20 px-8">
             <Link href="/wa" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg shadow-[#25D366]/20 group-hover:scale-110 transition-all duration-500 flex items-center justify-center bg-[#25D366] text-white font-bold ring-1 ring-[#25D366]/30">
+              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg shadow-[#25D366]/20  transition-all duration-500 flex items-center justify-center bg-[#25D366] text-white font-bold ring-1 ring-[#25D366]/30">
                 <MessageSquare className="w-5 h-5 fill-current" />
               </div>
               <div>
-                <span className="text-lg font-black tracking-tighter text-slate-900 uppercase leading-none block">
+                <span className="text-lg font-bold tracking-tight text-slate-900 leading-none block">
                   ReplyKaro
                 </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">WhatsApp Platform</span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">WhatsApp Platform</span>
               </div>
             </Link>
           </div>
 
           {/* Navigation Section */}
           <div className="flex-1 min-h-0 px-4 py-6 space-y-1 overflow-y-auto overscroll-contain">
-            <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-              Main Menu
-            </p>
-            <nav className="space-y-1">
-              {navigation.map((item) => {
-                const isActive = item.href === "/wa" ? pathname === "/wa" : pathname?.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 group",
-                      isActive
-                        ? "bg-[#25D366] text-white shadow-md shadow-[#25D366]/20"
-                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                    )}
-                  >
-                    <item.icon className={cn(
-                      "h-5 w-5",
-                      isActive ? "text-white" : "text-slate-400 group-hover:text-[#25D366] transition-colors"
-                    )} />
-                    {item.name}
-                  </Link>
-                );
-              })}
+            <nav aria-label="Dashboard" className="space-y-6">
+              {navGroups.map((group) => (
+                <div key={group.title}>
+                  <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{group.title}</p>
+                  <div className="space-y-1">
+                    {group.items.map((item) => {
+                      const isActive = item.href === "/wa" ? pathname === "/wa" : pathname?.startsWith(item.href);
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          aria-current={isActive ? "page" : undefined}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 group",
+                            isActive
+                              ? "bg-[#25D366] text-white shadow-md shadow-[#25D366]/20"
+                              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                          )}
+                        >
+                          <item.icon className={cn(
+                            "h-5 w-5",
+                            isActive ? "text-white" : "text-slate-400 group-hover:text-[#25D366] transition-colors"
+                          )} />
+                          {item.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
 
-            <div className="mt-6 pt-6 border-t border-slate-100">
-               <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">
-                 Switch Product
-               </p>
-               <Link
-                  href="/ads"
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200 group"
-                >
-                  <BarChart3 className="h-5 w-5 text-slate-400 group-hover:text-[#1877F2] transition-colors" />
-                  Meta Ads Dashboard
-                </Link>
-            </div>
           </div>
 
           {/* User Section */}
@@ -175,14 +183,14 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
                 </p>
                 <div className="flex flex-col gap-1 mt-0.5">
                   <span className={cn(
-                    "text-[10px] uppercase font-black px-1.5 py-0.5 rounded-md w-fit",
+                    "text-[10px] uppercase font-bold px-1.5 py-0.5 rounded-md w-fit",
                     planBadgeClass(plan)
                   )}>
                     {planLabel(plan)} plan
                   </span>
                 </div>
               </div>
-              <a href="/api/auth/logout" className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
+              <a href="/api/auth/logout" aria-label="Sign out" className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all">
                 <LogOut className="h-5 w-5" />
               </a>
             </div>
@@ -233,7 +241,7 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
       )} onClick={() => setIsMoreOpen(false)} />
 
       <div className={cn(
-        "lg:hidden fixed bottom-0 left-0 right-0 z-[58] bg-white shadow-[0_-32px_64px_-16px_rgba(0,0,0,0.15)] transition-transform duration-500 rounded-t-[2.5rem] border-t border-slate-100 flex flex-col max-h-[85vh]",
+        "lg:hidden fixed bottom-0 left-0 right-0 z-[58] bg-white shadow-[0_-32px_64px_-16px_rgba(0,0,0,0.15)] transition-transform duration-500 rounded-t-3xl border-t border-slate-100 flex flex-col max-h-[85vh]",
         isMoreOpen ? "translate-y-0" : "translate-y-full"
       )}>
         {/* Sheet handle — fixed at top */}
@@ -242,50 +250,39 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
         </div>
 
         <div className="px-6 py-2 shrink-0">
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">More Options</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Menu</p>
         </div>
 
         {/* Scrollable nav */}
-        <nav className="px-4 pb-2 space-y-1 overflow-y-auto flex-1 overscroll-contain">
-          {[
-            { name: "Analytics", href: "/wa/analytics", icon: BarChart3 },
-            { name: "Contacts", href: "/wa/contacts", icon: Users },
-            { name: "Team", href: "/wa/team", icon: Users },
-            { name: "Templates", href: "/wa/templates", icon: FileText },
-            { name: "Connect WhatsApp", href: "/wa/connect", icon: Link2 },
-            { name: "Integrate / API", href: "/wa/integrate", icon: Code2 },
-            { name: "Wallet", href: "/wa/wallet", icon: Coins },
-            { name: "Billing & Plans", href: "/wa/billing", icon: CreditCard },
-          ].map((item) => {
-            const isActive = pathname?.startsWith(item.href);
+        <nav aria-label="More" className="px-4 pb-2 space-y-4 overflow-y-auto flex-1 overscroll-contain">
+          {navGroups.map((group) => {
+            const tabHrefs = bottomTabs.map((t) => t.href);
+            const items = group.items.filter((i) => !tabHrefs.includes(i.href));
+            if (!items.length) return null;
             return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={() => setIsMoreOpen(false)}
-                className={cn(
-                  "flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all",
-                  isActive
-                    ? "bg-[#25D366] text-white shadow-lg shadow-[#25D366]/20"
-                    : "text-slate-600 hover:bg-slate-50"
-                )}
-              >
-                <item.icon className="h-5 w-5 shrink-0" />
-                {item.name}
-              </Link>
+              <div key={group.title}>
+                <p className="px-3 pb-1 text-[11px] font-bold text-slate-400 uppercase tracking-wider">{group.title}</p>
+                {items.map((item) => {
+                  const isActive = pathname?.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setIsMoreOpen(false)}
+                      aria-current={isActive ? "page" : undefined}
+                      className={cn(
+                        "flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold transition-all",
+                        isActive ? "bg-[#25D366] text-white shadow-lg shadow-[#25D366]/20" : "text-slate-600 hover:bg-slate-50"
+                      )}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
-
-          <div className="pt-2 mt-2 border-t border-slate-100">
-            <Link
-              href="/ads"
-              onClick={() => setIsMoreOpen(false)}
-              className="flex items-center gap-4 px-5 py-3.5 rounded-2xl text-sm font-bold text-[#1877F2] hover:bg-[#1877F2]/5 transition-all"
-            >
-              <BarChart3 className="h-5 w-5 shrink-0" />
-              Meta Ads Dashboard
-            </Link>
-          </div>
         </nav>
 
         {/* User info — fixed at bottom, above tab bar */}
@@ -305,7 +302,7 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
               <p className="text-sm font-bold text-slate-900 truncate">
                 {shortName(user.display_name, user.email)}
               </p>
-              <span className={cn("text-[10px] uppercase font-black tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5", planBadgeClass(plan))}>{planLabel(plan)}</span>
+              <span className={cn("text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md inline-block mt-0.5", planBadgeClass(plan))}>{planLabel(plan)}</span>
             </div>
           </div>
           <a
@@ -325,10 +322,10 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
             <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-[#25D366] text-white shadow-sm">
               <MessageSquare className="w-4 h-4 fill-current" />
             </div>
-            <span className="text-base font-black text-slate-900 tracking-tighter">ReplyKaro</span>
+            <span className="text-base font-bold text-slate-900 tracking-tight">ReplyKaro</span>
           </Link>
           <div className="flex items-center gap-2">
-            <span className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg", planBadgeClass(plan))}>{planLabel(plan)}</span>
+            <span className={cn("text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg", planBadgeClass(plan))}>{planLabel(plan)}</span>
           </div>
         </div>
       </div>

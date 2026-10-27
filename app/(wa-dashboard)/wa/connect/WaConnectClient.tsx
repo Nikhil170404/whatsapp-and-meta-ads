@@ -83,12 +83,14 @@ export function WaConnectClient({
             >
               Go to Dashboard
             </button>
-            <button
-              onClick={() => { window.location.href = "/wa/wallet"; }}
-              className="w-full py-3 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-semibold rounded-xl text-sm"
+            <a
+              href="https://business.facebook.com/billing_hub/payment_settings"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3 bg-slate-100 hover:bg-slate-200 transition-colors text-slate-700 font-semibold rounded-xl text-sm text-center"
             >
-              Set up Wallet (UPI / Indian Payments)
-            </button>
+              Add a payment method in Meta (needed for sending)
+            </a>
           </div>
         </div>
       </div>
@@ -102,13 +104,13 @@ export function WaConnectClient({
 
   if (initialConnection?.status === 'active') {
     return (
-      <div className="bg-white rounded-[2rem] border border-[#25D366]/20 p-8 shadow-lg relative overflow-hidden">
+      <div className="bg-white rounded-3xl border border-[#25D366]/20 p-8 shadow-lg relative overflow-hidden">
         <div className="flex items-center gap-4 mb-8 relative z-10">
           <div className="w-16 h-16 rounded-full bg-[#25D366]/10 flex items-center justify-center text-[#25D366]">
             <CheckCircle2 className="w-8 h-8" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-slate-900">Connected to WhatsApp</h2>
+            <h2 className="text-2xl font-bold text-slate-900">Connected to WhatsApp</h2>
             <p className="text-slate-500 font-medium flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
               API Active
@@ -185,9 +187,9 @@ export function WaConnectClient({
   }
 
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm">
+    <div className="bg-white rounded-3xl border border-slate-100 p-8 shadow-sm">
       <div className="mb-8 text-center">
-        <h2 className="text-2xl font-black text-slate-900 mb-3">Connect WhatsApp</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-3">Connect WhatsApp</h2>
         <p className="text-slate-500 font-medium max-w-md mx-auto">
           Connect your WhatsApp Business Account to start sending messages and automations.
         </p>
@@ -202,7 +204,7 @@ export function WaConnectClient({
 
         {checks && (
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
-            <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Diagnostics</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Diagnostics</p>
             {checks.map((c) => (
               <div key={c.name} className="flex gap-2.5 items-start">
                 {c.status === "pass" && <CheckCircle2 className="w-4 h-4 text-[#25D366] shrink-0 mt-0.5" />}

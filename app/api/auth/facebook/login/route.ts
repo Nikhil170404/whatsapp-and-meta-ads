@@ -102,18 +102,14 @@ export async function GET(req: Request) {
       console.warn("Could not exchange for long-lived FB token, using short-lived:", err);
     }
 
-    // 4. Fetch Profile Info + WhatsApp WABA + Ad Accounts in parallel
-    const [meRes, wabaRes, adAccountsRes, pagesRes] = await Promise.all([
+    // 4. Fetch profile info and WhatsApp business accounts in parallel
+    const [meRes, wabaRes] = await Promise.all([
       fetch(`https://graph.facebook.com/v25.0/me?fields=id,name,email,picture&access_token=${accessToken}`),
       fetch(`https://graph.facebook.com/v25.0/me/whatsapp_business_accounts?fields=id,phone_numbers{id,display_phone_number,verified_name}&access_token=${accessToken}`),
-      fetch(`https://graph.facebook.com/v25.0/me/adaccounts?fields=account_id&access_token=${accessToken}`),
-      fetch(`https://graph.facebook.com/v25.0/me/accounts?fields=id,name,access_token&access_token=${accessToken}`),
     ]);
 
     const meData = await meRes.json();
     const wabaData = await wabaRes.json().catch(() => null);
-    const adAccountsData = await adAccountsRes.json().catch(() => null);
-    const pagesData = await pagesRes.json().catch(() => null);
 
     if (!meData.id) {
       console.error("Facebook profile fetch failed:", JSON.stringify(meData));
@@ -131,7 +127,7 @@ export async function GET(req: Request) {
         fb_token_expires_at: tokenExpiresAt,
         email: meData.email || null,
         profile_picture_url: meData.picture?.data?.url || null,
-        plan_type: "free",
+        // plan_type is deliberately not written here: an upsert would reset paying users to "free" on every login.
       }, { onConflict: "facebook_user_id" })
       .select("*")
       .single();
@@ -167,26 +163,7 @@ export async function GET(req: Request) {
       console.warn("Auto WhatsApp connect skipped:", err);
     }
 
-    // 7. Auto-connect Meta Ads if ad account is accessible from the token
-    try {
-      const adAccountId = adAccountsData?.data?.[0]?.account_id;
-      const firstPage = pagesData?.data?.[0];
-      if (adAccountId) {
-        await (supabase.from("ad_connections") as any).upsert({
-          user_id: user.id,
-          fb_user_id: meData.id,
-          ad_account_id: adAccountId,
-          page_id: firstPage?.id || null,
-          page_access_token: firstPage?.access_token || null,
-          access_token: accessToken,
-          status: "active",
-        }, { onConflict: "user_id" });
-      }
-    } catch (err) {
-      console.warn("Auto Meta Ads connect skipped:", err);
-    }
-
-    // 8. Create Session and Redirect to Dashboard
+    // 7. Create Session and Redirect to Dashboard
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);
 

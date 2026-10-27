@@ -1,0 +1,66 @@
+// @vitest-environment node
+import { describe, it, expect, beforeAll } from "vitest";
+import { PGlite } from "@electric-sql/pglite";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const schema = readFileSync(join(process.cwd(), "supabase/schema.sql"), "utf8");
+
+describe("supabase/schema.sql", () => {
+  let db: PGlite;
+  let userId: string;
+
+  beforeAll(async () => {
+    db = new PGlite();
+    await db.exec(schema);
+    userId = (await db.query<{ id: string }>("insert into users(facebook_user_id) values('fb1') returning id")).rows[0].id;
+  });
+
+  it("is idempotent", async () => {
+    await expect(db.exec(schema)).resolves.not.toThrow();
+  });
+
+  it("defaults new accounts to the free plan", async () => {
+    const r = await db.query<{ plan_type: string }>("select plan_type from users where id = $1", [userId]);
+    expect(r.rows[0].plan_type).toBe("free");
+  });
+
+  it("enables row level security on every table", async () => {
+    const r = await db.query<{ n: number }>("select count(*)::int n from pg_tables where schemaname='public' and not rowsecurity");
+    expect(r.rows[0].n).toBe(0);
+  });
+
+  it("rejects duplicate webhook message ids", async () => {
+    await expect(
+      db.query(
+        "insert into wa_messages(user_id,wa_message_id,to_phone,direction) values($1,'x','1','inbound'),($1,'x','1','inbound')",
+        [userId]
+      )
+    ).rejects.toThrow();
+  });
+
+  it("keeps consent logs append-only but lets a contact be erased", async () => {
+    const c = (await db.query<{ id: string }>("insert into wa_contacts(user_id,phone_number) values($1,'+911') returning id", [userId])).rows[0];
+    await db.query("insert into wa_consent_logs(user_id,contact_id,phone_number,action,source) values($1,$2,'+911','granted','test')", [userId, c.id]);
+    await expect(db.query("update wa_consent_logs set action='withdrawn'")).rejects.toThrow(/append-only/);
+    await expect(db.query("delete from wa_contacts where id=$1", [c.id])).resolves.toBeDefined();
+  });
+
+  it("counts broadcast receipts once per step", async () => {
+    const t = (await db.query<{ id: string }>("insert into wa_templates(user_id,name,body_text) values($1,'t','hi') returning id", [userId])).rows[0];
+    const b = (await db.query<{ id: string }>("insert into wa_broadcasts(user_id,name,template_id) values($1,'b',$2) returning id", [userId, t.id])).rows[0];
+    const c = (await db.query<{ id: string }>("insert into wa_contacts(user_id,phone_number) values($1,'+922') returning id", [userId])).rows[0];
+    await db.query("insert into wa_broadcast_recipients(broadcast_id,contact_id,status,wa_message_id) values($1,$2,'sent','wamid.1')", [b.id, c.id]);
+    for (const s of ["delivered", "read", "delivered", "read"]) {
+      await db.query("select apply_broadcast_receipt('wamid.1',$1)", [s]);
+    }
+    const r = await db.query<{ d: number; r: number }>("select delivered_count d, read_count r from wa_broadcasts where id=$1", [b.id]);
+    expect(r.rows[0]).toEqual({ d: 1, r: 1 });
+  });
+
+  it("lets only one worker replica hold a job lock", async () => {
+    const a = await db.query<{ v: boolean }>("select try_acquire_worker_lock('job','a',60) v");
+    const b = await db.query<{ v: boolean }>("select try_acquire_worker_lock('job','b',60) v");
+    expect([a.rows[0].v, b.rows[0].v]).toEqual([true, false]);
+  });
+});

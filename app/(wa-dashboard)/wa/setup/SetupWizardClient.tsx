@@ -56,7 +56,7 @@ export function SetupWizardClient({ steps }: { steps: SetupSteps }) {
         <div className="w-14 h-14 rounded-2xl bg-[#25D366] flex items-center justify-center mx-auto mb-4 shadow-lg shadow-[#25D366]/20">
           <MessageSquare className="w-7 h-7 text-white fill-current" />
         </div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
           Welcome to ReplyKaro
         </h1>
         <p className="text-slate-500 font-medium mt-2 text-sm">
@@ -67,8 +67,8 @@ export function SetupWizardClient({ steps }: { steps: SetupSteps }) {
       {/* Progress bar */}
       <div className="bg-white rounded-2xl border border-slate-100 p-5">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Setup Progress</span>
-          <span className="text-sm font-black text-slate-900">{completedCount} / 3 complete</span>
+          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Setup Progress</span>
+          <span className="text-sm font-bold text-slate-900">{completedCount} / 3 complete</span>
         </div>
         <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
           <div
@@ -99,7 +99,7 @@ export function SetupWizardClient({ steps }: { steps: SetupSteps }) {
             >
               <div className="flex items-start gap-4">
                 {/* Step badge */}
-                <div className={`relative shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-black shadow-sm ${
+                <div className={`relative shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold shadow-sm ${
                   isDone ? "bg-[#25D366] text-white" : "bg-slate-100 text-slate-500"
                 }`}>
                   {isDone ? (
@@ -115,11 +115,11 @@ export function SetupWizardClient({ steps }: { steps: SetupSteps }) {
                     <div className={`w-7 h-7 rounded-lg ${step.iconBg} flex items-center justify-center shrink-0`}>
                       <Icon className={`w-3.5 h-3.5 ${step.iconColor}`} />
                     </div>
-                    <h3 className={`text-base font-black ${isDone ? "text-[#25D366]" : "text-slate-900"}`}>
+                    <h3 className={`text-base font-bold ${isDone ? "text-[#25D366]" : "text-slate-900"}`}>
                       {step.title}
                     </h3>
                     {isDone && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#25D366] text-white font-black uppercase tracking-wider shrink-0">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#25D366] text-white font-bold uppercase tracking-wider shrink-0">
                         Done
                       </span>
                     )}

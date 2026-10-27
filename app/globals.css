@@ -295,3 +295,24 @@
 .typing-dot:nth-child(1) { animation: typing-dot 1.4s infinite 0s; }
 .typing-dot:nth-child(2) { animation: typing-dot 1.4s infinite 0.2s; }
 .typing-dot:nth-child(3) { animation: typing-dot 1.4s infinite 0.4s; }
+/* Visible keyboard focus everywhere, and respect reduced-motion preferences. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #25D366;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html { scroll-behavior: smooth; }
+
+/* Stop iOS Safari zooming the page when a form field is focused. */
+@media (max-width: 640px) {
+  input, select, textarea { font-size: 16px; }
+}

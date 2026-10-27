@@ -5,7 +5,6 @@ export const PRICING_PLANS = {
         upfront: "0",
         duration: "Forever",
         description: "Test the waters risk-free",
-        hindiDesc: "Bilkul free mein try karo",
         features: [
             "WhatsApp Business API",
             "3 Active Automations",
@@ -40,7 +39,6 @@ export const PRICING_PLANS = {
         upfront: "0",
         duration: "Monthly",
         description: "Perfect for growing businesses",
-        hindiDesc: "Growing businesses ke liye perfect",
         features: [
             "WhatsApp Business API",
             "10 Active Automations",
@@ -50,7 +48,6 @@ export const PRICING_PLANS = {
             "Handle Viral Campaigns 🔥",
             "Contact CRM + Labels ✨",
             "Message Templates 💎",
-            "Meta Ads Integration 🚀",
             "Email Support (48h)",
         ],
         limits: {
@@ -78,7 +75,6 @@ export const PRICING_PLANS = {
         upfront: "0",
         duration: "Monthly",
         description: "Scale your business operations",
-        hindiDesc: "Pro businesses aur teams ke liye",
         features: [
             "WhatsApp Business API",
             "Unlimited Automations",
@@ -87,7 +83,6 @@ export const PRICING_PLANS = {
             "Advanced CRM + Segments",
             "Multi-Campaign Support 🔥",
             "All Trigger Types ✨",
-            "Advanced Meta Ads Sync 💎",
             "Detailed Analytics",
             "Priority Support (12h)",
         ],

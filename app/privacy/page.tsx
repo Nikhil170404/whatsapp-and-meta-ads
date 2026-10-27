@@ -16,7 +16,7 @@ export default function PrivacyPolicyPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <div className="bg-white rounded-[2rem] p-8 md:p-12 shadow-sm border border-slate-100">
             <h1 className="text-4xl font-black text-slate-900 mb-4 tracking-tight">Privacy Policy</h1>
-            <p className="text-slate-500 font-medium mb-12">Last Updated: May 2026</p>
+            <p className="text-slate-500 font-medium mb-12">Last Updated: October 2026</p>
 
             <div className="prose prose-slate max-w-none prose-headings:font-bold prose-a:text-[#25D366]">
               <h2>1. Introduction</h2>
@@ -54,13 +54,27 @@ export default function PrivacyPolicyPage() {
                 All data transmitted between ReplyKaro and the Meta Graph API is securely encrypted.
               </p>
 
-              <h2>5. Your Data Rights & Deletion</h2>
+              <h2>5. Account Deletion</h2>
               <p>
                 You have the right to access, modify, or delete your personal data. If you wish to revoke our access to your Meta account or delete your data entirely from our servers, 
                 please visit our <Link href="/data-deletion">Data Deletion Instructions</Link> page.
               </p>
 
-              <h2>6. Contact Us</h2>
+              <h2>6. Consent and Your Rights under the DPDP Act, 2023</h2>
+              <p>
+                ReplyKaro processes personal data of our customers (Data Principals) and, on behalf of our customers (Data Fiduciaries),
+                the phone numbers and messages of the people they contact on WhatsApp. For the latter, our customer decides the purpose
+                and ReplyKaro acts as a Data Processor.
+              </p>
+              <ul>
+                <li><strong>Consent:</strong> Businesses using ReplyKaro must obtain and record consent before messaging a contact. We store a timestamped consent record (source, purposes and notice version) for every contact. Promotional messages are sent only to contacts who agreed to them.</li>
+                <li><strong>Withdraw consent:</strong> Reply <strong>STOP</strong> to any message at any time. It takes effect immediately and is logged.</li>
+                <li><strong>Access, correction and erasure:</strong> Submit a request on our <Link href="/data-request">Data Rights page</Link>. We respond within 30 days.</li>
+                <li><strong>Retention:</strong> Message content is automatically erased after 90 days. Account data is deleted when you delete your account.</li>
+                <li><strong>Grievances:</strong> Raise a grievance on the <Link href="/data-request">Data Rights page</Link> or email our Data Protection Officer below. If unresolved, you may complain to the Data Protection Board of India.</li>
+              </ul>
+
+              <h2>7. Contact Us</h2>
               <p>
                 If you have any questions or concerns regarding this Privacy Policy, or if you need to contact our Data Protection Officer, please reach out to us at:
               </p>

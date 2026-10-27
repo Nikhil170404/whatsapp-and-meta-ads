@@ -7,6 +7,7 @@ import {
   ArrowUpRight, ArrowDownLeft, FileText, ChevronRight, AlertTriangle,
   Plus, Power, BarChart3, ShieldCheck
 } from "lucide-react";
+import { MetaBillingCard } from "@/components/wa-dashboard/MetaBillingCard";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { pickDisplayName } from "@/lib/auth/display-name";
 
@@ -69,7 +70,7 @@ export default async function WaOverviewPage() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
             Welcome back, {displayName}
           </h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
@@ -91,17 +92,17 @@ export default async function WaOverviewPage() {
       {/* ── Setup guide (until all 3 steps are done) ── */}
       {!setupComplete && !isTokenExpired && (
         <Link href="/wa/setup" className="block">
-          <div className="bg-gradient-to-br from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 rounded-[1.5rem] p-5 md:p-6 hover:shadow-md transition-all group">
+          <div className="bg-gradient-to-br from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 rounded-2xl p-5 md:p-6 hover:shadow-md transition-all group">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-[#25D366] flex items-center justify-center shrink-0">
                 <MessageSquare className="w-6 h-6 text-white fill-current" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-3 mb-1">
-                  <p className="text-base font-black text-slate-900">
+                  <p className="text-base font-bold text-slate-900">
                     {setupDone === 0 ? "Let's get you set up" : "Finish your setup"}
                   </p>
-                  <span className="text-xs font-black text-[#25D366] shrink-0">{setupDone}/3 done</span>
+                  <span className="text-xs font-bold text-[#25D366] shrink-0">{setupDone}/3 done</span>
                 </div>
                 <p className="text-sm text-slate-500 font-medium mb-3">
                   {!isConnected
@@ -125,7 +126,7 @@ export default async function WaOverviewPage() {
       {/* ── Automations section ── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Your Automations</h2>
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Automations</h2>
           <Link href="/wa/automations" className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-0.5">
             Manage all <ChevronRight className="w-3.5 h-3.5" />
           </Link>
@@ -133,17 +134,17 @@ export default async function WaOverviewPage() {
 
         {allAutomations.length === 0 ? (
           /* Empty state: show 3 quick-start examples */
-          <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             <div className="p-5 border-b border-slate-50">
-              <p className="text-sm font-bold text-slate-700">No automations yet. Start with one of these:</p>
+              <p className="text-sm font-bold text-slate-700">No automations yet. Ideas to start with (pick one on the next screen):</p>
             </div>
             <div className="divide-y divide-slate-50">
               {[
-                { keyword: "price", reply: "Hi! Our plans start at ₹999/mo. See full pricing at replykaro.in/pricing" },
+                { keyword: "price", reply: "Hi! Thanks for asking. Here is our price list: [link]" },
                 { keyword: "catalog", reply: "Here's our full catalog: [link]. Reply DEMO to book a free call." },
                 { keyword: "support", reply: "Hi! Our support team will get back to you within 2 hours. WhatsApp us anytime." },
               ].map((ex) => (
-                <Link key={ex.keyword} href={`/wa/automations?keyword=${ex.keyword}`} className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors group">
+                <Link key={ex.keyword} href="/wa/automations" className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors group">
                   <div className="w-9 h-9 rounded-xl bg-[#25D366]/10 flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/15 transition-colors">
                     <Zap className="w-4 h-4 text-[#25D366]" />
                   </div>
@@ -162,7 +163,7 @@ export default async function WaOverviewPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             <div className="divide-y divide-slate-50">
               {allAutomations.map((auto: any) => (
                 <div key={auto.id} className="flex items-center gap-3 p-4">
@@ -172,7 +173,7 @@ export default async function WaOverviewPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-bold text-slate-900 truncate">{auto.name}</p>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider shrink-0 ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
                         {auto.is_active ? "ON" : "OFF"}
                       </span>
                     </div>
@@ -193,6 +194,8 @@ export default async function WaOverviewPage() {
           </div>
         )}
       </div>
+
+      {isConnected && <MetaBillingCard compact />}
 
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -215,7 +218,7 @@ export default async function WaOverviewPage() {
                 <s.icon className={`w-4 h-4 ${s.color}`} />
               </div>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{s.label}</p>
-              <p className="text-xl font-black text-slate-900 capitalize">{s.value}</p>
+              <p className="text-xl font-bold text-slate-900 capitalize">{s.value}</p>
             </div>
           </Link>
         ))}
@@ -225,19 +228,19 @@ export default async function WaOverviewPage() {
       <div className="grid grid-cols-2 gap-3 md:hidden">
         <Link href="/wa/broadcasts" className="bg-[#25D366] rounded-2xl p-5 text-white active:scale-95 transition-all">
           <Send className="w-6 h-6 mb-2" />
-          <p className="font-black text-sm">New Broadcast</p>
+          <p className="font-bold text-sm">New Broadcast</p>
           <p className="text-xs opacity-80 mt-0.5">Send to all contacts</p>
         </Link>
         <Link href="/wa/automations" className="bg-violet-600 rounded-2xl p-5 text-white active:scale-95 transition-all">
           <Zap className="w-6 h-6 mb-2" />
-          <p className="font-black text-sm">Add Automation</p>
+          <p className="font-bold text-sm">Add Automation</p>
           <p className="text-xs opacity-80 mt-0.5">Auto-reply keywords</p>
         </Link>
       </div>
 
       {/* ── Quick actions ── */}
       <div>
-        <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Quick Actions</h2>
+        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { title: "Send a Broadcast", desc: "Message all contacts at once with a template", href: "/wa/broadcasts", icon: Send, color: "text-blue-600", bg: "bg-blue-50" },
@@ -246,7 +249,7 @@ export default async function WaOverviewPage() {
           ].map((qa) => (
             <Link key={qa.title} href={qa.href}>
               <div className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md hover:border-slate-200 transition-all group flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${qa.bg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                <div className={`w-10 h-10 rounded-xl ${qa.bg} flex items-center justify-center shrink-0  transition-transform`}>
                   <qa.icon className={`w-5 h-5 ${qa.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -268,7 +271,7 @@ export default async function WaOverviewPage() {
               <ShieldCheck className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-slate-900">Meta Messaging Limits</h2>
+              <h2 className="text-sm font-bold text-slate-900">Meta Messaging Limits</h2>
               <p className="text-xs text-slate-400 font-medium">Your daily broadcast capacity</p>
             </div>
           </div>
@@ -280,8 +283,8 @@ export default async function WaOverviewPage() {
               { tier: "Unlimited", limit: "No limit", desc: "Top-rated businesses", active: false },
             ].map((t) => (
               <div key={t.tier} className={`rounded-xl p-3 border text-center ${t.active ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-100"}`}>
-                <p className={`text-[10px] font-black uppercase tracking-wider mb-0.5 ${t.active ? "text-blue-600" : "text-slate-400"}`}>{t.tier}</p>
-                <p className={`text-sm font-black ${t.active ? "text-blue-900" : "text-slate-400"}`}>{t.limit}</p>
+                <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${t.active ? "text-blue-600" : "text-slate-400"}`}>{t.tier}</p>
+                <p className={`text-sm font-bold ${t.active ? "text-blue-900" : "text-slate-400"}`}>{t.limit}</p>
                 <p className={`text-[9px] font-medium mt-0.5 ${t.active ? "text-blue-500" : "text-slate-300"}`}>{t.desc}</p>
               </div>
             ))}
@@ -289,7 +292,7 @@ export default async function WaOverviewPage() {
           <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-slate-50 pt-3">
             <p>• Tier increases automatically when you send consistently and get low block rates</p>
             <p>• Templates must be Meta-approved before broadcasting. Rejected templates cannot be used.</p>
-            <p>• Contacts who reply <span className="font-black text-slate-700">STOP</span> are automatically opted out — ReplyKaro enforces this.</p>
+            <p>• Contacts who reply <span className="font-bold text-slate-700">STOP</span> are automatically opted out — ReplyKaro enforces this.</p>
             <p>• 24-hour window rule: free-text replies only work when customer messaged you first within 24 hrs.</p>
           </div>
         </div>
@@ -298,12 +301,12 @@ export default async function WaOverviewPage() {
       {/* ── Recent messages ── */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">Recent Messages</h2>
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent Messages</h2>
           <Link href="/wa/messages" className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-0.5">
             View all <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
-        <div className="bg-white rounded-[1.5rem] border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
           {msgs.length > 0 ? (
             <div className="divide-y divide-slate-50">
               {msgs.map((msg: any) => {

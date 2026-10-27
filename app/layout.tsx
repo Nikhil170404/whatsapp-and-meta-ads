@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Geist } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -15,15 +15,21 @@ const inter = Inter({
 
 import { JsonLd } from "@/components/JsonLd";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#25D366",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.replykaro.in"),
   applicationName: "ReplyKaro",
   title: {
-    default: "ReplyKaro — #1 WhatsApp Business & Meta Ads Automation Tool",
+    default: "ReplyKaro — WhatsApp Business Automation",
     template: "%s | ReplyKaro",
   },
   description:
-    "ReplyKaro — India's #1 WhatsApp automation tool. Automate keyword replies, broadcast templates, and Meta Ad comment-to-WhatsApp flows. Start free, paid plans from ₹999/mo ($12/mo).",
+    "Automate WhatsApp Business replies, send template broadcasts and manage every chat in a shared inbox. Official WhatsApp Cloud API, consent tracking built in. Start free; paid plans from $12/mo (₹999).",
   alternates: {
     languages: {
       "en-IN": "https://www.replykaro.in",
@@ -44,10 +50,9 @@ export const metadata: Metadata = {
   },
   keywords: [
     "replykaro", "whatsapp automation", "whatsapp business api", "whatsapp bot india",
-    "meta ads automation", "facebook ads comment reply", "whatsapp marketing tool",
+    "whatsapp marketing tool",
     "whatsapp auto responder", "whatsapp keyword trigger", "whatsapp broadcast tool",
-    "whatsapp automation for small business", "cheapest whatsapp automation",
-    "whatsapp automation UPI", "whatsapp tool razorpay",
+    "whatsapp automation for small business", "whatsapp automation UPI", "whatsapp tool razorpay",
     "wati alternative", "interakt alternative", "aisensy alternative",
     "respond.io alternative", "whatsapp chatbot india"
   ],
@@ -57,14 +62,14 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://www.replykaro.in",
     siteName: "ReplyKaro",
-    title: "ReplyKaro™ — #1 WhatsApp Business & Meta Ads Automation Tool",
-    description: "Automate your WhatsApp Business conversations and Meta Ad replies instantly. Scale your business with the cheapest automation tool in India.",
+    title: "ReplyKaro — WhatsApp Business Automation",
+    description: "Automate your WhatsApp Business conversations on the official Cloud API. Start free.",
     images: [{ url: "/opengraph-image" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "ReplyKaro™ — #1 WhatsApp Business & Meta Ads Automation Tool",
-    description: "Automate your WhatsApp Business conversations and Meta Ad replies instantly. Start free — paid plans from ₹999/mo.",
+    title: "ReplyKaro — WhatsApp Business Automation",
+    description: "Automate your WhatsApp Business conversations on the official Cloud API. Start free.",
     images: ["/opengraph-image"],
     site: "@HelloReplykaro",
     creator: "@HelloReplykaro",

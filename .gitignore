@@ -14,3 +14,7 @@ yarn-error.log*
 .DS_Store
 *.bak
 .claude/
+
+# Build artifacts
+build_output.log
+tsconfig.tsbuildinfo

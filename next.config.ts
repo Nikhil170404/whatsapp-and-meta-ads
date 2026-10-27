@@ -41,6 +41,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // ReplyKaro is WhatsApp-only. Old product URLs keep working for bookmarks and search results.
+  async redirects() {
+    return [
+      { source: "/meta-ads", destination: "/", permanent: true },
+      { source: "/whatsapp", destination: "/", permanent: true },
+      { source: "/ads/:path*", destination: "/wa", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
