@@ -201,3 +201,65 @@ describe("limit and audience functions", () => {
     expect((await db.query<{ l: string[] }>("select distinct_contact_labels($1) l", [u.id])).rows[0].l).toEqual(["lead", "vip"]);
   });
 });
+
+describe("scale helpers", () => {
+  it("counts messages per day in the database, zero-filled and time-zone aware", async () => {
+    const db = new PGlite();
+    await db.exec(schema);
+    const u = (await db.query<{ id: string }>("insert into users(facebook_user_id) values('fbm') returning id")).rows[0];
+    await db.query(`insert into wa_messages(user_id,to_phone,direction,created_at)
+      select $1,'1', CASE WHEN g % 3 = 0 THEN 'inbound' ELSE 'outbound' END, now() - (g || ' minutes')::interval from generate_series(1, 3000) g`, [u.id]);
+    const rows = (await db.query<{ day: string; inbound: number; outbound: number }>("select * from message_daily_counts($1, 7, 'UTC')", [u.id])).rows;
+    expect(rows).toHaveLength(7);
+    // 3,000 rows is beyond the 1,000-row cap that used to truncate the dashboard's counts
+    expect(rows.reduce((n, r) => n + r.inbound + r.outbound, 0)).toBe(3000);
+    expect(rows[0].inbound + rows[0].outbound).toBe(0); // a quiet day is present as zero, not missing
+  });
+
+  it("purges expired messages in batches and keeps recent ones", async () => {
+    const db = new PGlite();
+    await db.exec(schema);
+    const u = (await db.query<{ id: string }>("insert into users(facebook_user_id) values('fbq') returning id")).rows[0];
+    await db.query("insert into wa_messages(user_id,to_phone,direction,created_at) select $1,'1','inbound', now() - interval '120 days' from generate_series(1, 2500)", [u.id]);
+    await db.query("insert into wa_messages(user_id,to_phone,direction,created_at) select $1,'1','inbound', now() - interval '5 days' from generate_series(1, 100)", [u.id]);
+    const first = (await db.query<{ n: number }>("select purge_old_wa_messages_batch(90, 1000) n")).rows[0].n;
+    const second = (await db.query<{ n: number }>("select purge_old_wa_messages_batch(90, 1000) n")).rows[0].n;
+    const third = (await db.query<{ n: number }>("select purge_old_wa_messages_batch(90, 1000) n")).rows[0].n;
+    const fourth = (await db.query<{ n: number }>("select purge_old_wa_messages_batch(90, 1000) n")).rows[0].n;
+    expect([first, second, third, fourth]).toEqual([1000, 1000, 500, 0]);
+    expect((await db.query<{ n: number }>("select count(*)::int n from wa_messages")).rows[0].n).toBe(100);
+  });
+});
+
+describe("webhook queue", () => {
+  it("hands each event to one worker, retries failures, parks poison events, and drops payloads when done", async () => {
+    const db = new PGlite();
+    await db.exec(schema);
+    await db.query("insert into wa_webhook_events(payload) select jsonb_build_object('n', g) from generate_series(1, 120) g");
+
+    const a = (await db.query<{ id: number }>("select * from claim_webhook_events(50, 120)")).rows;
+    const b = (await db.query<{ id: number }>("select * from claim_webhook_events(50, 120)")).rows;
+    expect(a).toHaveLength(50);
+    expect(new Set([...a, ...b].map((r) => r.id)).size).toBe(100); // no event handed out twice
+
+    // success: marked done and the customer payload is erased
+    await db.query("select finish_webhook_event($1, null)", [a[0].id]);
+    const done = (await db.query<{ status: string; payload: any }>("select status, payload from wa_webhook_events where id=$1", [a[0].id])).rows[0];
+    expect(done.status).toBe("done");
+    expect(done.payload).toEqual({});
+
+    // failure: back in line, then parked after 5 attempts
+    const victim = a[1].id;
+    await db.query("select finish_webhook_event($1, 'boom')", [victim]);
+    expect((await db.query<{ status: string }>("select status from wa_webhook_events where id=$1", [victim])).rows[0].status).toBe("pending");
+    for (let i = 0; i < 4; i++) {
+      await db.query("select * from claim_webhook_events(1000, 120)"); // re-claims (attempts goes up)
+      await db.query("select finish_webhook_event($1, 'boom')", [victim]);
+    }
+    expect((await db.query<{ status: string }>("select status from wa_webhook_events where id=$1", [victim])).rows[0].status).toBe("dead");
+
+    // a worker that died: its stale "processing" events are handed out again
+    await db.query("update wa_webhook_events set locked_at = now() - interval '10 minutes' where status = 'processing'");
+    expect((await db.query("select * from claim_webhook_events(10, 120)")).rows.length).toBeGreaterThan(0);
+  });
+});

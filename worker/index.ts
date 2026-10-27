@@ -4,6 +4,7 @@ import cron from "node-cron";
 import { createClient } from "@supabase/supabase-js";
 import { JOBS, type JobDefinition } from "./jobs";
 import { startBroadcastQueue } from "./queue";
+import { startWebhookConsumer } from "./webhooks";
 
 /**
  * Railway worker: runs every scheduled and long-running job so the Vercel app
@@ -73,6 +74,7 @@ async function execute(job: JobDefinition) {
 }
 
 const queue = startBroadcastQueue(supabase, () => shuttingDown);
+const webhooks = startWebhookConsumer(supabase, () => shuttingDown);
 
 const tasks = JOBS.map((job) =>
   cron.schedule(job.schedule, () => void execute(job), { timezone: "Asia/Kolkata" })
@@ -82,7 +84,7 @@ const tasks = JOBS.map((job) =>
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, instance: instanceId, jobs: JOBS.map((j) => j.name), running: [...running], broadcastsSending: queue.running() }));
+    res.end(JSON.stringify({ ok: true, instance: instanceId, jobs: JOBS.map((j) => j.name), running: [...running], broadcastsSending: queue.running(), webhooksInFlight: webhooks.busy(), webhooksProcessed: webhooks.processed() }));
     return;
   }
   res.writeHead(404).end();
@@ -95,9 +97,10 @@ async function shutdown(signal: string) {
   console.log(`${signal} received, waiting for ${running.size + queue.running()} running job(s)`);
   tasks.forEach((t) => t.stop());
   queue.stop();
+  webhooks.stop();
   server.close();
   const deadline = Date.now() + 25_000;
-  while ((running.size > 0 || queue.running() > 0) && Date.now() < deadline) {
+  while ((running.size > 0 || queue.running() > 0 || webhooks.busy() > 0) && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 250));
   }
   process.exit(0);

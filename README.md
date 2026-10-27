@@ -45,3 +45,27 @@ Everything the dashboard does is available over a REST API (`/api/v1/*`) and as 
 The dashboard, REST API and MCP server share one operations layer (`lib/api/ops.ts`, `lib/api/send.ts`), so rules such as consent, plan limits and template validation are written once. Add a feature there first, then expose it in the routes and in `lib/mcp/server.ts`.
 
 Safety rules built into the tools: contacts need confirmed consent, free text is refused outside the 24-hour window, broadcasts are created as drafts and sent only with explicit confirmation, and customer message text is labelled as untrusted data.
+
+## Scale, limits and safety
+
+**Architecture.** The web app (Vercel) only renders pages and stores work; the Railway worker does the work.
+
+| Work | How it scales |
+| --- | --- |
+| Incoming webhooks | The endpoint verifies the signature, writes the payload to `wa_webhook_events` and returns. Worker replicas claim batches (`FOR UPDATE SKIP LOCKED`), keep one number's events in order, retry failures, and park poison events after 5 attempts. |
+| Broadcasts | Queued, then sent by the worker in batches of 200 pulled from the database, paced under Meta's throughput, with results written back in bulk. A lease with a heartbeat lets another worker resume after a crash. Audiences ("everyone", a label) are resolved in SQL, so size does not matter. |
+| Dashboard numbers | Counted in the database (`message_daily_counts`, `audience_preview`, `unique_template_recipients_24h`), never by downloading rows. Lists are paged. |
+| Retention | Expired messages are deleted in batches of 10,000. |
+
+Run more worker replicas to go faster; they coordinate through the database. Tuning variables: `BROADCAST_RATE_PER_SECOND` (default 40), `BROADCAST_CONCURRENCY` (20), `BROADCAST_PARALLEL` (2 broadcasts per replica), `WEBHOOK_BATCH` (50), `WEBHOOK_CONCURRENCY` (8).
+
+**Meta's real limits** (from Meta's WhatsApp Business Platform documentation):
+
+- **Messaging limit:** distinct customers a business portfolio can message outside customer service windows in a rolling 24 hours. Tiers 250, 2,000, 10,000, 100,000, unlimited; new portfolios start at 250; the limit is shared by every number in the portfolio. `lib/whatsapp/limits.ts`.
+- **Throughput:** 80 messages per second per number by default, automatic upgrade to 1,000 once the number sends to 100K+ users in 24 hours with at least yellow quality. Above it Meta returns error 130429.
+- **Customer service window:** 24 hours from the customer's last message or call, reset each time. Outside it only approved templates.
+- **Quality rating:** GREEN, YELLOW or RED. Red pauses promotions and automations here.
+- **Enforcement** (`account_update` webhook): warning, then 1 or 3 day template block, then 5, 7 or 30 day block on business-started messages, then lock, then disablement. Restrictions block sending here until they expire.
+- **Error codes** are handled per Meta's reference in `lib/whatsapp/errors.ts`.
+
+**Honest limits of this design.** The messaging limit is portfolio-wide, but the app can only count what it sent, so if the same portfolio also messages through another tool the app under-counts. Meta's exact per-user promotion cap was not stated in the documentation we could read, so it is handled by reacting to error 131049 rather than predicting it. At very high sustained volume the next steps are partitioning `wa_messages` by month (so retention becomes dropping a partition) and a read replica for dashboards.

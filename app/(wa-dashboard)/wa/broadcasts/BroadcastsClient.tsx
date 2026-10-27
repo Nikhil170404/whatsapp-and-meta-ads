@@ -107,7 +107,7 @@ export function BroadcastsClient({
 
     setLoadingContacts(true);
     try {
-      const res = await fetch("/api/whatsapp/contacts");
+      const res = await fetch("/api/whatsapp/contacts?limit=500");
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to load contacts");
       setContacts(data.contacts ?? []);
@@ -507,6 +507,11 @@ export function BroadcastsClient({
                 </p>
               )}
 
+              {form.audience === "pick" && contactTotal > contacts.length && contacts.length > 0 && (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+                  Showing your {contacts.length.toLocaleString()} most recent contacts of {contactTotal.toLocaleString()}. To reach everyone, or a group, choose “Everyone” or “A label” above.
+                </p>
+              )}
               {form.audience !== "pick" ? null : loadingContacts ? (
                 <div className="py-8 text-center"><Loader2 className="w-6 h-6 animate-spin text-[#25D366] mx-auto" /></div>
               ) : contacts.length === 0 ? (

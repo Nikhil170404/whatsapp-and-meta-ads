@@ -789,6 +789,69 @@ CREATE TABLE IF NOT EXISTS product_waitlist (
 );
 
 -- ---------------------------------------------------------------------------
+-- 8b. WEBHOOK QUEUE
+--     The web endpoint stores each verified Meta payload here and returns at once; the
+--     worker claims batches, processes them and marks them done. Failed events retry.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS wa_webhook_events (
+  id            BIGSERIAL   PRIMARY KEY,
+  payload       JSONB       NOT NULL,
+  status        TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done', 'dead')),
+  attempts      INTEGER     NOT NULL DEFAULT 0,
+  error         TEXT,
+  received_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  locked_at     TIMESTAMPTZ,
+  processed_at  TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS wa_webhook_events_pending_idx ON wa_webhook_events (id) WHERE status IN ('pending', 'processing');
+CREATE INDEX IF NOT EXISTS wa_webhook_events_done_idx ON wa_webhook_events (processed_at) WHERE status = 'done';
+
+-- Takes a batch for processing. Safe with many workers; an event whose worker died
+-- (still "processing" after the lease) is handed out again.
+CREATE OR REPLACE FUNCTION claim_webhook_events(p_limit INTEGER DEFAULT 50, p_lease_seconds INTEGER DEFAULT 120)
+RETURNS TABLE (id BIGINT, payload JSONB, attempts INTEGER) AS $$
+BEGIN
+  RETURN QUERY
+  WITH picked AS (
+    SELECT e.id FROM wa_webhook_events e
+    WHERE e.status = 'pending' OR (e.status = 'processing' AND e.locked_at < NOW() - make_interval(secs => p_lease_seconds))
+    ORDER BY e.id LIMIT p_limit FOR UPDATE SKIP LOCKED
+  )
+  UPDATE wa_webhook_events w SET status = 'processing', locked_at = NOW(), attempts = w.attempts + 1
+  FROM picked WHERE w.id = picked.id
+  RETURNING w.id, w.payload, w.attempts;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION finish_webhook_event(p_id BIGINT, p_error TEXT DEFAULT NULL, p_max_attempts INTEGER DEFAULT 5)
+RETURNS VOID AS $$
+BEGIN
+  IF p_error IS NULL THEN
+    UPDATE wa_webhook_events SET status = 'done', processed_at = NOW(), error = NULL, payload = '{}'::jsonb WHERE id = p_id;
+  ELSE
+    UPDATE wa_webhook_events SET
+      status = CASE WHEN attempts >= p_max_attempts THEN 'dead' ELSE 'pending' END,
+      error = left(p_error, 500), locked_at = NULL
+    WHERE id = p_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Finished events carry no payload (customer message text is not kept longer than needed).
+CREATE OR REPLACE FUNCTION purge_old_webhook_events(p_days INTEGER DEFAULT 3) RETURNS INTEGER AS $$
+DECLARE
+  deleted_count integer;
+BEGIN
+  DELETE FROM wa_webhook_events WHERE (status = 'done' AND processed_at < NOW() - make_interval(days => p_days))
+     OR (status = 'dead' AND received_at < NOW() - INTERVAL '14 days');
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ---------------------------------------------------------------------------
 -- 9. BACKGROUND WORKER (Railway)
 -- ---------------------------------------------------------------------------
 
@@ -841,6 +904,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Messages per day, zero-filled, counted in the database. The dashboard used to download every
+-- message row to count them, which the 1,000-row response cap silently truncated.
+CREATE OR REPLACE FUNCTION message_daily_counts(p_user UUID, p_days INTEGER DEFAULT 30, p_tz TEXT DEFAULT 'Asia/Kolkata')
+RETURNS TABLE (day DATE, inbound INTEGER, outbound INTEGER) AS $$
+  WITH days AS (
+    SELECT d::date AS day FROM generate_series(
+      (NOW() AT TIME ZONE p_tz)::date - (GREATEST(p_days, 1) - 1), (NOW() AT TIME ZONE p_tz)::date, INTERVAL '1 day') AS d
+  ), counts AS (
+    SELECT (created_at AT TIME ZONE p_tz)::date AS day,
+           count(*) FILTER (WHERE direction = 'inbound')::int AS inbound,
+           count(*) FILTER (WHERE direction = 'outbound')::int AS outbound
+    FROM wa_messages
+    WHERE user_id = p_user AND created_at >= (((NOW() AT TIME ZONE p_tz)::date - (GREATEST(p_days, 1) - 1))::timestamp AT TIME ZONE p_tz)
+    GROUP BY 1
+  )
+  SELECT days.day, COALESCE(counts.inbound, 0), COALESCE(counts.outbound, 0)
+  FROM days LEFT JOIN counts USING (day) ORDER BY days.day;
+$$ LANGUAGE sql STABLE;
+
+-- Deletes expired messages in small batches so retention on a table with millions of rows never
+-- holds one long lock. Call repeatedly until it returns 0.
+CREATE OR REPLACE FUNCTION purge_old_wa_messages_batch(p_days INTEGER DEFAULT 90, p_batch INTEGER DEFAULT 10000)
+RETURNS INTEGER AS $$
+DECLARE
+  deleted_count integer;
+BEGIN
+  DELETE FROM wa_messages WHERE id IN (
+    SELECT id FROM wa_messages WHERE created_at < NOW() - make_interval(days => p_days) LIMIT p_batch
+  );
+  GET DIAGNOSTICS deleted_count = ROW_COUNT;
+  RETURN deleted_count;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Message retention (90 days). The worker calls the app-side purge; this
 -- function is the same rule for anyone scheduling it with pg_cron instead.
 CREATE OR REPLACE FUNCTION purge_old_wa_messages() RETURNS integer AS $$
@@ -874,6 +971,7 @@ ALTER TABLE wa_api_keys              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE product_waitlist         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE worker_job_runs          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE worker_locks             ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wa_webhook_events        ENABLE ROW LEVEL SECURITY;
 
 -- Drop policies from earlier schema versions. The service role bypasses RLS,
 -- and per-user policies keyed on auth.uid() never matched app accounts.
@@ -888,7 +986,7 @@ BEGIN
         'users', 'wa_connections', 'wa_automations', 'wa_templates', 'wa_contacts',
         'wa_consent_logs', 'dsr_requests', 'wa_messages', 'team_members', 'wa_conversations',
         'wa_broadcasts', 'wa_broadcast_recipients', 'wa_usage', 'wa_api_keys',
-        'product_waitlist', 'worker_job_runs', 'worker_locks'
+        'product_waitlist', 'worker_job_runs', 'worker_locks', 'wa_webhook_events'
       )
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', pol.policyname, pol.schemaname, pol.tablename);

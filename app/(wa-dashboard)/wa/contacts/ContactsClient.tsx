@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { displayPhone } from "@/lib/whatsapp/phone";
 import { Users, Search, Plus, Tag, MessageSquare, Phone, X, Loader2, UserPlus, Download, Upload, Trash2, CheckSquare, Square, Filter, Send } from "lucide-react";
@@ -14,16 +14,38 @@ interface Contact {
   last_message_at?: string;
 }
 
-export function ContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
+export function ContactsClient({
+  initialContacts, total, page, pageSize, labels, query, activeLabelParam,
+}: {
+  initialContacts: Contact[]; total: number; page: number; pageSize: number; labels: string[]; query: string; activeLabelParam: string;
+}) {
   const router = useRouter();
   const [contacts, setContacts] = useState(initialContacts);
-  const [search, setSearch] = useState("");
+  useEffect(() => { setContacts(initialContacts); }, [initialContacts]);
+  const [search, setSearch] = useState(query);
+
+  // Search and label filtering happen in the database; the URL carries them so pages are shareable.
+  const go = (next: { q?: string; label?: string; page?: number }) => {
+    const params = new URLSearchParams();
+    const q = next.q ?? search;
+    const label = next.label ?? activeLabelParam;
+    if (q.trim()) params.set("q", q.trim());
+    if (label) params.set("label", label);
+    if ((next.page ?? 1) > 1) params.set("page", String(next.page));
+    router.replace(`/wa/contacts${params.toString() ? `?${params}` : ""}`);
+  };
+  useEffect(() => {
+    if (search.trim() === query.trim()) return;
+    const t = setTimeout(() => go({ q: search, page: 1 }), 350);
+    return () => clearTimeout(t);
+  }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
-  const [activeLabel, setActiveLabel] = useState<string | null>(null);
+  const activeLabel = activeLabelParam || null;
+  const setActiveLabel = (l: string | null) => go({ label: l ?? "", page: 1 });
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -32,25 +54,10 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
   const [consentConfirmed, setConsentConfirmed] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
 
-  // Collect all unique labels
-  const allLabels = useMemo(() => {
-    const set = new Set<string>();
-    contacts.forEach(c => (c.labels ?? []).forEach(l => set.add(l)));
-    return Array.from(set).sort();
-  }, [contacts]);
+  const allLabels = labels;
 
-  const filtered = useMemo(() => {
-    let list = contacts;
-    if (activeLabel) list = list.filter(c => (c.labels ?? []).includes(activeLabel));
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter(
-      (c) =>
-        c.phone_number.toLowerCase().includes(q) ||
-        (c.display_name ?? "").toLowerCase().includes(q) ||
-        (c.labels ?? []).some((l) => l.toLowerCase().includes(q))
-    );
-  }, [contacts, search, activeLabel]);
+  // The database already applied search and label; show the page as returned.
+  const filtered = contacts;
 
   const resetForm = () => {
     setForm({ phone_number: "", display_name: "", labels: "" });
@@ -196,7 +203,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Contacts</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
-            {contacts.length > 0 ? `${contacts.length} total contacts` : "Manage your WhatsApp contacts."}
+            {total > 0 ? `${total.toLocaleString()} ${activeLabel || search.trim() ? "matching" : "total"} contacts` : "Manage your WhatsApp contacts."}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -418,7 +425,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
           <div className="p-12 text-center">
             <Search className="w-10 h-10 text-slate-200 mx-auto mb-3" />
             <p className="text-sm text-slate-400 font-medium">No contacts match your filters</p>
-            <button onClick={() => { setSearch(""); setActiveLabel(null); }} className="mt-3 text-xs font-bold text-[#25D366] hover:underline">Clear filters</button>
+            <button onClick={() => { setSearch(""); go({ q: "", label: "", page: 1 }); }} className="mt-3 text-xs font-bold text-[#25D366] hover:underline">Clear filters</button>
           </div>
         ) : (
           <div className="p-12 md:p-16 text-center">
@@ -442,6 +449,18 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
           </div>
         )}
       </div>
+
+      {total > pageSize && (
+        <nav aria-label="Pages" className="flex items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm ring-1 ring-slate-100">
+          <button type="button" disabled={page <= 1} onClick={() => go({ page: page - 1 })}
+            className="rounded-lg px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">Previous</button>
+          <span className="text-slate-500">
+            {((page - 1) * pageSize + 1).toLocaleString()}–{Math.min(page * pageSize, total).toLocaleString()} of {total.toLocaleString()}
+          </span>
+          <button type="button" disabled={page * pageSize >= total} onClick={() => go({ page: page + 1 })}
+            className="rounded-lg px-3 py-1.5 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40">Next</button>
+        </nav>
+      )}
     </div>
   );
 }
