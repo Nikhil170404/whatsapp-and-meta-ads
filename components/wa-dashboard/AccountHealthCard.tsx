@@ -40,6 +40,13 @@ export function AccountHealthCard({ health }: { health: any }) {
         </p>
       )}
 
+      {health.tokens_encrypted === false && (
+        <p className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          Access tokens are stored without encryption. Set TOKEN_ENCRYPTION_KEY on the server (generate one with: openssl rand -base64 32), then run npm run secrets:encrypt -- --yes.
+        </p>
+      )}
+
       <dl className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>
           <dt className="text-xs font-bold uppercase tracking-wider text-slate-500">Quality rating</dt>

@@ -4,6 +4,7 @@
  * are used. It is checked against Meta before anything is saved, and the token is never
  * returned or logged.
  */
+import { encryptSecret } from "@/lib/crypto/secrets";
 import { parseMessagingLimit, parseQuality } from "@/lib/whatsapp/limits";
 import type { OpResult } from "@/lib/api/ops";
 
@@ -110,7 +111,7 @@ export async function connectWithCredentials(
   // 3. Save the connection for this account.
   const { error } = await db.from("wa_connections").upsert({
     user_id: userId, phone_number_id: phone.id, waba_id: waba, phone_number: phone.display_phone_number,
-    display_name: phone.verified_name ?? null, access_token: token, token_expires_at: expiresAt, status: "active",
+    display_name: phone.verified_name ?? null, access_token: encryptSecret(token), token_expires_at: expiresAt, status: "active",
     quality_rating: phone.quality_rating ?? "NA", messaging_limit_tier: phone.messaging_limit_tier ?? "TIER_NOT_SET",
     token_refresh_failed_at: null, last_error: null, last_error_at: null,
   }, { onConflict: "user_id" });

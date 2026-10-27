@@ -1,3 +1,4 @@
+import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
@@ -24,7 +25,7 @@ export async function POST() {
       .eq("id", session.id)
       .single();
 
-    const token = userRow?.fb_access_token;
+    const token = userRow?.fb_access_token ? decryptSecret(userRow.fb_access_token) : null;
     if (!token) return NextResponse.json({ error: "No stored token" }, { status: 404 });
 
     const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID;
@@ -67,7 +68,7 @@ export async function POST() {
         waba_id: wabaId,
         phone_number: phoneNumber,
         display_name: displayName,
-        access_token: token,
+        access_token: encryptSecret(token),
         token_expires_at: expiresAt,
         status: "active",
         last_error: null,

@@ -13,7 +13,8 @@
     "test:ui": "vitest --ui",
     "worker": "tsx worker/index.ts",
     "wa:check": "tsx scripts/wa-check.ts",
-    "wa:link": "tsx scripts/wa-link.ts"
+    "wa:link": "tsx scripts/wa-link.ts",
+    "secrets:encrypt": "tsx scripts/encrypt-secrets.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

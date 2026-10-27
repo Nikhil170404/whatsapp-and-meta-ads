@@ -1,3 +1,4 @@
+import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
         waba_id: resolvedWabaId || "unknown",
         phone_number: phoneNumber,
         display_name: displayName,
-        access_token: finalToken,
+        access_token: encryptSecret(finalToken),
         token_expires_at: tokenExpiresAt,
         status: 'active',
         updated_at: new Date().toISOString()

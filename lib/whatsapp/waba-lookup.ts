@@ -1,3 +1,4 @@
+import { decryptSecret } from "@/lib/crypto/secrets";
 import { isPlaceholderName } from "@/lib/auth/display-name";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
@@ -152,7 +153,7 @@ export async function repairPhoneNumber(
   row: { user_id: string; waba_id: string; access_token: string },
 ) {
   const res = await fetch(
-    `${WA_API_URL}/${row.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${row.access_token}`
+    `${WA_API_URL}/${row.waba_id}/phone_numbers?fields=id,display_phone_number,verified_name&access_token=${decryptSecret(row.access_token)}`
   );
   const json = await res.json().catch(() => null);
   const phone = json?.data?.[0];
