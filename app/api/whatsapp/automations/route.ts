@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
-import { validateListOptions } from "@/lib/whatsapp/flow";
+import { createAutomation } from "@/lib/api/ops";
+import { respond } from "@/lib/api/http";
 
 export async function GET() {
   try {
@@ -29,65 +30,11 @@ export async function POST(req: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
-    const { name, trigger_keyword, trigger_type, reply_message, message_type, media_url, button_options } = body;
-
-    if (!name) {
-      return NextResponse.json({ error: "Automation name is required" }, { status: 400 });
-    }
-    const msgType = message_type || "text";
-    if (msgType === "text" && !reply_message) {
-      return NextResponse.json({ error: "Reply message is required for text automations" }, { status: 400 });
-    }
-    if ((msgType === "image" || msgType === "video" || msgType === "document") && !media_url) {
-      return NextResponse.json({ error: "Media URL is required for image/video/document automations" }, { status: 400 });
-    }
-    if (msgType === "list") {
-      const listError = validateListOptions(button_options, reply_message);
-      if (listError) return NextResponse.json({ error: listError }, { status: 400 });
-    }
-    if (msgType === "buttons") {
-      if (!reply_message) return NextResponse.json({ error: "Body text is required for button messages" }, { status: 400 });
-      const btns = button_options?.buttons ?? [];
-      if (!btns.length) return NextResponse.json({ error: "Add at least one button (max 3)" }, { status: 400 });
-      if (btns.length > 3) return NextResponse.json({ error: "Maximum 3 buttons allowed by Meta" }, { status: 400 });
-    }
-
     const rl = await checkRateLimit("automations", `user:${session.id}`);
     if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
-    const supabase = getSupabaseAdmin() as any;
-
-    // Fetch fresh plan_type from DB so plan upgrades take effect without re-login
-    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
-    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
-    const limit = PRICING_PLANS[planKey]?.limits?.automations ?? PRICING_PLANS.FREE.limits.automations;
-    const { count } = await supabase
-      .from("wa_automations")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", session.id);
-    if ((count || 0) >= limit) {
-      return NextResponse.json({ error: `Automation limit reached (${limit} on your plan). Upgrade to create more.` }, { status: 403 });
-    }
-
-    const { data, error } = await supabase
-      .from("wa_automations")
-      .insert({
-        user_id: session.id,
-        name,
-        trigger_keyword: trigger_keyword || null,
-        trigger_type: trigger_type || "keyword",
-        reply_message: reply_message || null,
-        message_type: msgType,
-        media_url: media_url || null,
-        button_options: button_options || null,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return NextResponse.json({ automation: data });
+    const result = await createAutomation(getSupabaseAdmin() as any, session.id, await req.json());
+    return respond(result, (automation) => ({ automation }));
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

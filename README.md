@@ -37,3 +37,11 @@ npm install
 cp .env.local.example .env.local
 npm run dev
 ```
+
+## REST API and MCP
+
+Everything the dashboard does is available over a REST API (`/api/v1/*`) and as an MCP server (`/api/mcp`), authenticated with an API key from **API & integrations**. API access needs a paid plan. Keys are shown once and stored only as a SHA-256 hash.
+
+The dashboard, REST API and MCP server share one operations layer (`lib/api/ops.ts`, `lib/api/send.ts`), so rules such as consent, plan limits and template validation are written once. Add a feature there first, then expose it in the routes and in `lib/mcp/server.ts`.
+
+Safety rules built into the tools: contacts need confirmed consent, free text is refused outside the 24-hour window, broadcasts are created as drafts and sent only with explicit confirmation, and customer message text is labelled as untrusted data.

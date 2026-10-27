@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
-import { recordConsent, type ConsentPurpose } from "@/lib/consent";
+import { addContact } from "@/lib/api/ops";
+import { respond } from "@/lib/api/http";
 
 export async function GET(req: Request) {
   try {
@@ -38,67 +39,18 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { phone_number, display_name, labels, consent_confirmed, consent_purposes, consent_source } = body;
-
-    if (!phone_number) {
-      return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
-    }
-
-    // DPDP Act: the business must confirm the contact agreed to be messaged.
-    if (consent_confirmed !== true) {
-      return NextResponse.json(
-        { error: "Confirm that this contact has given consent to receive WhatsApp messages." },
-        { status: 400 }
-      );
-    }
-
     const rl = await checkRateLimit("api", `user:${session.id}`);
     if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
-    const supabase = getSupabaseAdmin() as any;
-
-    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
-    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE") as keyof typeof PRICING_PLANS;
-    const limit = PRICING_PLANS[planKey]?.limits?.contacts ?? PRICING_PLANS.FREE.limits.contacts;
-    const { data: existing } = await supabase
-      .from("wa_contacts")
-      .select("id")
-      .eq("user_id", session.id)
-      .eq("phone_number", phone_number)
-      .maybeSingle();
-    if (!existing) {
-      const { count } = await supabase
-        .from("wa_contacts")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", session.id);
-      if ((count || 0) >= limit) {
-        return NextResponse.json({ error: `Contact limit reached (${limit} on your plan). Upgrade to add more contacts.` }, { status: 403 });
-      }
-    }
-
-    const purposes: ConsentPurpose[] = Array.isArray(consent_purposes) && consent_purposes.length
-      ? consent_purposes.filter((p: string): p is ConsentPurpose => p === "service_messages" || p === "marketing_messages")
-      : ["service_messages"];
-
-    await recordConsent(supabase, {
-      userId: session.id,
-      phoneNumber: phone_number,
-      action: "granted",
-      source: consent_source === "import" ? "import" : "dashboard",
-      purposes,
-      evidence: { added_by: session.id, confirmed_in_dashboard: true },
+    const result = await addContact(getSupabaseAdmin() as any, session.id, {
+      phone_number: body.phone_number,
+      display_name: body.display_name,
+      labels: body.labels,
+      consent_confirmed: body.consent_confirmed === true,
+      consent_purposes: body.consent_purposes,
+      consent_source: body.consent_source === "import" ? "import" : "dashboard",
     });
-
-    const { data, error } = await supabase
-      .from("wa_contacts")
-      .update({ display_name: display_name || null, labels: labels || [] })
-      .eq("user_id", session.id)
-      .eq("phone_number", phone_number)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return NextResponse.json({ contact: data });
+    return respond(result, (contact) => ({ contact }));
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

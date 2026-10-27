@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ApiDocs } from "@/components/wa-dashboard/ApiDocs";
 import { KeyRound, Copy, Check, RefreshCw, Code2, Zap, ShoppingCart, Calendar, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 const BASE_URL = "https://replykaro.com";
@@ -175,7 +176,7 @@ send_whatsapp("+919876543210", "order_confirmed", ["Rahul", "#1234", "₹999"])`
 
 type Lang = keyof typeof CODE_SNIPPETS;
 
-export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string | null; lastUsed: string | null }) {
+export function IntegrateClient({ initialKey, existingPrefix, lastUsed }: { initialKey: string | null; existingPrefix?: string | null; lastUsed: string | null }) {
   const [apiKey, setApiKey] = useState<string | null>(initialKey);
   const [generating, setGenerating] = useState(false);
   const [keyVisible, setKeyVisible] = useState(false);
@@ -185,7 +186,7 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
   const [activeUseCase, setActiveUseCase] = useState(0);
 
   const displayKey = apiKey ?? "rk_live_••••••••••••••••••••••••••••••••";
-  const maskedKey = apiKey ? `rk_live_${"•".repeat(32)}` : displayKey;
+  const maskedKey = apiKey ? `rk_live_${"•".repeat(32)}` : existingPrefix ? `${existingPrefix} (hidden for security)` : displayKey;
 
   const generateKey = async () => {
     setGenerating(true);
@@ -245,19 +246,28 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
           </div>
         </div>
 
-        {apiKey ? (
+        {apiKey || existingPrefix ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-mono text-sm text-slate-700 truncate">
                 {keyVisible ? apiKey : maskedKey}
               </div>
-              <button onClick={() => setKeyVisible(!keyVisible)} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500">
-                {keyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-              <button onClick={copyKey} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500">
-                {keyCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-              </button>
+              {apiKey && (
+                <>
+                  <button onClick={() => setKeyVisible(!keyVisible)} aria-label={keyVisible ? "Hide key" : "Show key"} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500">
+                    {keyVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                  <button onClick={copyKey} aria-label="Copy key" className="p-3 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors text-slate-500">
+                    {keyCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                </>
+              )}
             </div>
+            <p className="text-xs font-medium text-slate-500">
+              {apiKey && keyVisible
+                ? "Copy this key now. For your security we store only a fingerprint of it, so it cannot be shown again."
+                : "Keys are stored securely and cannot be shown again. If you lose it, regenerate a new one (the old key stops working immediately)."}
+            </p>
 
             {lastUsed && (
               <p className="text-xs text-slate-400 font-medium">
@@ -310,6 +320,8 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
         </div>
       </div>
 
+      <ApiDocs baseUrl={BASE_URL} apiKey={apiKey} />
+
       {/* API Reference */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
         <h2 className="text-base font-bold text-slate-900 mb-1">API Reference</h2>
@@ -317,7 +329,7 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
           <span className="bg-slate-100 px-2 py-0.5 rounded-lg font-mono text-slate-600">POST {BASE_URL}/api/v1/send</span>
         </p>
 
-        {/* Request body reference */}
+      {/* Request body reference */}
         <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-xs font-mono text-slate-700 space-y-1.5">
           <div><span className="text-slate-400">// Required</span></div>
           <div><span className="text-violet-600">"phone"</span>: <span className="text-green-600">"+919876543210"</span>  <span className="text-slate-400">// with country code</span></div>
@@ -389,7 +401,7 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
           <div className="bg-slate-50 rounded-2xl p-4">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Your Webhook URL</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-sm font-mono text-slate-700">{BASE_URL}/api/webhooks/whatsapp</code>
+              <code className="min-w-0 flex-1 break-all text-sm font-mono text-slate-700">{BASE_URL}/api/webhooks/whatsapp</code>
               <button
                 onClick={() => navigator.clipboard.writeText(`${BASE_URL}/api/webhooks/whatsapp`)}
                 className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"

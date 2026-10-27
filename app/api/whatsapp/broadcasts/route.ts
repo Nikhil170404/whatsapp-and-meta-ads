@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
-import { validateVariablePlan } from "@/lib/whatsapp/template-builder";
+import { createBroadcast } from "@/lib/api/ops";
+import { respond } from "@/lib/api/http";
 
 export async function GET() {
   try {
@@ -28,88 +29,11 @@ export async function POST(req: Request) {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json();
-    const { name, template_id, contact_ids, scheduled_at, variables } = body;
-
-    if (!name || !template_id || !contact_ids?.length) {
-      return NextResponse.json({ error: "Name, template, and contacts are required" }, { status: 400 });
-    }
-
     const rl = await checkRateLimit("api", `user:${session.id}`);
     if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
-    const supabase = getSupabaseAdmin() as any;
-
-    // Always read plan_type fresh from DB — JWT is stale for up to 7 days
-    const { data: currentUser } = await supabase.from("users").select("plan_type").eq("id", session.id).single();
-    const planKey = (currentUser?.plan_type?.toUpperCase() || "FREE");
-    if (planKey === "FREE" || planKey === "EXPIRED") {
-      return NextResponse.json({
-        error: "Broadcasts require a paid plan. Upgrade to Growth or Pro to send bulk messages.",
-        code: "PLAN_REQUIRED",
-      }, { status: 403 });
-    }
-
-    // Verify the template and every contact belong to this user, so a caller
-    // can't broadcast to (or through) another user's data by passing foreign IDs.
-    const { data: ownedTemplate } = await supabase
-      .from("wa_templates")
-      .select("id, body_text, category")
-      .eq("id", template_id)
-      .eq("user_id", session.id)
-      .maybeSingle();
-    if (!ownedTemplate) {
-      return NextResponse.json({ error: "Template not found" }, { status: 404 });
-    }
-    if (ownedTemplate.category === "AUTHENTICATION") {
-      return NextResponse.json({ error: "Verification-code templates are sent one at a time through the API, not as broadcasts." }, { status: 400 });
-    }
-    const planError = validateVariablePlan(ownedTemplate.body_text ?? "", variables);
-    if (planError) return NextResponse.json({ error: planError }, { status: 400 });
-
-    const uniqueContactIds: string[] = Array.from(new Set(contact_ids));
-    const { data: ownedContacts } = await supabase
-      .from("wa_contacts")
-      .select("id")
-      .eq("user_id", session.id)
-      .in("id", uniqueContactIds);
-    const ownedIds = new Set((ownedContacts ?? []).map((c: any) => c.id));
-    if (ownedIds.size !== uniqueContactIds.length) {
-      return NextResponse.json({ error: "One or more contacts are invalid" }, { status: 400 });
-    }
-
-    // Create broadcast
-    const isScheduled = scheduled_at && new Date(scheduled_at) > new Date();
-    const { data: broadcast, error: bcError } = await supabase
-      .from("wa_broadcasts")
-      .insert({
-        user_id: session.id,
-        name,
-        template_id,
-        status: isScheduled ? "scheduled" : "draft",
-        scheduled_at: scheduled_at || null,
-        variables: Array.isArray(variables) ? variables : null,
-        total_recipients: uniqueContactIds.length,
-      })
-      .select()
-      .single();
-
-    if (bcError) throw bcError;
-
-    // Create recipient entries
-    const recipients = uniqueContactIds.map((cid: string) => ({
-      broadcast_id: broadcast.id,
-      contact_id: cid,
-      status: "pending",
-    }));
-
-    const { error: recipError } = await supabase
-      .from("wa_broadcast_recipients")
-      .insert(recipients);
-
-    if (recipError) throw recipError;
-
-    return NextResponse.json({ broadcast, scheduled: !!isScheduled });
+    const result = await createBroadcast(getSupabaseAdmin() as any, session.id, await req.json());
+    return respond(result, (r) => ({ broadcast: r.broadcast, scheduled: r.scheduled }));
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

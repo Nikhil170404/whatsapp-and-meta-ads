@@ -524,13 +524,19 @@ BEGIN
   END LOOP;
 END $$;
 
+-- api_key holds "h_" + SHA-256 of the key (new keys) or a plain-text key (created
+-- before hashing; still accepted until the user regenerates). key_prefix is a
+-- masked display value such as "rk_live_ab12…f9e0".
 CREATE TABLE IF NOT EXISTS wa_api_keys (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID        NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   api_key       TEXT        NOT NULL UNIQUE DEFAULT ('rk_live_' || replace(gen_random_uuid()::text, '-', '')),
+  key_prefix    TEXT,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_used_at  TIMESTAMPTZ
 );
+
+ALTER TABLE wa_api_keys ADD COLUMN IF NOT EXISTS key_prefix TEXT;
 
 CREATE TABLE IF NOT EXISTS product_waitlist (
   id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
