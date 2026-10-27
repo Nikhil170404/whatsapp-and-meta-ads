@@ -28,6 +28,8 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({ phone_number: "", display_name: "", labels: "" });
+  const [consentConfirmed, setConsentConfirmed] = useState(false);
+  const [marketingConsent, setMarketingConsent] = useState(false);
 
   // Collect all unique labels
   const allLabels = useMemo(() => {
@@ -53,12 +55,15 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
     setForm({ phone_number: "", display_name: "", labels: "" });
     setError(null);
     setShowAddForm(false);
+    setConsentConfirmed(false);
+    setMarketingConsent(false);
   };
 
   const handleAdd = async () => {
     const phone = form.phone_number.trim().replace(/\s+/g, "");
     if (!phone) return setError("Phone number is required.");
     if (!/^\+?[0-9]{7,15}$/.test(phone)) return setError("Enter a valid phone number (e.g. +919876543210).");
+    if (!consentConfirmed) return setError("Confirm that this person has agreed to receive WhatsApp messages from you.");
     setSaving(true);
     setError(null);
     try {
@@ -66,7 +71,13 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
       const res = await fetch("/api/whatsapp/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: phone, display_name: form.display_name.trim() || null, labels }),
+        body: JSON.stringify({
+          phone_number: phone,
+          display_name: form.display_name.trim() || null,
+          labels,
+          consent_confirmed: true,
+          consent_purposes: marketingConsent ? ["service_messages", "marketing_messages"] : ["service_messages"],
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -100,6 +111,11 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const agreed = window.confirm(
+      "Under India's DPDP Act 2023 you may only message people who have agreed to hear from you.\n\n" +
+      "Do you confirm that every contact in this file gave consent to receive WhatsApp messages from your business?"
+    );
+    if (!agreed) { e.target.value = ""; return; }
     setImporting(true);
     setImportResult(null);
     try {
@@ -118,7 +134,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
           const res = await fetch("/api/whatsapp/contacts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ phone_number: phone, display_name: name || null, labels }),
+            body: JSON.stringify({ phone_number: phone, display_name: name || null, labels, consent_confirmed: true, consent_source: "import" }),
           });
           const data = await res.json();
           if (res.ok) {
@@ -177,7 +193,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Contacts</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Contacts</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">
             {contacts.length > 0 ? `${contacts.length} total contacts` : "Manage your WhatsApp contacts."}
           </p>
@@ -264,9 +280,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
 
       {/* Add Form */}
       {showAddForm && (
-        <div className="bg-white rounded-[2rem] border border-[#25D366]/20 shadow-lg p-6 md:p-8">
+        <div className="bg-white rounded-3xl border border-[#25D366]/20 shadow-lg p-6 md:p-8">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2"><UserPlus className="w-5 h-5 text-[#25D366]" /> Add Contact</h2>
+            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2"><UserPlus className="w-5 h-5 text-[#25D366]" /> Add Contact</h2>
             <button onClick={resetForm} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400"><X className="w-5 h-5" /></button>
           </div>
           <div className="space-y-4">
@@ -286,6 +302,16 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Labels <span className="text-slate-400 font-medium normal-case">(comma separated)</span></label>
               <input type="text" placeholder="e.g. customer, vip, lead" value={form.labels} onChange={(e) => setForm({ ...form, labels: e.target.value })}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366]" />
+            </div>
+            <div className="space-y-2 rounded-xl bg-slate-50 border border-slate-200 p-4">
+              <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer">
+                <input type="checkbox" checked={consentConfirmed} onChange={(e) => setConsentConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#25D366]" />
+                <span><strong>Consent confirmed.</strong> This person has agreed to receive WhatsApp messages from my business. I keep a record of when and how they agreed.</span>
+              </label>
+              <label className="flex items-start gap-3 text-sm text-slate-700 cursor-pointer">
+                <input type="checkbox" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} disabled={!consentConfirmed} className="mt-0.5 h-4 w-4 accent-[#25D366]" />
+                <span>They also agreed to promotional messages (offers and announcements). Leave unchecked to send service messages only.</span>
+              </label>
             </div>
             {error && <p className="text-sm font-bold text-rose-600 bg-rose-50 px-4 py-3 rounded-xl">{error}</p>}
             <div className="flex items-center gap-3 pt-1">
@@ -337,7 +363,7 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
       )}
 
       {/* Contacts list */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         {filtered.length > 0 ? (
           <>
             {/* Select all header */}

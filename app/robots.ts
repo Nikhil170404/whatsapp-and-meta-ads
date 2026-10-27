@@ -5,8 +5,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/whatsapp", "/meta-ads", "/signin", "/privacy", "/terms", "/data-deletion"],
-        disallow: ["/wa/", "/ads/", "/api/", "/admin/"],
+        allow: ["/", "/signin", "/privacy", "/terms", "/data-deletion", "/data-request"],
+        disallow: ["/wa/", "/api/", "/admin/"],
       },
     ],
     sitemap: "https://www.replykaro.in/sitemap.xml",

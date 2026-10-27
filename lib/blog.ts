@@ -508,11 +508,11 @@ SuperProfile is a **webpage**. Their DM features are great for basic links, but 
 
 The Indian creator economy is exploding. With 500M+ users on Instagram in India, manual replies are no longer a viable strategy.
 
-## The "Reply Karo, Reach Badao" Strategy
+## The "Reply Fast, Reach Further" Strategy
 In 2026, the Instagram algorithm rewards **Interaction Velocity**. The faster you reply to a comment or DM, the more Instagram pushes your Reel.
 
 ## Why India is Different
-- **Hinglish Triggers**: Most global tools fail to understand "Price please bhai". ReplyKaro's AI handles Hinglish natively.
+- **Multilingual Triggers**: Customers mix languages in one message, and most global tools miss the intent. ReplyKaro's AI understands mixed-language keywords.
 - **Rupee Pricing**: At ₹99/month, automation is now accessible to the smallest tea-shop or the biggest influencer.
 - **Festival Spikes**: During Diwali or Rakhi, engagement spikes 10x. You need an engine that doesn't crash.
 
@@ -584,7 +584,7 @@ No matter how many "contacts" you have in your list, your bill stays flat. That'
     content: `
 # Coaching on Autopilot: The 2026 Funnel
 
-If you are a coach in India, your DMs are likely full of "Bhai, course details?", "Fees kya hai?", and "Next batch kab hai?".
+If you are a coach in India, your DMs are likely full of "What are the course details?", "What are the fees?", and "When does the next batch start?".
 
 ## The Manual Bottleneck
 Replying to 50 DMs a day takes 2 hours. Replying to 500 DMs is impossible.
@@ -611,15 +611,15 @@ One coach in Mumbai recently automated their registration process using ReplyKar
 
 Most automation tools sound like a bank. "Dear User, thank you for your query." Boring!
 
-## Why Hinglish Wins
-Indian social media is built on "Yaar", "Bhai", and "Shukriya". 
+## Why a Friendly Tone Wins
+Social media runs on warmth, so replies that sound human outperform formal ones. 
 
 **Example Templates in ReplyKaro:**
-- "Arey yaar, thank you comment ke liye! Ye lo link: [LINK]"
-- "Bhai, details DM mein bhej diye hain, check kar lo! 🙏"
-- "Shukriya tag karne ke liye! Aapka surprise gift ye raha: [LINK]"
+- "Thanks so much for commenting! Here is the link: [LINK]"
+- "I have sent the details to your DMs, please check! 🙏"
+- "Thank you for tagging us! Here is your surprise gift: [LINK]"
 
-Inside the ReplyKaro dashboard, you get 25+ pre-loaded Hinglish templates that feel human. At ₹99/mo, it's like having a native social media manager in your pocket.
+Inside the ReplyKaro dashboard, you get 25+ pre-loaded templates that feel human. At ₹99/mo, it's like having a native social media manager in your pocket.
 `
   },
   {

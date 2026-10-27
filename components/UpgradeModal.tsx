@@ -64,7 +64,7 @@ export default function UpgradeModal({
             onClick={(e) => e.target === e.currentTarget && onClose()}
         >
             {/* Bottom sheet on mobile, centered modal on sm+ */}
-            <div className="bg-white w-full sm:max-w-md sm:rounded-[2rem] rounded-t-[2rem] p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
+            <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-6 sm:p-8 shadow-2xl animate-in slide-in-from-bottom duration-300">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-5">
                     <div
@@ -91,7 +91,7 @@ export default function UpgradeModal({
                 </div>
 
                 {/* Title */}
-                <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mb-1.5">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-1.5">
                     {isAtLimit ? "Limit Reached 🚫" : "Upgrade Required 🚀"}
                 </h2>
                 <p className="text-sm text-slate-500 font-medium mb-5">{getLimitMessage()}</p>
@@ -121,8 +121,8 @@ export default function UpgradeModal({
                         <Zap className="h-4 w-4 text-slate-500" />
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Current Plan</p>
-                        <p className="text-sm font-black text-slate-900">{currentPlan}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Current Plan</p>
+                        <p className="text-sm font-bold text-slate-900">{currentPlan}</p>
                     </div>
                 </div>
 
@@ -131,10 +131,10 @@ export default function UpgradeModal({
                     <div className="border-2 border-primary/20 bg-primary/5 rounded-2xl p-4 sm:p-5 mb-5">
                         <div className="flex items-center justify-between mb-3">
                             <div>
-                                <p className="text-[10px] text-primary font-black uppercase tracking-widest">Recommended</p>
-                                <p className="text-base sm:text-lg font-black text-slate-900">{nextPlan.name}</p>
+                                <p className="text-[10px] text-primary font-bold uppercase tracking-wider">Recommended</p>
+                                <p className="text-base sm:text-lg font-bold text-slate-900">{nextPlan.name}</p>
                             </div>
-                            <p className="text-lg sm:text-xl font-black text-primary">{nextPlan.price}</p>
+                            <p className="text-lg sm:text-xl font-bold text-primary">{nextPlan.price}</p>
                         </div>
                         <ul className="space-y-2">
                             {nextPlan.benefits.map((benefit, i) => (
@@ -160,7 +160,7 @@ export default function UpgradeModal({
                         onClick={handleUpgrade}
                         disabled={loading}
                         className={cn(
-                            "flex-1 h-12 rounded-xl font-black gap-2 text-sm touch-manipulation",
+                            "flex-1 h-12 rounded-xl font-bold gap-2 text-sm touch-manipulation",
                             isAtLimit
                                 ? "bg-rose-500 text-white hover:bg-rose-600"
                                 : "bg-primary text-white hover:opacity-90",

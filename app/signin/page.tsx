@@ -27,13 +27,13 @@ const FEATURES = [
   },
   {
     icon: BarChart3,
-    title: "Meta Ads Analytics",
-    desc: "Track campaigns, clicks, and conversions in one place.",
+    title: "Analytics",
+    desc: "See messages sent, delivered and answered in one place.",
   },
   {
     icon: TrendingUp,
-    title: "Growth Tools",
-    desc: "Click-to-WhatsApp ads, templates, and team inboxes.",
+    title: "Shared Inbox",
+    desc: "Ready-made templates and a team inbox for every chat.",
   },
 ];
 
@@ -85,15 +85,15 @@ function SignInContent() {
             <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30">
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-black text-lg tracking-tight">ReplyKaro</span>
+            <span className="text-white font-bold text-lg tracking-tight">ReplyKaro</span>
           </div>
 
-          <h1 className="text-4xl xl:text-5xl font-black text-white leading-[1.1] tracking-tight mb-5">
+          <h1 className="text-4xl xl:text-5xl font-bold text-white leading-[1.1] tracking-tight mb-5">
             WhatsApp automation<br />
             <span className="text-[#25D366]">that actually works.</span>
           </h1>
           <p className="text-slate-400 text-base font-medium leading-relaxed max-w-md">
-            Connect your WhatsApp Business account, set up automations, run Meta Ads, and grow — all from one dashboard.
+            Connect your WhatsApp Business account, set up automations and reply to customers — all from one dashboard.
           </p>
         </div>
 
@@ -138,17 +138,17 @@ function SignInContent() {
           <div className="w-9 h-9 rounded-xl bg-[#25D366] flex items-center justify-center">
             <MessageSquare className="w-4 h-4 text-white" />
           </div>
-          <span className="text-slate-900 font-black text-lg tracking-tight">ReplyKaro</span>
+          <span className="text-slate-900 font-bold text-lg tracking-tight">ReplyKaro</span>
         </div>
 
         <div className="w-full max-w-[380px]">
           {/* Heading */}
           <div className="mb-8">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
               Sign in to your account
             </h2>
             <p className="text-slate-500 text-sm font-medium leading-relaxed">
-              Use your Facebook account — the same one connected to your WhatsApp Business and Meta Ads.
+              Use your Facebook account — the same one connected to your WhatsApp Business account.
             </p>
           </div>
 

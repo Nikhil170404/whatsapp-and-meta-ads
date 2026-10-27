@@ -182,11 +182,11 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="mb-4 shrink-0">
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Messages</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Messages</h1>
         <p className="text-slate-500 font-medium mt-1 text-sm">View and reply to WhatsApp conversations.</p>
       </div>
 
-      <div className="flex-1 bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden flex min-h-0">
+      <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex min-h-0">
         {/* Conversation list */}
         <div className={`w-full md:w-80 lg:w-96 border-r border-slate-100 flex flex-col shrink-0 ${showMobileChat ? "hidden md:flex" : "flex"}`}>
           <div className="p-4 border-b border-slate-100 shrink-0">
@@ -301,7 +301,7 @@ export function MessagesClient({ initialMessages, teamMembers = [] }: { initialM
                     {showAssignDropdown && (
                       <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-2xl border border-slate-100 shadow-lg z-20 overflow-hidden">
                         <div className="px-3 py-2 border-b border-slate-50">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Assign to agent</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Assign to agent</p>
                         </div>
                         <div className="py-1 max-h-48 overflow-y-auto">
                           {teamMembers.map((member) => (

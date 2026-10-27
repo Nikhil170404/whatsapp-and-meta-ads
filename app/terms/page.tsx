@@ -4,7 +4,7 @@ import { Footer } from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Terms of Service | ReplyKaro",
-  description: "ReplyKaro Terms of Service — the rules and conditions for using our WhatsApp and Meta Ads automation platform.",
+  description: "ReplyKaro Terms of Service — the rules and conditions for using our WhatsApp automation platform.",
   alternates: { canonical: "https://www.replykaro.in/terms" },
 };
 
@@ -26,7 +26,7 @@ export default function TermsOfServicePage() {
 
               <h2>2. Description of Service</h2>
               <p>
-                ReplyKaro provides WhatsApp Business API and Meta Ads automation tools. We facilitate the connection between your business and Meta's official APIs to allow for automated messaging workflows.
+                ReplyKaro provides WhatsApp Business automation tools. We facilitate the connection between your business and Meta's official WhatsApp Cloud API to allow for automated messaging workflows.
               </p>
 
               <h2>3. Meta Platforms Compliance</h2>

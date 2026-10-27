@@ -10,6 +10,7 @@ import {
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyMetaSignature } from "@/lib/meta-signature";
+import { recordConsent } from "@/lib/consent";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
 // window after the customer's last inbound message. Outside it, use templates.
@@ -206,6 +207,12 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
         .from("wa_messages")
         .update(update)
         .eq("wa_message_id", status.id);
+
+      // Keep broadcast delivered/read/failed counters in step with receipts.
+      await supabase.rpc("apply_broadcast_receipt", {
+        p_wa_message_id: status.id,
+        p_status: status.status,
+      });
     }
   }
 
@@ -220,7 +227,7 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       message.type === "text" ? message.text.body : `[${message.type} message]`;
 
     // Find the connected user by phone_number_id
-    const cols = "user_id, access_token, token_expires_at, billing_type, quality_paused_at";
+    const cols = "user_id, access_token, token_expires_at, quality_paused_at";
     let { data: connection } = await supabase
       .from("wa_connections")
       .select(cols)
@@ -291,15 +298,13 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       );
 
     if (isOptOut) {
-      await supabase.from("wa_contacts").upsert(
-        {
-          user_id: connection.user_id,
-          phone_number: contact,
-          is_opted_in: false,
-          opted_out_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id,phone_number" }
-      );
+      await recordConsent(supabase, {
+        userId: connection.user_id,
+        phoneNumber: contact,
+        action: "withdrawn",
+        source: "whatsapp_keyword",
+        evidence: { keyword: content.slice(0, 40), wa_message_id: message.id },
+      });
       try {
         await sendTextMessage(
           phoneNumberId,
@@ -314,20 +319,18 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
     // ── Opt-in / START handling ──────────────────────────────────────────────
     if (
       message.type === "text" &&
-      ["start", "subscribe", "opt in", "optin", "yes"].includes(
+      ["start", "subscribe", "opt in", "optin"].includes(
         content.toLowerCase().trim()
       )
     ) {
-      await supabase.from("wa_contacts").upsert(
-        {
-          user_id: connection.user_id,
-          phone_number: contact,
-          is_opted_in: true,
-          opted_in_at: new Date().toISOString(),
-          opted_out_at: null,
-        },
-        { onConflict: "user_id,phone_number" }
-      );
+      await recordConsent(supabase, {
+        userId: connection.user_id,
+        phoneNumber: contact,
+        action: "granted",
+        source: "whatsapp_keyword",
+        purposes: ["service_messages", "marketing_messages"],
+        evidence: { keyword: content.slice(0, 40), wa_message_id: message.id },
+      });
     }
 
     // ── Record opt-in on first contact ──────────────────────────────────────
@@ -338,11 +341,15 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       .eq("phone_number", contact)
       .maybeSingle();
     if (existingContact && !existingContact.opted_in_at) {
-      await supabase
-        .from("wa_contacts")
-        .update({ opted_in_at: new Date().toISOString() })
-        .eq("user_id", connection.user_id)
-        .eq("phone_number", contact);
+      // Customer-initiated contact: consent for service replies only.
+      await recordConsent(supabase, {
+        userId: connection.user_id,
+        phoneNumber: contact,
+        action: "granted",
+        source: "whatsapp_first_contact",
+        purposes: ["service_messages"],
+        evidence: { wa_message_id: message.id },
+      });
     }
 
     // ── Save inbound message ─────────────────────────────────────────────────
@@ -406,26 +413,6 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
     });
 
     if (!matchedAutomation) continue;
-
-    // ── Managed billing: deduct BEFORE sending ───────────────────────────────
-    let walletNewBal: number | null = null;
-    if (connection.billing_type === "managed") {
-      const { data: deducted, error: deductErr } = await supabase.rpc(
-        "deduct_wallet_balance",
-        { p_user_id: connection.user_id, p_amount: 95 }
-      );
-      if (deductErr) {
-        await supabase
-          .from("wa_automations")
-          .update({
-            last_error:
-              "Wallet empty — top up your ReplyKaro wallet to resume auto-replies",
-          })
-          .eq("id", matchedAutomation.id);
-        continue;
-      }
-      walletNewBal = deducted as number;
-    }
 
     try {
       const msgType: string = matchedAutomation.message_type || "text";
@@ -495,16 +482,6 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
         })
         .eq("id", matchedAutomation.id);
 
-      if (connection.billing_type === "managed" && walletNewBal !== null) {
-        await supabase.from("wa_wallet_transactions").insert({
-          user_id: connection.user_id,
-          type: "debit",
-          amount_paise: 95,
-          balance_after_paise: walletNewBal,
-          description: `Auto-reply to ${contact}`,
-        });
-      }
-
       // Clear any stale connection error on success
       await supabase
         .from("wa_connections")
@@ -512,25 +489,6 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
         .eq("phone_number_id", phoneNumberId);
     } catch (error: any) {
       console.error("Failed to send WA auto-reply:", error);
-
-      // Refund managed-billing deduction — message never sent
-      if (connection.billing_type === "managed" && walletNewBal !== null) {
-        const { data: w } = await supabase
-          .from("wa_wallet")
-          .select("balance_paise, total_spent_paise")
-          .eq("user_id", connection.user_id)
-          .single();
-        if (w) {
-          await supabase
-            .from("wa_wallet")
-            .update({
-              balance_paise: (w.balance_paise as number) + 95,
-              total_spent_paise: Math.max(0, (w.total_spent_paise as number) - 95),
-              updated_at: new Date().toISOString(),
-            })
-            .eq("user_id", connection.user_id);
-        }
-      }
 
       // Parse Meta error for clean display
       let errorMsg = error?.message || "Unknown error sending reply";

@@ -367,7 +367,7 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Message Templates</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Message Templates</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">Create WhatsApp-approved templates for broadcasts and automations.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -403,13 +403,13 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
 
       {/* Upgrade gate */}
       {showUpgradeGate && (
-        <div className="bg-white rounded-[2rem] border border-violet-200 shadow-lg shadow-violet-500/5 p-6 md:p-8">
+        <div className="bg-white rounded-3xl border border-violet-200 shadow-lg shadow-violet-500/5 p-6 md:p-8">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
               <Lock className="w-6 h-6 text-violet-600" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Upgrade to create Templates</h2>
+              <h2 className="text-xl font-bold text-slate-900">Upgrade to create Templates</h2>
               <p className="text-sm text-slate-500 font-medium mt-1">Message templates require a Growth or Pro plan to submit for Meta approval.</p>
             </div>
             <button onClick={() => setShowUpgradeGate(false)} className="ml-auto p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors shrink-0">
@@ -442,10 +442,10 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
 
       {/* Template Library */}
       {showLibrary && (
-        <div className="bg-white rounded-[2rem] border border-slate-200 shadow-lg p-6 md:p-8">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-6 md:p-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-lg font-black text-slate-900">Template Library</h2>
+              <h2 className="text-lg font-bold text-slate-900">Template Library</h2>
               <p className="text-xs text-slate-400 font-medium mt-0.5">{TEMPLATE_LIBRARY.length} ready-to-use templates · {FLOW_PACKS.length} complete business flows</p>
             </div>
             <button onClick={() => setShowLibrary(false)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400">
@@ -494,14 +494,14 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
                       <pack.icon className="w-5 h-5 text-slate-700" />
                     </div>
                     <div>
-                      <p className="font-black text-slate-900 text-sm">{pack.label}</p>
+                      <p className="font-bold text-slate-900 text-sm">{pack.label}</p>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">{pack.desc}</p>
                     </div>
                   </div>
                   <div className="space-y-2">
                     {pack.steps.map((step, i) => (
                       <div key={step.label} className="flex items-center gap-3 bg-white/70 backdrop-blur-sm rounded-xl p-3">
-                        <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-black text-slate-600 shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
                           {step.step}
                         </div>
                         <div className="flex-1 min-w-0">
@@ -575,9 +575,9 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
 
       {/* Create Form */}
       {showForm && (
-        <div className="bg-white rounded-[2rem] border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
+        <div className="bg-white rounded-3xl border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-black text-slate-900">Create Template</h2>
+            <h2 className="text-lg font-bold text-slate-900">Create Template</h2>
             <button onClick={resetForm} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -686,7 +686,7 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {templates.length > 0 ? (
           templates.map((tpl) => (
-            <div key={tpl.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow">
+            <div key={tpl.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
                 <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500">
                   <FileText className="w-4 h-4" />
@@ -738,7 +738,7 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
             </div>
           ))
         ) : (
-          <div className="col-span-full p-12 md:p-16 text-center bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+          <div className="col-span-full p-12 md:p-16 text-center bg-white rounded-3xl border border-slate-100 shadow-sm">
             <div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto mb-5 text-slate-300">
               <FileText className="w-10 h-10" />
             </div>
@@ -767,10 +767,10 @@ export function TemplatesClient({ initialTemplates, planType }: { initialTemplat
       {/* Preview Modal */}
       {preview && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setPreview(null)}>
-          <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-black text-slate-900">{preview.name}</h3>
+                <h3 className="font-bold text-slate-900">{preview.name}</h3>
                 <p className="text-xs text-slate-400 font-medium">{preview.category} • {LANGUAGES.find((l) => l.value === preview.language)?.label}</p>
               </div>
               <button onClick={() => setPreview(null)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400">

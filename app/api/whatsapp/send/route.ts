@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 
     const { data: connection, error: connErr } = await supabase
       .from("wa_connections")
-      .select("phone_number_id, access_token, status, billing_type")
+      .select("phone_number_id, access_token, status")
       .eq("user_id", session.id)
       .single();
 
@@ -49,69 +49,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "WhatsApp connection is not active. Please reconnect." }, { status: 400 });
     }
 
-    if (connection.billing_type === "managed") {
-      // Atomically deduct BEFORE sending — prevents race conditions
-      const { data: newBalance, error: deductErr } = await supabase.rpc("deduct_wallet_balance", {
-        p_user_id: session.id,
-        p_amount: 95,
-      });
-
-      if (deductErr) {
-        const msg = deductErr.message || "";
-        if (msg.includes("INSUFFICIENT_BALANCE") || msg.includes("WALLET_NOT_FOUND")) {
-          return NextResponse.json({
-            error: "Insufficient wallet balance. Top up your ReplyKaro wallet to continue sending messages.",
-            code: "INSUFFICIENT_BALANCE",
-          }, { status: 402 });
-        }
-        return NextResponse.json({ error: "Wallet error. Please try again." }, { status: 500 });
-      }
-
-      try {
-        const result = await sendTextMessage(
-          connection.phone_number_id,
-          to,
-          message.trim(),
-          connection.access_token
-        );
-
-        const msgId = result?.messages?.[0]?.id ?? `local_${Date.now()}`;
-
-        await Promise.all([
-          supabase.from("wa_messages").insert({
-            user_id: session.id,
-            message_id: msgId,
-            direction: "outbound",
-            from_phone: null,
-            to_phone: to,
-            content: message.trim(),
-            status: "sent",
-          }),
-          supabase.from("wa_wallet_transactions").insert({
-            user_id: session.id,
-            type: "debit",
-            amount_paise: 95,
-            balance_after_paise: newBalance,
-            description: `Message to ${to}`,
-          }),
-        ]);
-
-        return NextResponse.json({ success: true, message_id: msgId });
-      } catch (sendErr: any) {
-        // Refund the deduction once if the send failed.
-        const { data: w } = await supabase.from("wa_wallet").select("balance_paise, total_spent_paise").eq("user_id", session.id).single();
-        if (w) {
-          await supabase.from("wa_wallet").update({
-            balance_paise: (w.balance_paise as number) + 95,
-            total_spent_paise: Math.max(0, (w.total_spent_paise as number) - 95),
-            updated_at: new Date().toISOString(),
-          }).eq("user_id", session.id);
-        }
-        throw sendErr;
-      }
-    }
-
-    // Direct billing — no wallet check
+    // Meta bills the business directly for message fees; ReplyKaro does not meter sends.
     const result = await sendTextMessage(
       connection.phone_number_id,
       to,
@@ -123,6 +61,7 @@ export async function POST(req: Request) {
     await supabase.from("wa_messages").insert({
       user_id: session.id,
       message_id: msgId,
+      wa_message_id: msgId,
       direction: "outbound",
       from_phone: null,
       to_phone: to,

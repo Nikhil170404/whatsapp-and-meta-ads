@@ -54,7 +54,7 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Analytics</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Analytics</h1>
         <p className="text-slate-500 font-medium mt-1 text-sm">Your WhatsApp performance over the last 30 days.</p>
       </div>
 
@@ -70,7 +70,7 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
             <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center mb-3`}>
               <stat.icon className={`w-5 h-5 ${stat.color}`} />
             </div>
-            <p className="text-2xl md:text-3xl font-black text-slate-900">{stat.value.toLocaleString()}</p>
+            <p className="text-2xl md:text-3xl font-bold text-slate-900">{stat.value.toLocaleString()}</p>
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mt-0.5">{stat.label}</p>
             <p className="text-xs text-slate-400 mt-1">{stat.sub}</p>
           </div>
@@ -78,10 +78,10 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
       </div>
 
       {/* 7-day message chart */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 p-5 md:p-6">
+      <div className="bg-white rounded-3xl border border-slate-100 p-5 md:p-6">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-base font-black text-slate-900">Messages This Week</h2>
+            <h2 className="text-base font-bold text-slate-900">Messages This Week</h2>
             <p className="text-xs text-slate-400 font-medium mt-0.5">Daily sent vs received</p>
           </div>
           <div className="flex items-center gap-4 text-xs font-bold">
@@ -123,8 +123,8 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
       {/* Two column: automations + contacts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Automation leaderboard */}
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-5">
-          <h2 className="text-base font-black text-slate-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-3xl border border-slate-100 p-5">
+          <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Zap className="w-4 h-4 text-violet-500" /> Top Automations
           </h2>
           {automations.length > 0 ? (
@@ -137,10 +137,10 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-slate-700 truncate max-w-[70%]">{auto.name}</p>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
                           {auto.is_active ? "ON" : "OFF"}
                         </span>
-                        <span className="text-xs font-black text-slate-900">{auto.sent_count ?? 0}</span>
+                        <span className="text-xs font-bold text-slate-900">{auto.sent_count ?? 0}</span>
                       </div>
                     </div>
                     <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -156,15 +156,15 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
         </div>
 
         {/* Contacts summary */}
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-5">
-          <h2 className="text-base font-black text-slate-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-3xl border border-slate-100 p-5">
+          <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Users className="w-4 h-4 text-blue-500" /> Audience
           </h2>
           <div className="flex flex-col items-center justify-center py-6">
             <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-3">
               <Users className="w-10 h-10 text-blue-400" />
             </div>
-            <p className="text-4xl font-black text-slate-900">{contactCount.toLocaleString()}</p>
+            <p className="text-4xl font-bold text-slate-900">{contactCount.toLocaleString()}</p>
             <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-wider">Total Contacts</p>
             <a href="/wa/contacts" className="mt-4 text-xs font-bold text-blue-500 hover:underline flex items-center gap-1">
               Manage contacts →
@@ -175,14 +175,14 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
 
       {/* Broadcast performance */}
       {broadcasts.length > 0 && (
-        <div className="bg-white rounded-[2rem] border border-slate-100 p-5 md:p-6">
-          <h2 className="text-base font-black text-slate-900 mb-4 flex items-center gap-2">
+        <div className="bg-white rounded-3xl border border-slate-100 p-5 md:p-6">
+          <h2 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Send className="w-4 h-4 text-blue-500" /> Recent Broadcasts
           </h2>
           <div className="overflow-x-auto -mx-5 px-5">
             <table className="w-full min-w-[500px]">
               <thead>
-                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
+                <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50">
                   <th className="text-left pb-3 pr-4">Campaign</th>
                   <th className="text-right pb-3 px-2">Sent</th>
                   <th className="text-right pb-3 px-2">Delivered</th>
@@ -200,13 +200,13 @@ export function AnalyticsClient({ allMessages, recentMessages, automations, cont
                         <p className="text-sm font-bold text-slate-900 truncate max-w-[160px]">{bc.name}</p>
                         <p className="text-[10px] text-slate-400 font-medium">{new Date(bc.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</p>
                       </td>
-                      <td className="text-right py-3 px-2 text-sm font-black text-slate-900">{bc.sent_count ?? 0}</td>
+                      <td className="text-right py-3 px-2 text-sm font-bold text-slate-900">{bc.sent_count ?? 0}</td>
                       <td className="text-right py-3 px-2">
-                        <p className="text-sm font-black text-[#25D366]">{bc.delivered_count ?? 0}</p>
+                        <p className="text-sm font-bold text-[#25D366]">{bc.delivered_count ?? 0}</p>
                         <p className="text-[10px] text-slate-400">{deliveryRate}%</p>
                       </td>
                       <td className="text-right py-3 px-2">
-                        <p className="text-sm font-black text-blue-600">{bc.read_count ?? 0}</p>
+                        <p className="text-sm font-bold text-blue-600">{bc.read_count ?? 0}</p>
                         <p className="text-[10px] text-slate-400">{readRate}%</p>
                       </td>
                       <td className="text-right py-3">

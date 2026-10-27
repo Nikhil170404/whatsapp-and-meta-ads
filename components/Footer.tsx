@@ -1,21 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { MessageSquare, BarChart3, ShieldCheck, ExternalLink } from "lucide-react";
+import { MessageSquare, ShieldCheck, ExternalLink } from "lucide-react";
 
 const LINKS = {
   products: [
-    { label: "WhatsApp Automation", href: "/whatsapp" },
-    { label: "Meta Ads Engine", href: "/meta-ads" },
+    { label: "How it works", href: "/#how-it-works" },
     { label: "Pricing", href: "/#pricing" },
     { label: "Sign in", href: "/signin" },
   ],
   features: [
-    { label: "Keyword Auto-Reply", href: "/whatsapp#features" },
-    { label: "Broadcast Templates", href: "/whatsapp#features" },
-    { label: "Contact CRM", href: "/whatsapp#features" },
-    { label: "CTWA Campaigns", href: "/meta-ads" },
-    { label: "Meta Ads Automation", href: "/meta-ads" },
+    { label: "Keyword Auto-Reply", href: "/#features" },
+    { label: "Broadcast Templates", href: "/#features" },
+    { label: "Shared Inbox & CRM", href: "/#features" },
+    { label: "Consent Tracking", href: "/#features" },
   ],
   support: [
     { label: "hello@replykaro.in", href: "mailto:hello@replykaro.in" },
@@ -26,6 +24,7 @@ const LINKS = {
     { label: "Privacy Policy", href: "/privacy" },
     { label: "Terms of Service", href: "/terms" },
     { label: "Data Deletion", href: "/data-deletion" },
+    { label: "Data Rights (DPDP)", href: "/data-request" },
   ],
 };
 
@@ -46,11 +45,11 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-[13px] text-slate-400 leading-relaxed max-w-[200px]">
-              WhatsApp Business & Meta Ads automation — built for Indian businesses.
+              WhatsApp Business automation for businesses everywhere.
             </p>
             <div className="flex items-center gap-2 text-[11px] text-emerald-600 font-medium">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-              Meta Official API Partner
+              Official WhatsApp Cloud API
             </div>
           </div>
 

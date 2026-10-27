@@ -3,7 +3,8 @@ import { MetadataRoute } from "next";
 const BASE_URL = "https://www.replykaro.in";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date().toISOString();
+  // Bump when page content changes materially; a fresh date on every request tells crawlers nothing.
+  const now = "2026-10-01T00:00:00.000Z";
 
   return [
     {
@@ -11,18 +12,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
-    },
-    {
-      url: `${BASE_URL}/whatsapp`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${BASE_URL}/meta-ads`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
     },
     {
       url: `${BASE_URL}/signin`,
@@ -46,6 +35,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${BASE_URL}/data-deletion`,
       lastModified: now,
       changeFrequency: "monthly",
+      priority: 0.2,
+    },
+    {
+      url: `${BASE_URL}/data-request`,
+      lastModified: now,
+      changeFrequency: "yearly",
       priority: 0.2,
     },
   ];

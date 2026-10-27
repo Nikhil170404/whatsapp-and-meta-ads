@@ -207,7 +207,7 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Website Integration</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Website Integration</h1>
         <p className="text-slate-500 font-medium mt-1 text-sm">Connect your website, app, or backend to WhatsApp in minutes.</p>
       </div>
 
@@ -219,13 +219,13 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
       )}
 
       {/* API Key Card */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 md:p-8">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 rounded-2xl bg-slate-900 flex items-center justify-center">
             <Code2 className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-slate-900">Your API Key</h2>
+            <h2 className="text-lg font-bold text-slate-900">Your API Key</h2>
             <p className="text-xs text-slate-400 font-medium">Keep this secret — treat it like a password</p>
           </div>
         </div>
@@ -276,8 +276,8 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
       </div>
 
       {/* How it works */}
-      <div className="bg-gradient-to-br from-[#25D366]/5 to-emerald-50 border border-[#25D366]/20 rounded-[2rem] p-6 md:p-8">
-        <h2 className="text-base font-black text-slate-900 mb-4">How it works</h2>
+      <div className="bg-gradient-to-br from-[#25D366]/5 to-emerald-50 border border-[#25D366]/20 rounded-3xl p-6 md:p-8">
+        <h2 className="text-base font-bold text-slate-900 mb-4">How it works</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {[
             { step: "1", title: "Generate API key", body: "Click \"Generate API Key\" above to get your unique key." },
@@ -285,7 +285,7 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
             { step: "3", title: "Messages sent!", body: "ReplyKaro looks up your WhatsApp connection and sends the message instantly." },
           ].map(({ step, title, body }) => (
             <div key={step} className="flex gap-3">
-              <div className="w-7 h-7 rounded-full bg-[#25D366] text-white text-xs font-black flex items-center justify-center shrink-0 mt-0.5">{step}</div>
+              <div className="w-7 h-7 rounded-full bg-[#25D366] text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{step}</div>
               <div>
                 <p className="text-sm font-bold text-slate-900">{title}</p>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">{body}</p>
@@ -296,8 +296,8 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
       </div>
 
       {/* API Reference */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 md:p-8">
-        <h2 className="text-base font-black text-slate-900 mb-1">API Reference</h2>
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
+        <h2 className="text-base font-bold text-slate-900 mb-1">API Reference</h2>
         <p className="text-xs text-slate-400 font-medium mb-5">
           <span className="bg-slate-100 px-2 py-0.5 rounded-lg font-mono text-slate-600">POST {BASE_URL}/api/v1/send</span>
         </p>
@@ -334,7 +334,7 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
 
         {/* Response */}
         <div className="mt-6">
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Response</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Response</p>
           <CodeBlock code={`// Success (200)
 { "success": true, "message_id": "wamid.HBgNOTkxNzA..." }
 
@@ -344,8 +344,8 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
       </div>
 
       {/* Use case examples */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 md:p-8">
-        <h2 className="text-base font-black text-slate-900 mb-5">Common Use Cases</h2>
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
+        <h2 className="text-base font-bold text-slate-900 mb-5">Common Use Cases</h2>
         <div className="flex gap-2 flex-wrap mb-5">
           {USE_CASES.map((uc, i) => (
             <button
@@ -365,14 +365,14 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
       </div>
 
       {/* Webhook guide */}
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6 md:p-8">
-        <h2 className="text-base font-black text-slate-900 mb-2">Webhook (Incoming Messages)</h2>
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 md:p-8">
+        <h2 className="text-base font-bold text-slate-900 mb-2">Webhook (Incoming Messages)</h2>
         <p className="text-sm text-slate-500 font-medium mb-5">
           To receive incoming WhatsApp messages on your server, configure a webhook URL in your Meta App.
         </p>
         <div className="space-y-4">
           <div className="bg-slate-50 rounded-2xl p-4">
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Your Webhook URL</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Your Webhook URL</p>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-sm font-mono text-slate-700">{BASE_URL}/api/webhooks/whatsapp</code>
               <button
@@ -385,19 +385,19 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
           </div>
           <ol className="space-y-3 text-sm text-slate-600 font-medium">
             <li className="flex gap-3">
-              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
+              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
               <span>Go to <strong>Meta Developer Dashboard</strong> → Your App → WhatsApp → Configuration</span>
             </li>
             <li className="flex gap-3">
-              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">2</span>
+              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
               <span>Set the Callback URL to the webhook URL above and Verify Token to your token from Connect page</span>
             </li>
             <li className="flex gap-3">
-              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
+              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
               <span>Subscribe to <strong>messages</strong> and <strong>message_deliveries</strong> fields</span>
             </li>
             <li className="flex gap-3">
-              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">4</span>
+              <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
               <span>Click Verify & Save — ReplyKaro's automation engine will now process incoming messages</span>
             </li>
           </ol>
@@ -415,23 +415,23 @@ export function IntegrateClient({ initialKey, lastUsed }: { initialKey: string |
 
       {/* Meta Policy Compliance Notice */}
       <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
-        <p className="text-sm font-black text-blue-900">Meta WhatsApp Messaging Policy — Required for API Use</p>
+        <p className="text-sm font-bold text-blue-900">Meta WhatsApp Messaging Policy — Required for API Use</p>
         <div className="space-y-2 text-xs text-blue-800 font-medium">
           <p>
-            <span className="font-black">1. Opt-in required.</span> You must obtain explicit consent from each phone number before sending any WhatsApp message via this API.
+            <span className="font-bold">1. Opt-in required.</span> You must obtain explicit consent from each phone number before sending any WhatsApp message via this API.
             Add a WhatsApp opt-in checkbox on your website, order form, or sign-up page. Store the consent timestamp.
           </p>
           <p>
-            <span className="font-black">2. Templates only for outbound messages.</span> If you are initiating a conversation (the customer has not messaged you in the last 24 hours), you must use an approved Meta template. Sending free-text outside the 24-hour window will be rejected by Meta.
+            <span className="font-bold">2. Templates only for outbound messages.</span> If you are initiating a conversation (the customer has not messaged you in the last 24 hours), you must use an approved Meta template. Sending free-text outside the 24-hour window will be rejected by Meta.
           </p>
           <p>
-            <span className="font-black">3. Honour opt-outs.</span> If a customer replies <span className="font-mono bg-blue-100 px-1 rounded">STOP</span>, you must never message them again until they re-subscribe. ReplyKaro automatically blocks opted-out contacts from receiving broadcasts.
+            <span className="font-bold">3. Honour opt-outs.</span> If a customer replies <span className="font-mono bg-blue-100 px-1 rounded">STOP</span>, you must never message them again until they re-subscribe. ReplyKaro automatically blocks opted-out contacts from receiving broadcasts.
           </p>
           <p>
-            <span className="font-black">4. No prohibited content.</span> Do not send spam, adult content, weapons, gambling promotions, or misleading offers. Your account will be banned by Meta if reports exceed quality thresholds.
+            <span className="font-bold">4. No prohibited content.</span> Do not send spam, adult content, weapons, gambling promotions, or misleading offers. Your account will be banned by Meta if reports exceed quality thresholds.
           </p>
           <p>
-            <span className="font-black">5. Daily limits.</span> New numbers are limited to 1,000 unique recipients per day (Tier 1). This limit is enforced by Meta, not by ReplyKaro.
+            <span className="font-bold">5. Daily limits.</span> New numbers are limited to 1,000 unique recipients per day (Tier 1). This limit is enforced by Meta, not by ReplyKaro.
           </p>
         </div>
         <a

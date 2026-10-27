@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { MetaBillingCard } from "@/components/wa-dashboard/MetaBillingCard";
 import { Crown, CheckCircle2, Check, Loader2, Zap, Star, Sparkles, TrendingUp, IndianRupee, AlertCircle } from "lucide-react";
 
 interface Plan {
@@ -55,8 +56,7 @@ const PLANS: Plan[] = [
       "Unlimited Contacts",
       "Template Broadcasts",
       "Contact CRM + Labels",
-      "Meta Ads Sync",
-      "Welcome Message Trigger",
+            "Welcome Message Trigger",
       "Email Support (48h)",
     ],
   },
@@ -77,7 +77,7 @@ const PLANS: Plan[] = [
       "Unlimited Contacts",
       "Priority Broadcast Queue",
       "Advanced CRM + Segments",
-      "Full Meta Ads Automation",
+      "Advanced CRM + Segments",
       "Detailed Analytics",
       "Priority Support (12h)",
     ],
@@ -178,20 +178,22 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Billing & Plans</h1>
-        <p className="text-slate-500 font-medium mt-1 text-sm">Upgrade to send more messages and unlock all features.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Billing & Plans</h1>
+        <p className="text-slate-500 font-medium mt-1 text-sm">Your plan covers the ReplyKaro software. WhatsApp message fees are paid to Meta.</p>
       </div>
 
+      <MetaBillingCard />
+
       {/* Current plan banner */}
-      <div className="bg-gradient-to-br from-[#25D366] to-[#1DA851] rounded-[2rem] p-6 md:p-8 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#25D366] to-[#1DA851] rounded-3xl p-6 md:p-8 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="relative z-10 flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Crown className="w-4 h-4" />
-              <span className="text-xs font-black uppercase tracking-widest text-white/80">Current Plan</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-white/80">Current Plan</span>
             </div>
-            <h2 className="text-3xl font-black mb-1 capitalize">{currentPlan} Plan</h2>
+            <h2 className="text-3xl font-bold mb-1 capitalize">{currentPlan} Plan</h2>
             <p className="text-white/70 text-sm font-medium">
               {currentPlan === "free" ? "Upgrade anytime — no contracts" : "Your subscription is active."}
             </p>
@@ -199,7 +201,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
           {currentPlan === "free" && !isInternational && (
             <div className="shrink-0 bg-white/10 border border-white/20 rounded-2xl p-4 text-center">
               <p className="text-white/60 text-xs font-bold uppercase tracking-wider mb-1">Competitors charge</p>
-              <p className="text-white font-black text-lg">₹2,499–₹4,999</p>
+              <p className="text-white font-bold text-lg">₹2,499–₹4,999</p>
               <p className="text-white/80 text-xs font-medium">We charge ₹999</p>
             </div>
           )}
@@ -219,7 +221,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
           className={`px-5 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${billing === "yearly" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:text-slate-700"}`}
         >
           Yearly
-          <span className="text-[10px] px-2 py-0.5 bg-[#25D366] text-white rounded-full font-black">Save 20%</span>
+          <span className="text-[10px] px-2 py-0.5 bg-[#25D366] text-white rounded-full font-bold">Save 20%</span>
         </button>
       </div>
 
@@ -242,7 +244,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
           return (
             <div
               key={plan.key}
-              className={`relative rounded-[2rem] p-6 border-2 transition-all ${plan.popular
+              className={`relative rounded-3xl p-6 border-2 transition-all ${plan.popular
                   ? "border-[#25D366] bg-white shadow-xl shadow-[#25D366]/10"
                   : isCurrent
                     ? "border-[#25D366]/30 bg-[#25D366]/5"
@@ -250,17 +252,17 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
                 }`}
             >
               {plan.badge && (
-                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-lg ${plan.popular ? "bg-[#25D366] shadow-[#25D366]/20" : "bg-slate-700"
+                <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-white text-[10px] font-bold uppercase tracking-wider rounded-full shadow-lg ${plan.popular ? "bg-[#25D366] shadow-[#25D366]/20" : "bg-slate-700"
                   }`}>
                   {isCurrent ? <><Check className="w-3 h-3 inline mr-1" />Active</> : plan.badge}
                 </div>
               )}
 
-              <h3 className="text-base font-black text-slate-900 mb-0.5">{plan.name}</h3>
+              <h3 className="text-base font-bold text-slate-900 mb-0.5">{plan.name}</h3>
               <p className="text-xs text-slate-500 mb-5">{plan.description}</p>
 
               <div className="flex items-baseline gap-1 mb-5">
-                <span className="text-4xl font-black text-slate-900">{currencySymbol}{price}</span>
+                <span className="text-4xl font-bold text-slate-900">{currencySymbol}{price}</span>
                 <span className="text-slate-400 font-bold text-sm">/mo</span>
                 {billing === "yearly" && plan.key !== "free" && (
                   <span className="text-xs text-[#25D366] font-bold ml-1">billed yearly</span>
@@ -300,10 +302,10 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
       </div>
 
       {/* Value proposition vs competitors */}
-      <div className="bg-gradient-to-r from-slate-50 to-[#25D366]/5 rounded-[2rem] border border-[#25D366]/10 p-6 md:p-8">
+      <div className="bg-gradient-to-r from-slate-50 to-[#25D366]/5 rounded-3xl border border-[#25D366]/10 p-6 md:p-8">
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-[#25D366]" />
-          <h2 className="text-base font-black text-slate-900">Why businesses choose ReplyKaro</h2>
+          <h2 className="text-base font-bold text-slate-900">Why businesses choose ReplyKaro</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
@@ -315,7 +317,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
               <div className="w-8 h-8 bg-[#25D366]/10 rounded-xl flex items-center justify-center mb-3">
                 <Star className="w-4 h-4 text-[#25D366]" />
               </div>
-              <h3 className="text-sm font-black text-slate-900 mb-1">{item.title}</h3>
+              <h3 className="text-sm font-bold text-slate-900 mb-1">{item.title}</h3>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">{item.desc}</p>
             </div>
           ))}
@@ -323,13 +325,13 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
       </div>
 
       {/* Meta WhatsApp conversation charges notice */}
-      <div className="bg-amber-50 border border-amber-100 rounded-[2rem] p-6 md:p-8">
+      <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 md:p-8">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center shrink-0 mt-0.5">
             <AlertCircle className="w-4 h-4 text-amber-600" />
           </div>
           <div>
-            <h3 className="text-sm font-black text-amber-900 mb-1">Meta WhatsApp Conversation Charges (Separate)</h3>
+            <h3 className="text-sm font-bold text-amber-900 mb-1">Meta WhatsApp Conversation Charges (Separate)</h3>
             <p className="text-xs text-amber-700 font-medium leading-relaxed">
               WhatsApp charges per-message fees directly to your Meta account — these are <strong>separate</strong> from your ReplyKaro subscription. ReplyKaro is your automation platform; Meta is your messaging carrier.
             </p>
@@ -342,8 +344,8 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
             { type: "Service", price: "Free*", desc: "Replies within 24h window", color: "bg-green-50 border-green-100 text-green-700" },
           ].map((item) => (
             <div key={item.type} className={`rounded-xl p-4 border ${item.color}`}>
-              <p className="text-[10px] font-black uppercase tracking-wider opacity-70 mb-1">{item.type}</p>
-              <p className="text-xl font-black mb-0.5">{item.price}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">{item.type}</p>
+              <p className="text-xl font-bold mb-0.5">{item.price}</p>
               <p className="text-[10px] font-medium opacity-80">{item.desc}</p>
             </div>
           ))}
@@ -353,19 +355,19 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
 
       {/* Owner-only: Revenue Profit Calculator */}
       {isOwner && !isInternational && (
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-6 md:p-8 text-white">
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 md:p-8 text-white">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-[#25D366]/20 rounded-2xl flex items-center justify-center">
               <TrendingUp className="w-5 h-5 text-[#25D366]" />
             </div>
             <div>
-              <h2 className="text-base font-black">ReplyKaro Revenue Projections</h2>
+              <h2 className="text-base font-bold">ReplyKaro Revenue Projections</h2>
               <p className="text-xs text-slate-400 font-medium">Your SaaS profit at different subscriber counts</p>
             </div>
           </div>
 
           <div className="mb-5 p-4 bg-[#25D366]/10 rounded-2xl border border-[#25D366]/20">
-            <p className="text-xs text-[#25D366] font-black mb-1">Vercel + Supabase + Upstash = FREE for first 50–100 customers</p>
+            <p className="text-xs text-[#25D366] font-bold mb-1">Vercel + Supabase + Upstash = FREE for first 50–100 customers</p>
             <p className="text-xs text-slate-300 font-medium leading-relaxed">
               Avg ₹1,200/customer (Growth ₹999 + Pro ₹1,999 mix) · Razorpay 3.5% · No team salaries (you build it)
             </p>
@@ -374,7 +376,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
           {/* Table header */}
           <div className="hidden md:grid grid-cols-6 gap-2 px-4 mb-2">
             {["Customers", "Revenue/mo", "−Razorpay", "−Infra", "Net Profit/mo", "Annual Profit"].map((h) => (
-              <p key={h} className="text-[10px] font-black uppercase tracking-wider text-slate-400">{h}</p>
+              <p key={h} className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{h}</p>
             ))}
           </div>
 
@@ -386,7 +388,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
               >
                 <div>
                   <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Customers</p>
-                  <p className="text-lg font-black">{row.customers}</p>
+                  <p className="text-lg font-bold">{row.customers}</p>
                   <p className="text-[10px] text-[#25D366] font-bold">{row.infraNote}</p>
                 </div>
                 <div>
@@ -403,11 +405,11 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Net/mo</p>
-                  <p className="text-sm font-black text-[#25D366]">+{formatINR(row.profit)}</p>
+                  <p className="text-sm font-bold text-[#25D366]">+{formatINR(row.profit)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 md:hidden font-bold mb-0.5">Annual</p>
-                  <p className="text-sm font-black text-[#25D366]">+{formatINR(row.annual)}</p>
+                  <p className="text-sm font-bold text-[#25D366]">+{formatINR(row.annual)}</p>
                 </div>
               </div>
             ))}
@@ -415,18 +417,18 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
 
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">First customer</p>
-              <p className="text-2xl font-black text-[#25D366]">Day 1</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">First customer</p>
+              <p className="text-2xl font-bold text-[#25D366]">Day 1</p>
               <p className="text-xs text-slate-400 font-medium">already profitable</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 50 customers</p>
-              <p className="text-2xl font-black text-[#25D366]">₹57K/mo</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">At 50 customers</p>
+              <p className="text-2xl font-bold text-[#25D366]">₹57K/mo</p>
               <p className="text-xs text-slate-400 font-medium">₹6.8L/year profit</p>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">At 500 customers</p>
-              <p className="text-2xl font-black text-[#25D366]">₹5.4L/mo</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">At 500 customers</p>
+              <p className="text-2xl font-bold text-[#25D366]">₹5.4L/mo</p>
               <p className="text-xs text-slate-400 font-medium">₹65L/year profit</p>
             </div>
           </div>

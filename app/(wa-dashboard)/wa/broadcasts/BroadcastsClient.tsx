@@ -213,7 +213,7 @@ export function BroadcastsClient({
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Broadcasts</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Broadcasts</h1>
           <p className="text-slate-500 font-medium mt-1 text-sm">Send a template message to multiple contacts at once.</p>
         </div>
         <button
@@ -227,13 +227,13 @@ export function BroadcastsClient({
 
       {/* Upgrade gate */}
       {showUpgradeGate && (
-        <div className="bg-white rounded-[2rem] border border-violet-200 shadow-lg shadow-violet-500/5 p-6 md:p-8">
+        <div className="bg-white rounded-3xl border border-violet-200 shadow-lg shadow-violet-500/5 p-6 md:p-8">
           <div className="flex items-start gap-4 mb-5">
             <div className="w-12 h-12 rounded-2xl bg-violet-100 flex items-center justify-center shrink-0">
               <Lock className="w-6 h-6 text-violet-600" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Upgrade to send Broadcasts</h2>
+              <h2 className="text-xl font-bold text-slate-900">Upgrade to send Broadcasts</h2>
               <p className="text-sm text-slate-500 font-medium mt-1">Broadcasts are available on the Growth and Pro plans.</p>
             </div>
             <button onClick={() => setShowUpgradeGate(false)} className="ml-auto p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors shrink-0">
@@ -280,12 +280,12 @@ export function BroadcastsClient({
 
       {/* Create Form — Step-based wizard */}
       {showForm && (
-        <div className="bg-white rounded-[2rem] border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
+        <div className="bg-white rounded-3xl border border-[#25D366]/20 shadow-lg shadow-[#25D366]/5 p-6 md:p-8">
           {/* Step indicator */}
           <div className="flex items-center gap-2 mb-6">
             {[1, 2, 3].map((s) => (
               <div key={s} className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black transition-colors ${step >= s ? "bg-[#25D366] text-white" : "bg-slate-100 text-slate-400"}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${step >= s ? "bg-[#25D366] text-white" : "bg-slate-100 text-slate-400"}`}>
                   {step > s ? <CheckCircle2 className="w-4 h-4" /> : s}
                 </div>
                 <span className={`text-xs font-bold hidden sm:block ${step >= s ? "text-slate-700" : "text-slate-400"}`}>
@@ -302,7 +302,7 @@ export function BroadcastsClient({
           {/* Step 1: Name + Template */}
           {step === 1 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-slate-900">Set up broadcast</h2>
+              <h2 className="text-lg font-bold text-slate-900">Set up broadcast</h2>
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Broadcast Name</label>
@@ -410,7 +410,7 @@ export function BroadcastsClient({
           {step === 2 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-black text-slate-900">Choose recipients</h2>
+                <h2 className="text-lg font-bold text-slate-900">Choose recipients</h2>
                 <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
                   {form.contact_ids.length} selected
                 </span>
@@ -506,7 +506,7 @@ export function BroadcastsClient({
           {/* Step 3: Confirm */}
           {step === 3 && (
             <div className="space-y-5">
-              <h2 className="text-lg font-black text-slate-900">Review & Send</h2>
+              <h2 className="text-lg font-bold text-slate-900">Review & Send</h2>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
@@ -571,7 +571,7 @@ export function BroadcastsClient({
       <div className="space-y-4">
         {broadcasts.length > 0 ? (
           broadcasts.map((bc) => (
-            <div key={bc.id} className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5 md:p-6 hover:shadow-md transition-shadow">
+            <div key={bc.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 md:p-6 hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-4 gap-3">
                 <div className="min-w-0">
                   <h3 className="text-base font-bold text-slate-900 truncate">{bc.name}</h3>
@@ -629,7 +629,7 @@ export function BroadcastsClient({
                 ].map((stat) => (
                   <div key={stat.label} className="bg-slate-50 rounded-xl p-3 text-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{stat.label}</p>
-                    <p className={`text-lg font-black ${stat.color}`}>{stat.value}</p>
+                    <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
                   </div>
                 ))}
               </div>
@@ -644,7 +644,7 @@ export function BroadcastsClient({
             </div>
           ))
         ) : (
-          <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-12 md:p-16 text-center">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-12 md:p-16 text-center">
             <div className="w-20 h-20 rounded-3xl bg-slate-50 flex items-center justify-center mx-auto mb-5 text-slate-300">
               <Send className="w-10 h-10" />
             </div>

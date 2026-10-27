@@ -50,6 +50,13 @@ const STARTER_TEMPLATES = [
   { id: "test_drive", category: "automotive", label: "Test Drive", trigger_keyword: "testdrive", reply_message: "Experience your dream car! 🚗✨\n\nBook a FREE test drive:\n1. Car model you're interested in\n2. Preferred date & time\n3. Your name & location\n\nWe can also bring the car to your doorstep! 🏠", color: "bg-green-50 border-green-200 text-green-700" },
 ];
 
+// Installed first by every flow pack. Tells new contacts how to opt out, which
+// keeps the account in line with WhatsApp policy and India's DPDP Act.
+const WELCOME_FLOW = {
+  name: "Welcome message",
+  reply_message: "Hi, thanks for messaging us! 👋 Tell us how we can help and we will reply shortly.\n\nWe only use your number to respond to you. Reply STOP at any time to opt out.",
+};
+
 interface ButtonOption { id: string; title: string; }
 interface ButtonOptions { buttons: ButtonOption[]; filename?: string; }
 
@@ -461,6 +468,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
   const [activatingTemplate, setActivatingTemplate] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [templateCategory, setTemplateCategory] = useState("general");
+  const [installingPack, setInstallingPack] = useState(false);
   const [form, setForm] = useState<AutomationForm>(emptyForm);
 
   const resetForm = () => { setForm(emptyForm); setError(null); setShowForm(false); setEditingId(null); };
@@ -486,6 +494,39 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
       setError(e.message);
     } finally {
       setActivatingTemplate(null);
+    }
+  };
+
+  // Installs the welcome message plus every template in the selected industry,
+  // skipping anything already present. Stops at the first error (e.g. plan limit).
+  const installPack = async () => {
+    setInstallingPack(true);
+    setError(null);
+    const created: Automation[] = [];
+    try {
+      const queue: Record<string, string>[] = [];
+      if (!automations.some(a => a.trigger_type === "welcome")) {
+        queue.push({ name: WELCOME_FLOW.name, trigger_type: "welcome", reply_message: WELCOME_FLOW.reply_message, message_type: "text" });
+      }
+      for (const t of STARTER_TEMPLATES.filter(t => t.category === templateCategory)) {
+        if (automations.some(a => a.trigger_keyword === t.trigger_keyword)) continue;
+        queue.push({ name: t.label, trigger_type: "keyword", trigger_keyword: t.trigger_keyword, reply_message: t.reply_message, message_type: "text" });
+      }
+      for (const body of queue) {
+        const res = await fetch("/api/whatsapp/automations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        created.push(data.automation);
+      }
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      if (created.length) setAutomations((prev) => [...created.reverse(), ...prev]);
+      setInstallingPack(false);
     }
   };
 
@@ -630,9 +671,9 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
 
       {showForm && <FormPanel isEdit={false} form={form} setForm={setForm} error={error} saving={saving} onSubmit={handleCreate} onCancel={resetForm} />}
 
-      {automations.length < 5 && (
+      {(
         <div className="mb-6">
-          <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Zap className="w-3 h-3" /> Quick-Start Templates</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5"><Zap className="w-3 h-3" /> Quick-Start Templates</p>
           <div className="flex gap-2 flex-wrap mb-4">
             {CATEGORIES.map(cat => (
               <button key={cat.id} onClick={() => setTemplateCategory(cat.id)}
@@ -645,6 +686,16 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
                 <span>{cat.label}</span>
               </button>
             ))}
+          </div>
+          <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">
+              Install a ready-made flow: a welcome message with opt-out notice plus every {CATEGORIES.find(c => c.id === templateCategory)?.label} reply below.
+            </p>
+            <button onClick={installPack} disabled={installingPack}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:bg-[#1DA851] disabled:opacity-60 transition-all">
+              {installingPack ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+              {installingPack ? "Installing..." : "Install full flow"}
+            </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {visibleTemplates.map((t) => {

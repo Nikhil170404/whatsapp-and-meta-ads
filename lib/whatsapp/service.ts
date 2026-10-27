@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
