@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { JOBS, type JobDefinition } from "./jobs";
 import { startBroadcastQueue } from "./queue";
 import { startWebhookConsumer } from "./webhooks";
+import { startFlowTimers } from "./flow-timers";
 
 /**
  * Railway worker: runs every scheduled and long-running job so the Vercel app
@@ -75,6 +76,7 @@ async function execute(job: JobDefinition) {
 
 const queue = startBroadcastQueue(supabase, () => shuttingDown);
 const webhooks = startWebhookConsumer(supabase, () => shuttingDown);
+const flowTimers = startFlowTimers(supabase, () => shuttingDown);
 
 const tasks = JOBS.map((job) =>
   cron.schedule(job.schedule, () => void execute(job), { timezone: "Asia/Kolkata" })
@@ -98,6 +100,7 @@ async function shutdown(signal: string) {
   tasks.forEach((t) => t.stop());
   queue.stop();
   webhooks.stop();
+  flowTimers.stop();
   server.close();
   const deadline = Date.now() + 25_000;
   while ((running.size > 0 || queue.running() > 0 || webhooks.busy() > 0) && Date.now() < deadline) {

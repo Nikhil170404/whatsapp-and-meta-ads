@@ -17,6 +17,7 @@ export const PRICING_PLANS = {
         limits: {
             accounts: 1,
             automations: 3,
+            flows: 1,
             contacts: 100,
             metaDirectBilling: true,
         },
@@ -53,6 +54,7 @@ export const PRICING_PLANS = {
         limits: {
             accounts: 1,
             automations: 10,
+            flows: 10,
             contacts: 9999999,
             metaDirectBilling: true,
         },
@@ -89,6 +91,7 @@ export const PRICING_PLANS = {
         limits: {
             accounts: 3,
             automations: 9999999, // Defines Unlimited
+            flows: 9999999,
             contacts: 9999999, // Unlimited
             metaDirectBilling: true,
         },

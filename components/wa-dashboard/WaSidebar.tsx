@@ -20,6 +20,7 @@ import { QrCode,
   Home,
   Coins,
   Code2,
+  Workflow, UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SessionUser } from "@/lib/auth/session";
@@ -64,6 +65,8 @@ const navGroups = [
       { name: "Overview", href: "/wa", icon: LayoutDashboard },
       { name: "Messages", href: "/wa/messages", icon: MessageSquare },
       { name: "Automations", href: "/wa/automations", icon: Zap },
+      { name: "Flows", href: "/wa/flows", icon: Workflow },
+      { name: "Leads", href: "/wa/leads", icon: UserPlus },
     ],
   },
   {

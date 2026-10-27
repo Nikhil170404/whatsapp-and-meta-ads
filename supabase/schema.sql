@@ -454,6 +454,10 @@ CREATE TABLE IF NOT EXISTS wa_conversations (
   UNIQUE (user_id, phone)
 );
 
+-- A flow's "hand over to a person" block marks the conversation here.
+ALTER TABLE wa_conversations ADD COLUMN IF NOT EXISTS needs_human_at TIMESTAMPTZ;
+ALTER TABLE wa_conversations ADD COLUMN IF NOT EXISTS human_note     TEXT;
+
 CREATE INDEX IF NOT EXISTS wa_conversations_member_idx
   ON wa_conversations (assigned_to_member_id) WHERE assigned_to_member_id IS NOT NULL;
 
@@ -727,6 +731,127 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ---------------------------------------------------------------------------
+-- 7b. CONVERSATION FLOWS
+--     wa_flows holds the editable draft (definition) and the published copy customers run
+--     (published_definition), so editing never changes a live conversation mid-way.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS wa_flows (
+  id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name                  TEXT        NOT NULL,
+  description           TEXT,
+  status                TEXT        NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published')),
+  trigger_type          TEXT        NOT NULL DEFAULT 'keyword' CHECK (trigger_type IN ('keyword', 'welcome', 'any')),
+  keywords              TEXT[]      NOT NULL DEFAULT '{}',
+  exit_keywords         TEXT[]      NOT NULL DEFAULT '{cancel,exit,quit}',
+  definition            JSONB       NOT NULL DEFAULT '{"nodes":[],"edges":[]}'::jsonb,
+  published_definition  JSONB,
+  published_at          TIMESTAMPTZ,
+  version               INTEGER     NOT NULL DEFAULT 0,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS wa_flows_user_updated_idx ON wa_flows (user_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS wa_flows_published_idx ON wa_flows (user_id) WHERE status = 'published';
+
+DROP TRIGGER IF EXISTS wa_flows_set_updated_at ON wa_flows;
+CREATE TRIGGER wa_flows_set_updated_at BEFORE UPDATE ON wa_flows
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- One row per customer walking through a flow.
+CREATE TABLE IF NOT EXISTS wa_flow_sessions (
+  id                        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id                   UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  flow_id                   UUID        NOT NULL REFERENCES wa_flows(id) ON DELETE CASCADE,
+  phone                     TEXT        NOT NULL,
+  contact_name              TEXT,
+  status                    TEXT        NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'waiting', 'completed', 'handoff', 'abandoned')),
+  current_node_id           TEXT,
+  variables                 JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  retries                   INTEGER     NOT NULL DEFAULT 0,
+  ended_reason              TEXT,
+  waiting_until             TIMESTAMPTZ,
+  locked_at                 TIMESTAMPTZ,
+  last_inbound_message_id   TEXT,
+  started_at                TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- A customer is in at most one live conversation per account.
+CREATE UNIQUE INDEX IF NOT EXISTS wa_flow_sessions_live_idx
+  ON wa_flow_sessions (user_id, phone) WHERE status IN ('active', 'waiting');
+CREATE INDEX IF NOT EXISTS wa_flow_sessions_due_idx ON wa_flow_sessions (waiting_until) WHERE status = 'waiting';
+CREATE INDEX IF NOT EXISTS wa_flow_sessions_flow_idx ON wa_flow_sessions (flow_id, started_at DESC);
+
+DROP TRIGGER IF EXISTS wa_flow_sessions_set_updated_at ON wa_flow_sessions;
+CREATE TRIGGER wa_flow_sessions_set_updated_at BEFORE UPDATE ON wa_flow_sessions
+  FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Details collected by flows.
+CREATE TABLE IF NOT EXISTS wa_leads (
+  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  flow_id     UUID        REFERENCES wa_flows(id) ON DELETE SET NULL,
+  flow_name   TEXT,
+  phone       TEXT        NOT NULL,
+  name        TEXT,
+  email       TEXT,
+  fields      JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  note        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS wa_leads_user_created_idx ON wa_leads (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS wa_leads_user_phone_idx ON wa_leads (user_id, phone);
+
+-- Takes sessions whose wait block has elapsed. Safe with many workers.
+CREATE OR REPLACE FUNCTION claim_due_flow_sessions(p_limit INTEGER DEFAULT 50)
+RETURNS SETOF wa_flow_sessions AS $$
+  UPDATE wa_flow_sessions s SET status = 'active', waiting_until = NULL, locked_at = NOW()
+  WHERE s.id IN (
+    SELECT id FROM wa_flow_sessions
+    WHERE status = 'waiting' AND waiting_until <= NOW()
+    ORDER BY waiting_until LIMIT p_limit FOR UPDATE SKIP LOCKED
+  )
+  RETURNING s.*;
+$$ LANGUAGE sql;
+
+-- A customer who never answered, or a wait that never fired, must not block them forever.
+CREATE OR REPLACE FUNCTION expire_stale_flow_sessions(p_hours INTEGER DEFAULT 23) RETURNS INTEGER AS $$
+DECLARE
+  n INTEGER;
+BEGIN
+  UPDATE wa_flow_sessions SET status = 'abandoned', ended_reason = 'timeout'
+  WHERE (status = 'active' AND updated_at < NOW() - make_interval(hours => p_hours))
+     OR (status = 'waiting' AND waiting_until < NOW() - INTERVAL '2 hours');
+  GET DIAGNOSTICS n = ROW_COUNT;
+  RETURN n;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Adds a label once; used by the flow "tag" block.
+CREATE OR REPLACE FUNCTION add_contact_label(p_user UUID, p_phone TEXT, p_label TEXT) RETURNS VOID AS $$
+  UPDATE wa_contacts SET labels = array_append(labels, p_label)
+  WHERE user_id = p_user AND phone_number IN (p_phone, '+' || p_phone) AND NOT (p_label = ANY (labels));
+$$ LANGUAGE sql;
+
+-- How each flow is doing, counted in the database.
+CREATE OR REPLACE FUNCTION flow_stats(p_user UUID)
+RETURNS TABLE (flow_id UUID, started BIGINT, completed BIGINT, handed_over BIGINT, abandoned BIGINT, in_progress BIGINT, leads BIGINT) AS $$
+  SELECT f.id,
+         count(s.id),
+         count(s.id) FILTER (WHERE s.status = 'completed'),
+         count(s.id) FILTER (WHERE s.status = 'handoff'),
+         count(s.id) FILTER (WHERE s.status = 'abandoned'),
+         count(s.id) FILTER (WHERE s.status IN ('active', 'waiting')),
+         (SELECT count(*) FROM wa_leads l WHERE l.flow_id = f.id)
+  FROM wa_flows f LEFT JOIN wa_flow_sessions s ON s.flow_id = f.id
+  WHERE f.user_id = p_user GROUP BY f.id;
+$$ LANGUAGE sql STABLE;
+
+-- ---------------------------------------------------------------------------
 -- 8. USAGE, API KEYS, WAITLIST
 -- ---------------------------------------------------------------------------
 
@@ -972,6 +1097,9 @@ ALTER TABLE product_waitlist         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE worker_job_runs          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE worker_locks             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE wa_webhook_events        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wa_flows                 ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wa_flow_sessions         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE wa_leads                 ENABLE ROW LEVEL SECURITY;
 
 -- Drop policies from earlier schema versions. The service role bypasses RLS,
 -- and per-user policies keyed on auth.uid() never matched app accounts.
@@ -986,7 +1114,7 @@ BEGIN
         'users', 'wa_connections', 'wa_automations', 'wa_templates', 'wa_contacts',
         'wa_consent_logs', 'dsr_requests', 'wa_messages', 'team_members', 'wa_conversations',
         'wa_broadcasts', 'wa_broadcast_recipients', 'wa_usage', 'wa_api_keys',
-        'product_waitlist', 'worker_job_runs', 'worker_locks', 'wa_webhook_events'
+        'product_waitlist', 'worker_job_runs', 'worker_locks', 'wa_webhook_events', 'wa_flows', 'wa_flow_sessions', 'wa_leads'
       )
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON %I.%I', pol.policyname, pol.schemaname, pol.tablename);
