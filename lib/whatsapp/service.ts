@@ -158,6 +158,50 @@ export async function sendButtonMessage(
   return response.json();
 }
 
+export async function sendListMessage(
+  phoneNumberId: string,
+  to: string,
+  bodyText: string,
+  listButton: string,
+  rows: { id: string; title: string; description?: string }[],
+  accessToken: string
+) {
+  const response = await fetch(`${WA_API_URL}/${phoneNumberId}/messages`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "list",
+        body: { text: bodyText },
+        action: {
+          button: listButton,
+          sections: [
+            {
+              title: "Options",
+              rows: rows.map(r => ({
+                id: r.id,
+                title: r.title,
+                ...(r.description ? { description: r.description } : {}),
+              })),
+            },
+          ],
+        },
+      },
+    }),
+  });
+  if (!response.ok) {
+    const raw = await response.json();
+    const e = new Error(`WhatsApp API Error: ${JSON.stringify(raw)}`) as any;
+    e.metaError = parseMetaError(raw);
+    throw e;
+  }
+  return response.json();
+}
+
 export async function sendImageMessage(
   phoneNumberId: string,
   to: string,

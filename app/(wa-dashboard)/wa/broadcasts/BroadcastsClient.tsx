@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import {
+  bodyVariables, defaultVariablePlan, resolveBodyParameters, validateVariablePlan,
+  type VariableSource,
+} from "@/lib/whatsapp/template-builder";
 import { Plus, Send, CheckCircle2, Clock, AlertCircle, Users, BarChart3, X, Loader2, FileText, Search, Trash2, Lock, Tag } from "lucide-react";
 
 interface Broadcast {
@@ -18,7 +22,7 @@ interface Broadcast {
 interface Template {
   id: string;
   name: string;
-  body_text: string;
+  body_text: string | null;
   status: string;
   category: string;
 }
@@ -61,6 +65,7 @@ export function BroadcastsClient({
     template_id: "",
     contact_ids: [] as string[],
     scheduled_at: "",
+    variables: [] as VariableSource[],
   });
 
   const selectedTemplate = templates.find((t) => t.id === form.template_id);
@@ -88,7 +93,7 @@ export function BroadcastsClient({
     }
     setShowForm(true);
     setStep(1);
-    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "" });
+    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "", variables: [] });
     setError(null);
 
     setLoadingContacts(true);
@@ -107,7 +112,7 @@ export function BroadcastsClient({
   const resetForm = () => {
     setShowForm(false);
     setStep(1);
-    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "" });
+    setForm({ name: "", template_id: "", contact_ids: [], scheduled_at: "", variables: [] });
     setError(null);
   };
 
@@ -115,6 +120,8 @@ export function BroadcastsClient({
     if (step === 1) {
       if (!form.name.trim()) return setError("Give your broadcast a name.");
       if (!form.template_id) return setError("Select a template.");
+      const planError = validateVariablePlan(selectedTemplate?.body_text ?? "", form.variables);
+      if (planError) return setError(planError);
       setError(null);
       setStep(2);
     } else if (step === 2) {
@@ -206,7 +213,8 @@ export function BroadcastsClient({
     }
   };
 
-  const approvedTemplates = templates.filter((t) => t.status === "approved");
+  // OTP (authentication) templates are for one-to-one codes, never bulk sending.
+  const approvedTemplates = templates.filter((t) => t.status === "approved" && t.category !== "AUTHENTICATION");
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -326,7 +334,7 @@ export function BroadcastsClient({
                     {approvedTemplates.map((tpl) => (
                       <button
                         key={tpl.id}
-                        onClick={() => setForm({ ...form, template_id: tpl.id })}
+                        onClick={() => setForm({ ...form, template_id: tpl.id, variables: defaultVariablePlan(tpl.body_text ?? "") })}
                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${form.template_id === tpl.id ? "border-[#25D366] bg-[#25D366]/5" : "border-slate-100 hover:border-slate-200"}`}
                       >
                         <div className="flex items-start gap-3">
@@ -342,35 +350,61 @@ export function BroadcastsClient({
                 )}
               </div>
 
-              {/* Preview */}
-              {selectedTemplate && (
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message Preview</label>
-                  <div className="bg-[#E5DDD5] rounded-2xl p-4">
-                    <div className="bg-white rounded-xl rounded-tl-none p-3 max-w-xs shadow-sm">
-                      <p className="text-sm text-slate-800 font-medium leading-relaxed">{selectedTemplate.body_text}</p>
-                      <p className="text-[10px] text-slate-400 text-right mt-1">12:00 PM ✓✓</p>
+              {/* Fill in the template's changing values, then preview */}
+              {selectedTemplate && (() => {
+                const body = selectedTemplate.body_text ?? "";
+                const count = new Set(bodyVariables(body)).size;
+                const sampleContact = contacts.find((c) => form.contact_ids.includes(c.id)) ?? contacts[0];
+                const sample = resolveBodyParameters(body, form.variables, {
+                  name: sampleContact?.display_name ?? "Priya",
+                  phone: sampleContact?.phone_number ?? "+919876543210",
+                });
+                const preview = body.replace(/\{\{(\d+)\}\}/g, (_m, n) => sample[Number(n) - 1] ?? "");
+                const setVar = (i: number, v: VariableSource) =>
+                  setForm((f) => { const next = [...f.variables]; next[i] = v; return { ...f, variables: next }; });
+                return (
+                  <div className="space-y-4">
+                    {count > 0 && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fill in the changing values</label>
+                        <p className="text-xs text-slate-500 mb-3">Choose what goes into each {"{{ }}"} in your template. Every recipient gets their own message.</p>
+                        <div className="space-y-2">
+                          {Array.from({ length: count }, (_, i) => {
+                            const v = form.variables[i] ?? { source: "text", value: "" };
+                            return (
+                              <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <span className="w-14 shrink-0 text-xs font-mono text-slate-500">{`{{${i + 1}}}`}</span>
+                                <select aria-label={`Value for variable ${i + 1}`} value={v.source}
+                                  onChange={(e) => setVar(i, e.target.value === "text" ? { source: "text", value: "" } : { source: e.target.value as "name" | "phone" })}
+                                  className="px-3 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium bg-white focus:outline-none focus:ring-2 focus:ring-[#25D366]/30">
+                                  <option value="name">Contact&apos;s name</option>
+                                  <option value="phone">Contact&apos;s phone number</option>
+                                  <option value="text">Same text for everyone</option>
+                                </select>
+                                {v.source === "text" && (
+                                  <input aria-label={`Text for variable ${i + 1}`} value={v.value} placeholder="e.g. 20%, Sunday, SAVE20"
+                                    onChange={(e) => setVar(i, { source: "text", value: e.target.value })}
+                                    className="flex-1 px-3 py-2.5 rounded-xl border border-slate-200 text-base sm:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366]" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">What your customer will see</label>
+                      <div className="bg-[#E5DDD5] rounded-2xl p-4">
+                        <div className="bg-white rounded-xl rounded-tl-none p-3 max-w-xs shadow-sm">
+                          <p className="text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">{preview}</p>
+                          <p className="text-[10px] text-slate-400 text-right mt-1">12:00 PM</p>
+                        </div>
+                      </div>
+                      {count > 0 && sampleContact && <p className="text-xs text-slate-500 mt-2">Shown with {sampleContact.display_name || sampleContact.phone_number} as an example.</p>}
                     </div>
                   </div>
-                  {selectedTemplate.body_text && (
-                    <div className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Preview</p>
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                        {selectedTemplate.body_text
-                          .replace(/\{\{name\}\}/gi, "John Doe")
-                          .replace(/\{\{contact_name\}\}/gi, "John Doe")
-                          .replace(/\{\{phone\}\}/gi, "+91 98765 43210")
-                          .replace(/\{\{phone_number\}\}/gi, "+91 98765 43210")}
-                      </p>
-                      {/\{\{/.test(selectedTemplate.body_text) && (
-                        <p className="text-xs text-violet-600 font-semibold mt-2">
-                          ✓ Variables will be personalized per contact automatically
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                );
+              })()}
 
               {/* Marketing frequency cap notice */}
               {selectedTemplate?.category === "MARKETING" && (

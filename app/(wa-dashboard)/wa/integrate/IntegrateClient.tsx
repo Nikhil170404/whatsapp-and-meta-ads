@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, RefreshCw, Code2, Zap, ShoppingCart, Calendar, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Copy, Check, RefreshCw, Code2, Zap, ShoppingCart, Calendar, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 const BASE_URL = "https://replykaro.com";
 
@@ -29,6 +29,21 @@ function CodeBlock({ code, lang = "bash" }: { code: string; lang?: string }) {
 }
 
 const USE_CASES = [
+  {
+    icon: KeyRound,
+    label: "Login / Signup OTP",
+    color: "bg-violet-50 border-violet-100 text-violet-600",
+    description: "Send a one-time code. First create a Verification code (OTP) template under Message templates and wait for Meta to approve it. Generate the code on your server and never log it. Limit: 5 codes per number every 10 minutes.",
+    snippet: (key: string) =>
+`curl -X POST ${BASE_URL}/api/v1/send \\
+  -H "Authorization: Bearer ${key}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "+919876543210",
+    "type": "otp",
+    "otp": "482913"
+  }'`,
+  },
   {
     icon: ShoppingCart,
     label: "E-commerce Order",
@@ -63,7 +78,7 @@ const USE_CASES = [
     icon: Zap,
     label: "Simple Text Alert",
     color: "bg-green-50 border-green-100 text-green-600",
-    description: "Send a plain text message (no template needed).",
+    description: "Send a plain text message. WhatsApp only delivers this if the customer messaged you in the last 24 hours; otherwise use a template.",
     snippet: (key: string) =>
 `curl -X POST ${BASE_URL}/api/v1/send \\
   -H "Authorization: Bearer ${key}" \\

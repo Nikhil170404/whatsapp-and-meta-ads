@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LIMITS, analyzeFlows, slugifyId, validateListOptions } from "@/lib/whatsapp/flow";
 import { Plus, Zap, Trash2, Power, X, Loader2, Edit2, Check, Info, Image, Video, FileText, MessageSquare, ShoppingBag, UtensilsCrossed, Heart, Home, GraduationCap, Scissors, Car, AlertTriangle } from "lucide-react";
 
 const CATEGORIES = [
@@ -58,7 +59,35 @@ const WELCOME_FLOW = {
 };
 
 interface ButtonOption { id: string; title: string; }
-interface ButtonOptions { buttons: ButtonOption[]; filename?: string; }
+interface ListRowOption { id: string; title: string; description?: string; }
+interface ButtonOptions {
+  buttons: ButtonOption[];
+  filename?: string;
+  list_button?: string;
+  rows?: ListRowOption[];
+}
+
+const DEFAULT_LIST_BUTTON = "View options";
+const emptyRow = (): ListRowOption => ({ id: "", title: "", description: "" });
+
+/** The JSON stored in button_options for the chosen message type. */
+function buildButtonOptions(form: { message_type: string; button_options: ButtonOptions }) {
+  const { message_type, button_options } = form;
+  if (message_type === "buttons" || message_type === "document") {
+    return { ...button_options, buttons: button_options.buttons.filter((b) => b.title.trim()) };
+  }
+  if (message_type === "list") {
+    const rows = (button_options.rows ?? [])
+      .filter((r) => r.title.trim())
+      .map((r, i) => ({
+        id: slugifyId(r.title, `option_${i + 1}`),
+        title: r.title.trim(),
+        ...(r.description?.trim() ? { description: r.description.trim() } : {}),
+      }));
+    return { list_button: (button_options.list_button || DEFAULT_LIST_BUTTON).trim(), rows };
+  }
+  return null;
+}
 
 interface AutomationForm {
   name: string;
@@ -98,6 +127,7 @@ const MESSAGE_TYPES = [
   { value: "video", label: "Video", icon: <Video className="w-3.5 h-3.5" /> },
   { value: "document", label: "Document", icon: <FileText className="w-3.5 h-3.5" /> },
   { value: "buttons", label: "Buttons", icon: <Zap className="w-3.5 h-3.5" /> },
+  { value: "list", label: "List menu", icon: <FileText className="w-3.5 h-3.5" /> },
 ];
 
 const META_RULES: Record<string, { color: string; rules: string[]; example?: string }> = {
@@ -418,6 +448,56 @@ function FormPanel({ isEdit, id, form, setForm, error, saving, onSubmit, onCance
           </>
         )}
 
+        {/* List menu */}
+        {form.message_type === "list" && (
+          <>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Message above the menu</label>
+              <textarea rows={3} placeholder="Welcome! What would you like to know?"
+                value={form.reply_message} onChange={(e) => setForm({ ...form, reply_message: e.target.value })}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366] resize-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Menu button label</label>
+              <input type="text" maxLength={LIMITS.listButton} placeholder={DEFAULT_LIST_BUTTON}
+                value={form.button_options.list_button ?? ""} onChange={(e) => setForm({ ...form, button_options: { ...form.button_options, list_button: e.target.value } })}
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366]" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Options ({(form.button_options.rows ?? []).length}/{LIMITS.listRows})</label>
+                {(form.button_options.rows ?? []).length < LIMITS.listRows && (
+                  <button type="button" onClick={() => setForm({ ...form, button_options: { ...form.button_options, rows: [...(form.button_options.rows ?? []), emptyRow()] } })}
+                    className="text-xs font-bold text-[#25D366] hover:text-[#1DA851]">+ Add option</button>
+                )}
+              </div>
+              <div className="space-y-2">
+                {(form.button_options.rows ?? []).map((row, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <input type="text" maxLength={LIMITS.listRowTitle} placeholder={`Option ${i + 1} (for example “Pricing”)`}
+                        value={row.title}
+                        onChange={(e) => { const rows = [...(form.button_options.rows ?? [])]; rows[i] = { ...rows[i], title: e.target.value }; setForm({ ...form, button_options: { ...form.button_options, rows } }); }}
+                        className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366]" />
+                      <button type="button" aria-label="Remove option"
+                        onClick={() => setForm({ ...form, button_options: { ...form.button_options, rows: (form.button_options.rows ?? []).filter((_, j) => j !== i) } })}
+                        className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                    <input type="text" maxLength={LIMITS.listRowDescription} placeholder="Short description (optional)"
+                      value={row.description ?? ""}
+                      onChange={(e) => { const rows = [...(form.button_options.rows ?? [])]; rows[i] = { ...rows[i], description: e.target.value }; setForm({ ...form, button_options: { ...form.button_options, rows } }); }}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 focus:border-[#25D366]" />
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 font-medium mt-2">
+                When a customer picks an option, ReplyKaro treats it as if they typed that title. Create another automation with the
+                title as its keyword (for example “Pricing”) to send the answer. Menus work inside the 24-hour customer service window.
+              </p>
+            </div>
+          </>
+        )}
+
         <WaPreview form={form} />
 
         {error && <p className="text-sm font-bold text-rose-600 bg-rose-50 px-4 py-3 rounded-xl">{error}</p>}
@@ -441,6 +521,10 @@ function automationPreviewText(auto: Automation): string {
     const btns = (auto.button_options?.buttons ?? []).map(b => b.title).filter(Boolean);
     return `[Buttons] ${auto.reply_message} → [${btns.join("] [")}]`;
   }
+  if (type === "list") {
+    const rows = (auto.button_options?.rows ?? []).map(r => r.title).filter(Boolean);
+    return `[Menu] ${auto.reply_message} → ${rows.join(" · ")}`;
+  }
   if (type === "image") return `[Image] ${auto.media_url}`;
   if (type === "video") return `[Video] ${auto.media_url}`;
   if (type === "document") return `[Document] ${auto.button_options?.filename || auto.media_url}`;
@@ -454,7 +538,7 @@ const emptyForm: AutomationForm = {
   reply_message: "",
   message_type: "text",
   media_url: "",
-  button_options: { buttons: [{ id: "btn1", title: "" }] },
+  button_options: { buttons: [{ id: "btn1", title: "" }], list_button: DEFAULT_LIST_BUTTON, rows: [emptyRow()] },
 };
 
 export function AutomationsClient({ initialAutomations }: { initialAutomations: Automation[] }) {
@@ -504,12 +588,25 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
     setError(null);
     const created: Automation[] = [];
     try {
-      const queue: Record<string, string>[] = [];
+      const queue: Record<string, any>[] = [];
+      const wanted = STARTER_TEMPLATES.filter(t => t.category === templateCategory && !automations.some(a => a.trigger_keyword === t.trigger_keyword));
+      const allForCategory = STARTER_TEMPLATES.filter(t => t.category === templateCategory);
+
+      // The welcome message is a tap-to-choose menu. Each option's id is the keyword
+      // of the reply behind it, so a tap always reaches the right answer.
       if (!automations.some(a => a.trigger_type === "welcome")) {
-        queue.push({ name: WELCOME_FLOW.name, trigger_type: "welcome", reply_message: WELCOME_FLOW.reply_message, message_type: "text" });
+        queue.push({
+          name: "Welcome menu",
+          trigger_type: "welcome",
+          message_type: "list",
+          reply_message: WELCOME_FLOW.reply_message.replace("Tell us how we can help and we will reply shortly.", "Choose an option below and we will reply right away."),
+          button_options: {
+            list_button: "View options",
+            rows: allForCategory.slice(0, LIMITS.listRows).map(t => ({ id: t.trigger_keyword, title: t.label.slice(0, LIMITS.listRowTitle) })),
+          },
+        });
       }
-      for (const t of STARTER_TEMPLATES.filter(t => t.category === templateCategory)) {
-        if (automations.some(a => a.trigger_keyword === t.trigger_keyword)) continue;
+      for (const t of wanted) {
         queue.push({ name: t.label, trigger_type: "keyword", trigger_keyword: t.trigger_keyword, reply_message: t.reply_message, message_type: "text" });
       }
       for (const body of queue) {
@@ -556,6 +653,9 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
       if (!filled.length) return "Add at least one button label.";
       if (filled.some(b => b.title.length > 20)) return "Each button label must be 20 characters or less.";
     }
+    if (form.message_type === "list") {
+      return validateListOptions(buildButtonOptions(form), form.reply_message);
+    }
     return null;
   };
 
@@ -569,9 +669,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          button_options: form.message_type === "buttons" || form.message_type === "document"
-            ? { ...form.button_options, buttons: form.button_options.buttons.filter(b => b.title.trim()) }
-            : null,
+          button_options: buildButtonOptions(form),
           media_url: form.media_url || null,
         }),
       });
@@ -595,9 +693,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
         body: JSON.stringify({
           id,
           ...form,
-          button_options: form.message_type === "buttons" || form.message_type === "document"
-            ? { ...form.button_options, buttons: form.button_options.buttons.filter(b => b.title.trim()) }
-            : null,
+          button_options: buildButtonOptions(form),
           media_url: form.media_url || null,
         }),
       });
@@ -658,6 +754,32 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
         </div>
       )}
 
+      {(() => {
+        const flowIssues = analyzeFlows(automations as any[]);
+        if (flowIssues.length === 0 || showForm) return null;
+        return (
+          <section aria-label="Flow check" className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+            <p className="text-sm font-bold text-amber-900">
+              {flowIssues.some((i) => i.level === "error") ? "Fix these so customers are never left waiting" : "Things worth a look"}
+            </p>
+            <ul className="mt-2 space-y-2">
+              {flowIssues.map((issue) => (
+                <li key={issue.message} className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <span className={issue.level === "error" ? "font-semibold text-rose-700" : "text-amber-900"}>{issue.message}</span>
+                  {issue.createKeyword && (
+                    <button type="button"
+                      onClick={() => { setForm({ ...emptyForm, name: issue.createKeyword!, trigger_keyword: issue.createKeyword! }); setEditingId(null); setShowForm(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[#128C7E] ring-1 ring-[#25D366]/40 hover:bg-[#25D366]/5">
+                      Create this reply
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
+
       {automations.length === 0 && !showForm && (
         <div className="bg-violet-50 border border-violet-100 rounded-2xl p-5">
           <p className="text-sm font-bold text-violet-700 mb-2">How automations work</p>
@@ -689,7 +811,7 @@ export function AutomationsClient({ initialAutomations }: { initialAutomations: 
           </div>
           <div className="flex items-center justify-between gap-3 mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3">
             <p className="text-xs font-medium text-slate-500">
-              Install a ready-made flow: a welcome message with opt-out notice plus every {CATEGORIES.find(c => c.id === templateCategory)?.label} reply below.
+              Install a ready-made flow: a welcome menu customers can tap through, with an opt-out notice, plus a reply for every {CATEGORIES.find(c => c.id === templateCategory)?.label} reply below.
             </p>
             <button onClick={installPack} disabled={installingPack}
               className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-[#25D366] text-white rounded-xl font-bold text-xs hover:bg-[#1DA851] disabled:opacity-60 transition-all">

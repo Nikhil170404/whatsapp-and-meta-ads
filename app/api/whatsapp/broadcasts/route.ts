@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import { validateVariablePlan } from "@/lib/whatsapp/template-builder";
 
 export async function GET() {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { name, template_id, contact_ids, scheduled_at } = body;
+    const { name, template_id, contact_ids, scheduled_at, variables } = body;
 
     if (!name || !template_id || !contact_ids?.length) {
       return NextResponse.json({ error: "Name, template, and contacts are required" }, { status: 400 });
@@ -53,13 +54,18 @@ export async function POST(req: Request) {
     // can't broadcast to (or through) another user's data by passing foreign IDs.
     const { data: ownedTemplate } = await supabase
       .from("wa_templates")
-      .select("id")
+      .select("id, body_text, category")
       .eq("id", template_id)
       .eq("user_id", session.id)
       .maybeSingle();
     if (!ownedTemplate) {
       return NextResponse.json({ error: "Template not found" }, { status: 404 });
     }
+    if (ownedTemplate.category === "AUTHENTICATION") {
+      return NextResponse.json({ error: "Verification-code templates are sent one at a time through the API, not as broadcasts." }, { status: 400 });
+    }
+    const planError = validateVariablePlan(ownedTemplate.body_text ?? "", variables);
+    if (planError) return NextResponse.json({ error: planError }, { status: 400 });
 
     const uniqueContactIds: string[] = Array.from(new Set(contact_ids));
     const { data: ownedContacts } = await supabase
@@ -82,6 +88,7 @@ export async function POST(req: Request) {
         template_id,
         status: isScheduled ? "scheduled" : "draft",
         scheduled_at: scheduled_at || null,
+        variables: Array.isArray(variables) ? variables : null,
         total_recipients: uniqueContactIds.length,
       })
       .select()

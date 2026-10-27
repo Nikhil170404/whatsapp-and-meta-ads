@@ -3,6 +3,7 @@ import { env } from "@/lib/env";
 import {
   sendTextMessage,
   sendButtonMessage,
+  sendListMessage,
   sendImageMessage,
   sendVideoMessage,
   sendDocumentMessage,
@@ -11,6 +12,7 @@ import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { verifyMetaSignature } from "@/lib/meta-signature";
 import { recordConsent } from "@/lib/consent";
+import { extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
 
 // 24-hour window in milliseconds — Meta only allows free-form text within this
 // window after the customer's last inbound message. Outside it, use templates.
@@ -223,8 +225,10 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
     const contact: string = value.contacts?.[0]?.wa_id;
     if (!contact) continue;
 
-    const content =
-      message.type === "text" ? message.text.body : `[${message.type} message]`;
+    // Typed text, or the label of a tapped button / list option, so taps can
+    // continue a flow exactly like a typed keyword.
+    const inbound = extractInboundText(message);
+    const content = inbound ? inbound.text : `[${message.type} message]`;
 
     // Find the connected user by phone_number_id
     const cols = "user_id, access_token, token_expires_at, quality_paused_at";
@@ -370,8 +374,8 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       console.error("Failed to save inbound message:", insertErr);
     }
 
-    // ── Only run automations on text messages ────────────────────────────────
-    if (message.type !== "text") continue;
+    // ── Run automations on typed text and on button / list taps ──────────────
+    if (!inbound) continue;
 
     // Skip if opted out
     const { data: contactRow } = await supabase
@@ -403,14 +407,7 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
 
     const isFirstMessage = (priorCount ?? 0) <= 1;
 
-    const matchedAutomation = automations.find((a: any) => {
-      if (a.trigger_type === "any") return true;
-      if (a.trigger_type === "welcome") return isFirstMessage;
-      if (a.trigger_type === "keyword" && a.trigger_keyword) {
-        return content.toLowerCase().includes(a.trigger_keyword.toLowerCase());
-      }
-      return false;
-    });
+    const matchedAutomation: any = pickAutomation(automations as any[], inbound, isFirstMessage);
 
     if (!matchedAutomation) continue;
 
@@ -440,6 +437,14 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
           matchedAutomation.reply_message || undefined,
           validToken
         );
+      } else if (msgType === "list") {
+        response = await sendListMessage(
+          phoneNumberId, contact,
+          matchedAutomation.reply_message,
+          matchedAutomation.button_options?.list_button || "View options",
+          matchedAutomation.button_options?.rows || [],
+          validToken
+        );
       } else if (msgType === "buttons") {
         response = await sendButtonMessage(
           phoneNumberId, contact,
@@ -458,6 +463,8 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       const outboundContent =
         msgType === "buttons"
           ? `[Buttons] ${matchedAutomation.reply_message}`
+          : msgType === "list"
+          ? `[Menu] ${matchedAutomation.reply_message}`
           : msgType !== "text"
           ? `[${msgType}] ${matchedAutomation.media_url}`
           : matchedAutomation.reply_message;

@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import {
+  buildAuthComponents, buildMetaComponents, defaultExamples, toMetaName, validateTemplate,
+  type TemplateInput,
+} from "@/lib/whatsapp/template-builder";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -24,7 +28,7 @@ export async function GET() {
 
     if (conn?.waba_id && conn?.access_token) {
       try {
-        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?fields=name,status,category,language,components&limit=50`, {
+        const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?fields=name,status,category,language,components,rejected_reason&limit=100`, {
           headers: { Authorization: `Bearer ${conn.access_token}` },
         });
         if (metaRes.ok) {
@@ -36,8 +40,10 @@ export async function GET() {
               name: t.name,
               category: t.category,
               language: t.language,
-              body_text: bodyComp?.text || "",
+              body_text: bodyComp?.text || null,
+              template_type: t.category === "AUTHENTICATION" ? "otp" : "standard",
               status: t.status?.toLowerCase() === "approved" ? "approved" : t.status?.toLowerCase() || "pending",
+              rejection_reason: t.status?.toLowerCase() === "rejected" && t.rejected_reason && t.rejected_reason !== "NONE" ? t.rejected_reason : null,
               meta_template_id: t.id || null,
             }, { onConflict: "user_id,name" });
           }
@@ -67,10 +73,24 @@ export async function POST(req: Request) {
     if (!rl.success) return NextResponse.json({ error: "Too many requests. Please slow down." }, { status: 429 });
 
     const body = await req.json();
-    const { name, category, language, body_text } = body;
+    const { name, category, language, body_text, header_text, footer_text, buttons, examples, template_type, expiry_minutes } = body;
 
-    if (!name || !body_text) {
-      return NextResponse.json({ error: "Name and body text are required" }, { status: 400 });
+    const isOtp = template_type === "otp";
+    const input: TemplateInput = {
+      name: String(name ?? ""),
+      category: isOtp ? "AUTHENTICATION" : (["MARKETING", "UTILITY"].includes(category) ? category : "UTILITY"),
+      language: language || "en_US",
+      header_text: header_text || undefined,
+      body_text: String(body_text ?? ""),
+      footer_text: footer_text || undefined,
+      buttons: Array.isArray(buttons) ? buttons : [],
+      examples: Array.isArray(examples) ? examples.map(String) : defaultExamples(String(body_text ?? "")),
+    };
+
+    // Same checks the editor shows, enforced again on the server.
+    const problems = validateTemplate(input).filter((i) => i.level === "error");
+    if (problems.length) {
+      return NextResponse.json({ error: problems[0].message, issues: problems }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin() as any;
@@ -86,7 +106,7 @@ export async function POST(req: Request) {
     }
 
     // Template names must be lowercase with underscores for Meta
-    const metaName = name.toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const metaName = toMetaName(input.name);
 
     // Save to DB first
     const { data, error } = await supabase
@@ -94,9 +114,15 @@ export async function POST(req: Request) {
       .upsert({
         user_id: session.id,
         name: metaName,
-        category: category || "UTILITY",
-        language: language || "en_US",
-        body_text,
+        category: input.category,
+        language: input.language,
+        template_type: isOtp ? "otp" : "standard",
+        body_text: isOtp ? null : input.body_text,
+        header_text: input.header_text ?? null,
+        footer_text: input.footer_text ?? null,
+        buttons: input.buttons?.length ? input.buttons : null,
+        examples: input.examples ?? null,
+        rejection_reason: null,
         status: "pending",
       }, { onConflict: "user_id,name" })
       .select()
@@ -122,9 +148,11 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify({
             name: metaName,
-            category: category || "UTILITY",
-            language: language || "en_US",
-            components: [{ type: "BODY", text: body_text }],
+            category: input.category,
+            language: input.language,
+            components: isOtp
+              ? buildAuthComponents({ expiry_minutes: Number(expiry_minutes) || 10 })
+              : buildMetaComponents(input),
           }),
         });
         const metaData = await metaRes.json();

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import { validateListOptions } from "@/lib/whatsapp/flow";
 
 export async function GET() {
   try {
@@ -40,6 +41,10 @@ export async function POST(req: Request) {
     }
     if ((msgType === "image" || msgType === "video" || msgType === "document") && !media_url) {
       return NextResponse.json({ error: "Media URL is required for image/video/document automations" }, { status: 400 });
+    }
+    if (msgType === "list") {
+      const listError = validateListOptions(button_options, reply_message);
+      if (listError) return NextResponse.json({ error: listError }, { status: 400 });
     }
     if (msgType === "buttons") {
       if (!reply_message) return NextResponse.json({ error: "Body text is required for button messages" }, { status: 400 });

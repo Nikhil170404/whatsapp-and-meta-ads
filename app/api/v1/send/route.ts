@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
 import { checkRateLimit } from "@/lib/rate-limit-middleware";
+import { buildOtpSendComponents, isValidOtpCode } from "@/lib/whatsapp/template-builder";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
 
@@ -65,7 +66,10 @@ export async function POST(req: Request) {
       .eq("user_id", keyRow.user_id)
       .eq("phone_number", to)
       .maybeSingle();
-    if (contactRow?.is_opted_in === false) {
+    // A verification code is requested by the person themselves, so an earlier
+    // STOP to marketing messages must not block it.
+    const isOtp = type === "otp" || body.otp !== undefined;
+    if (!isOtp && contactRow?.is_opted_in === false) {
       return NextResponse.json({
         error: "This contact has opted out of messages. Cannot send until they re-subscribe by texting START.",
       }, { status: 403 });
@@ -73,7 +77,44 @@ export async function POST(req: Request) {
 
     let payload: Record<string, unknown>;
 
-    if (type === "text" || (!template?.trim() && text)) {
+    if (isOtp) {
+      if (!isValidOtpCode(body.otp)) {
+        return NextResponse.json({ error: "otp must be a string of 4 to 15 letters or digits, for example \"482913\"." }, { status: 400 });
+      }
+
+      // Pick the named template, or the account's approved verification template.
+      let tplQuery = supabase.from("wa_templates").select("name, language, status, category")
+        .eq("user_id", keyRow.user_id).eq("category", "AUTHENTICATION").eq("status", "approved");
+      if (template) tplQuery = tplQuery.eq("name", template);
+      const { data: otpTemplate } = await tplQuery.limit(1).maybeSingle();
+      if (!otpTemplate) {
+        return NextResponse.json({
+          error: template
+            ? `No approved verification template named "${template}". Create one under Message templates > Verification code (OTP).`
+            : "No approved verification template yet. Create one under Message templates > Verification code (OTP) and wait for Meta to approve it.",
+          code: "OTP_TEMPLATE_REQUIRED",
+        }, { status: 400 });
+      }
+
+      // At most 5 codes per number every 10 minutes, to stop code-spamming a phone.
+      const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { count: recent } = await supabase.from("wa_messages").select("id", { count: "exact", head: true })
+        .eq("user_id", keyRow.user_id).eq("to_phone", to.replace("+", "")).eq("content", "[Verification code sent]").gte("created_at", since);
+      if ((recent ?? 0) >= 5) {
+        return NextResponse.json({ error: "Too many codes sent to this number. Try again in a few minutes.", code: "OTP_RATE_LIMIT" }, { status: 429 });
+      }
+
+      payload = {
+        messaging_product: "whatsapp",
+        to,
+        type: "template",
+        template: {
+          name: otpTemplate.name,
+          language: { code: otpTemplate.language || "en_US" },
+          components: buildOtpSendComponents(body.otp),
+        },
+      };
+    } else if (type === "text" || (!template?.trim() && text)) {
       // Simple text message
       if (!text) return NextResponse.json({ error: "Missing required field: text" }, { status: 400 });
       payload = {
@@ -119,6 +160,18 @@ export async function POST(req: Request) {
     const waData = await waRes.json();
     if (!waRes.ok) {
       return NextResponse.json({ error: "WhatsApp API error", details: waData?.error }, { status: 502 });
+    }
+
+    if (isOtp) {
+      await supabase.from("wa_messages").insert({
+        user_id: keyRow.user_id,
+        wa_message_id: waData?.messages?.[0]?.id ?? null,
+        to_phone: to.replace("+", ""),
+        direction: "outbound",
+        message_type: "template",
+        content: "[Verification code sent]", // the code itself is never stored
+        status: "sent",
+      });
     }
 
     return NextResponse.json({ success: true, message_id: waData?.messages?.[0]?.id });

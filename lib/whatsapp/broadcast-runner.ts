@@ -1,6 +1,7 @@
 import { sendTemplateMessage, sleep } from "@/lib/whatsapp/service";
 import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { hasMarketingConsent } from "@/lib/consent";
+import { resolveBodyParameters } from "@/lib/whatsapp/template-builder";
 
 // Delay between each message send to stay well under Meta's 80 msg/s API cap.
 // At 200 ms we cap at ~5 msg/s — safe even on Tier 1 accounts.
@@ -226,24 +227,15 @@ export async function runBroadcast(
       }
 
       try {
-        // Build template component parameters from numbered placeholders ({{1}}, {{2}}, …)
-        const contactName = nameMap[recipient.contact_id] || phone;
-        const numberedParams = (template.body_text || "").match(/\{\{\d+\}\}/g) || [];
-        const paramValues: string[] = [
-          contactName,
+        // Fill each {{n}} from the plan the user chose when creating the broadcast.
+        // resolveBodyParameters never returns an empty value, which Meta rejects.
+        const paramValues = resolveBodyParameters(template.body_text || "", broadcast.variables, {
+          name: nameMap[recipient.contact_id] === phone ? null : nameMap[recipient.contact_id],
           phone,
-          ...Array(Math.max(0, numberedParams.length - 2)).fill(""),
-        ];
+        });
         const components =
-          numberedParams.length > 0
-            ? [
-                {
-                  type: "body",
-                  parameters: paramValues
-                    .slice(0, numberedParams.length)
-                    .map(v => ({ type: "text", text: v })),
-                },
-              ]
+          paramValues.length > 0
+            ? [{ type: "body", parameters: paramValues.map(v => ({ type: "text", text: v })) }]
             : undefined;
 
         const result = await sendTemplateMessage(

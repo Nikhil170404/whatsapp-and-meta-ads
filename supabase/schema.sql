@@ -199,13 +199,19 @@ CREATE TABLE IF NOT EXISTS wa_templates (
   name              TEXT        NOT NULL,
   language          TEXT        NOT NULL DEFAULT 'en_US',
   category          TEXT        NOT NULL DEFAULT 'UTILITY',
-  body_text         TEXT        NOT NULL,
+  body_text         TEXT,
   status            TEXT        NOT NULL DEFAULT 'pending',
   meta_template_id  TEXT,
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS meta_template_id TEXT;
+ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS template_type     TEXT NOT NULL DEFAULT 'standard'; -- 'standard' | 'otp'
+ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS header_text       TEXT;
+ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS footer_text       TEXT;
+ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS buttons           JSONB;
+ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS examples          JSONB;
+ALTER TABLE wa_templates ADD COLUMN IF NOT EXISTS rejection_reason  TEXT;
 
 -- The templates API upserts on (user_id, name).
 DO $$ BEGIN
@@ -213,6 +219,9 @@ DO $$ BEGIN
     ALTER TABLE wa_templates ADD CONSTRAINT wa_templates_user_id_name_key UNIQUE (user_id, name);
   END IF;
 END $$;
+
+-- OTP templates have fixed Meta-provided text, so body_text is optional.
+ALTER TABLE wa_templates ALTER COLUMN body_text DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS wa_templates_user_status_idx ON wa_templates (user_id, status);
 
@@ -395,6 +404,7 @@ CREATE TABLE IF NOT EXISTS wa_broadcasts (
   template_id       UUID        REFERENCES wa_templates(id) ON DELETE SET NULL,
   status            TEXT        NOT NULL DEFAULT 'draft',
   scheduled_at      TIMESTAMPTZ,
+  variables         JSONB,
   total_recipients  INTEGER     NOT NULL DEFAULT 0,
   sent_count        INTEGER     NOT NULL DEFAULT 0,
   delivered_count   INTEGER     NOT NULL DEFAULT 0,
@@ -406,6 +416,8 @@ CREATE TABLE IF NOT EXISTS wa_broadcasts (
 
 ALTER TABLE wa_broadcasts ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
 ALTER TABLE wa_broadcasts ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW();
+-- How each template variable is filled: [{source:"name"}|{source:"phone"}|{source:"text",value:"..."}]
+ALTER TABLE wa_broadcasts ADD COLUMN IF NOT EXISTS variables    JSONB;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'wa_broadcasts_status_check') THEN

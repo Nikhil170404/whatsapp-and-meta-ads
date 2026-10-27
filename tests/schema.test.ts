@@ -64,3 +64,18 @@ describe("supabase/schema.sql", () => {
     expect([a.rows[0].v, b.rows[0].v]).toEqual([true, false]);
   });
 });
+
+describe("template and broadcast columns", () => {
+  it("stores structured templates and broadcast variable plans", async () => {
+    const db = new PGlite();
+    await db.exec(schema);
+    const u = (await db.query<{ id: string }>("insert into users(facebook_user_id) values('fb9') returning id")).rows[0];
+    // OTP templates have no body text of their own.
+    await db.query("insert into wa_templates(user_id,name,category,template_type) values($1,'otp','AUTHENTICATION','otp')", [u.id]);
+    const t = (await db.query<{ id: string }>(
+      "insert into wa_templates(user_id,name,body_text,header_text,footer_text,buttons,examples) values($1,'promo','Hi {{1}}, sale ends soon','H','F','[{\"type\":\"QUICK_REPLY\",\"text\":\"Yes\"}]','[\"Rahul\"]') returning id", [u.id])).rows[0];
+    await db.query("insert into wa_broadcasts(user_id,name,template_id,variables) values($1,'b',$2,'[{\"source\":\"name\"}]')", [u.id, t.id]);
+    const r = await db.query<{ n: number }>("select count(*)::int n from wa_broadcasts where variables is not null");
+    expect(r.rows[0].n).toBe(1);
+  });
+});
