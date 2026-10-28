@@ -405,7 +405,9 @@ export function IntegrateClient({ initialKey, existingPrefix, lastUsed, baseUrl 
             <div className="flex items-center gap-2">
               <code className="min-w-0 flex-1 break-all text-sm font-mono text-slate-700">{BASE_URL}/api/webhooks/whatsapp</code>
               <button
-                onClick={() => navigator.clipboard.writeText(`${BASE_URL}/api/webhooks/whatsapp`)}
+                type="button"
+                aria-label="Copy the webhook address"
+                onClick={() => navigator.clipboard.writeText(`${BASE_URL}/api/webhooks/whatsapp`).catch(() => {})}
                 className="p-2 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
               >
                 <Copy className="w-3.5 h-3.5 text-slate-400" />
