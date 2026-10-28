@@ -311,7 +311,12 @@ function Editor({ flow, otherKeywords }: Props) {
           <ReactFlow
             nodes={rfNodes} edges={rfEdges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
             onNodeClick={(_, n) => { setSelected(n.id); setPanel("inspect"); }} onPaneClick={() => { setSelected(null); setPanel((p) => (p === "inspect" ? null : p)); }}
-            fitView fitViewOptions={{ padding: 0.3, maxZoom: 1 }} minZoom={0.2} maxZoom={1.5} deleteKeyCode={["Backspace", "Delete"]}
+            onInit={(inst) => {
+              // Open on the start of the flow at a readable size, not the whole chain squeezed small.
+              const first = [...nodes].sort((a, b) => a.position.y - b.position.y).slice(0, 4).map((n) => ({ id: n.id }));
+              window.setTimeout(() => inst.fitView({ nodes: first, padding: 0.35, maxZoom: 1, minZoom: 0.7 }), 80);
+            }}
+            minZoom={0.2} maxZoom={1.5} deleteKeyCode={["Backspace", "Delete"]}
             connectionRadius={40} panOnScroll proOptions={{ hideAttribution: true }} defaultEdgeOptions={{ style: edgeStyle }}
           >
             <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="#cbd5e1" />

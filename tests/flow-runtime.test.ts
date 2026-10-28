@@ -47,7 +47,7 @@ describe("live conversations", () => {
     const m = memory([flowFrom("lead-capture")]); const x = sender();
     const deps = { store: m.store, sender: x.s, sleep: noSleep };
 
-    expect(await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "Hi there" }, messageId: msg() })).toBe(true);
+    expect(await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "Enquiry" }, messageId: msg() })).toBe(true);
     expect(x.sent.map((a) => a.type)).toEqual(["text", "text"]);
     expect(m.sessions[0]).toMatchObject({ status: "active", current_node_id: "q1" });
     expect(x.typed.length).toBe(1); // blue ticks + typing before replying
@@ -80,7 +80,7 @@ describe("live conversations", () => {
   it("lets the customer leave with a cancel word", async () => {
     const m = memory([flowFrom("lead-capture")]); const x = sender();
     const deps = { store: m.store, sender: x.s, sleep: noSleep };
-    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "hi" }, messageId: msg() });
+    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "enquiry" }, messageId: msg() });
     await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "Cancel" }, messageId: msg() });
     expect(m.sessions[0]).toMatchObject({ status: "completed", ended_reason: "cancelled" });
     expect((x.sent.at(-1) as any).text).toMatch(/stopped/);
@@ -89,7 +89,7 @@ describe("live conversations", () => {
   it("hands over to a person and records the note", async () => {
     const m = memory([flowFrom("faq-menu")]); const x = sender();
     const deps = { store: m.store, sender: x.s, sleep: noSleep };
-    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "hi" }, messageId: msg(), isFirstMessage: true });
+    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "enquiry" }, messageId: msg(), isFirstMessage: true });
     await handleFlowInbound(deps, { ...base, inbound: { kind: "reply", id: "b_person", title: "Talk to a person" }, messageId: msg() });
     expect(m.humans).toEqual(["Asked for a person from the FAQ menu"]);
     expect(m.sessions[0].status).toBe("handoff");
@@ -111,8 +111,8 @@ describe("live conversations", () => {
   it("keeps two customers' conversations separate", async () => {
     const m = memory([flowFrom("lead-capture")]); const x = sender();
     const deps = { store: m.store, sender: x.s, sleep: noSleep };
-    await handleFlowInbound(deps, { ...base, phone: "911", inbound: { kind: "text", text: "hi" }, messageId: msg() });
-    await handleFlowInbound(deps, { ...base, phone: "912", inbound: { kind: "text", text: "hi" }, messageId: msg() });
+    await handleFlowInbound(deps, { ...base, phone: "911", inbound: { kind: "text", text: "enquiry" }, messageId: msg() });
+    await handleFlowInbound(deps, { ...base, phone: "912", inbound: { kind: "text", text: "enquiry" }, messageId: msg() });
     await handleFlowInbound(deps, { ...base, phone: "911", inbound: { kind: "text", text: "Asha" }, messageId: msg() });
     expect(m.sessions.find((s) => s.phone === "911")!.variables.name).toBe("Asha");
     expect(m.sessions.find((s) => s.phone === "912")!.variables.name).toBeUndefined();
@@ -120,7 +120,7 @@ describe("live conversations", () => {
 
   it("ends the conversation cleanly, without throwing, if WhatsApp refuses a message", async () => {
     const m = memory([flowFrom("lead-capture")]); const x = sender(1); // second message fails: window closed
-    const handled = await handleFlowInbound({ store: m.store, sender: x.s, sleep: noSleep }, { ...base, inbound: { kind: "text", text: "hi" }, messageId: msg() });
+    const handled = await handleFlowInbound({ store: m.store, sender: x.s, sleep: noSleep }, { ...base, inbound: { kind: "text", text: "enquiry" }, messageId: msg() });
     expect(handled).toBe(true);
     expect(m.sessions[0]).toMatchObject({ status: "abandoned", ended_reason: "window_closed" });
   });

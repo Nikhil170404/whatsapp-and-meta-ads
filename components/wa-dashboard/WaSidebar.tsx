@@ -113,19 +113,14 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
     <>
       {/* --- DESKTOP SIDEBAR --- */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col z-50">
-        <div className="flex flex-col h-full overflow-hidden bg-white border-r border-slate-100 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+        <div className="flex flex-col h-full overflow-hidden bg-lp-ground border-r border-slate-200">
           {/* Logo Section */}
           <div className="flex items-center h-20 px-8">
             <Link href="/wa" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl overflow-hidden shadow-lg shadow-[#25D366]/20  transition-all duration-500 flex items-center justify-center bg-[#25D366] text-white font-bold ring-1 ring-[#25D366]/30">
-                <MessageSquare className="w-5 h-5 fill-current" />
+              <div className="flex h-9 w-9 items-center justify-center bg-lp-accent text-lp-ink">
+                <MessageSquare className="h-5 w-5 fill-current" aria-hidden />
               </div>
-              <div>
-                <span className="text-lg font-bold tracking-tight text-slate-900 leading-none block">
-                  ReplyKaro
-                </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">WhatsApp Platform</span>
-              </div>
+              <span className="text-lg font-semibold tracking-tight text-lp-ink">ReplyKaro</span>
             </Link>
           </div>
 
@@ -134,7 +129,7 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
             <nav aria-label="Dashboard" className="space-y-6">
               {navGroups.map((group) => (
                 <div key={group.title}>
-                  <p className="px-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">{group.title}</p>
+                  <p className="px-4 mb-1 text-sm font-medium text-lp-soft">{group.title}</p>
                   <div className="space-y-1">
                     {group.items.map((item) => {
                       const isActive = item.href === "/wa" ? pathname === "/wa" : pathname?.startsWith(item.href);
@@ -144,15 +139,15 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
                           href={item.href}
                           aria-current={isActive ? "page" : undefined}
                           className={cn(
-                            "flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 group",
+                            "flex min-h-11 items-center gap-3 px-4 py-2 text-[15px] font-medium transition-colors duration-200 group",
                             isActive
-                              ? "bg-[#25D366] text-white shadow-md shadow-[#25D366]/20"
-                              : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                              ? "bg-lp-field text-lp-ink font-semibold"
+                              : "text-lp-soft hover:bg-lp-field/60 hover:text-lp-ink"
                           )}
                         >
                           <item.icon className={cn(
                             "h-5 w-5",
-                            isActive ? "text-white" : "text-slate-400 group-hover:text-[#25D366] transition-colors"
+                            isActive ? "text-lp-ink" : "text-lp-soft group-hover:text-lp-ink transition-colors"
                           )} />
                           {item.name}
                         </Link>
@@ -166,20 +161,20 @@ export function WaSidebar({ user, planType: planTypeProp }: SidebarProps) {
           </div>
 
           {/* User Section */}
-          <div className="border-t border-slate-50 p-6 bg-slate-50/30">
+          <div className="border-t border-slate-200 p-5">
             <div className="flex items-center gap-4">
               <div className="relative transition-transform hover:scale-105 active:scale-95 cursor-pointer">
                 <SafeImage
                   src={user.profile_picture_url}
                   alt={shortName(user.display_name, user.email)}
-                  className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-[#25D366]/10 ring-2 ring-white"
+                  className="h-10 w-10 object-cover"
                   fallbackComponent={
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#25D366] to-[#1DA851] flex items-center justify-center text-white font-bold shadow-lg shadow-[#25D366]/10 ring-2 ring-white">
+                    <div className="flex h-10 w-10 items-center justify-center bg-lp-ink font-semibold text-white">
                       {shortName(user.display_name, user.email).charAt(0).toUpperCase()}
                     </div>
                   }
                 />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full" title="Active" />
+                
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-slate-900 truncate">

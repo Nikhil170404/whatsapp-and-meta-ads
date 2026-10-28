@@ -1,201 +1,138 @@
 import Link from "next/link";
-import {
-  ArrowRight, BarChart3, Bell, CheckCircle2, ClipboardCheck, FileText, Inbox,
-  Send, ShieldCheck, Smartphone, Sparkles, Users, Zap,
-} from "lucide-react";
-import { Footer } from "@/components/Footer";
-import { LiveDemo } from "@/components/landing/LiveDemo";
-import { FlowPreview } from "@/components/landing/FlowPreview";
-import { DashboardPreview } from "@/components/landing/DashboardPreview";
+import { ArrowRight } from "lucide-react";
+import { Stage, InlinePhone } from "@/components/landing/Stage";
+import { Reveal } from "@/components/landing/Reveal";
 import { Pricing } from "@/components/landing/Pricing";
+import { LandingFooter } from "@/components/landing/LandingFooter";
+import { BroadcastFragment, ConsentFragment, FlowFragment, InboxFragment, RuleFragment } from "@/components/landing/Fragments";
 import { FAQS } from "@/lib/landing-faqs";
 
-const FEATURES = [
-  { icon: Zap, title: "Keyword auto-replies", desc: "When a customer types “price” or “hours”, they get the right answer in seconds, day or night." },
-  { icon: Send, title: "Template broadcasts", desc: "Send Meta-approved offers and reminders to the contacts who agreed to hear from you." },
-  { icon: Inbox, title: "Shared inbox", desc: "Every conversation in one place. Assign chats to teammates and step in when a human is needed." },
-  { icon: FileText, title: "Ready-made flows", desc: "Install a full set of replies for your industry in one click, then edit them to fit your business." },
-  { icon: ClipboardCheck, title: "Consent built in", desc: "Every opt-in and opt-out is recorded with a timestamp, so you can show proof under India's DPDP Act." },
-  { icon: BarChart3, title: "Clear analytics", desc: "See messages sent, delivered and answered, and which automations earn their keep." },
-];
+const btn = "inline-flex min-h-12 items-center justify-center gap-2 px-7 text-base font-semibold transition active:scale-[0.98]";
 
 const STEPS = [
-  { n: "1", title: "Connect your number", desc: "Link your WhatsApp Business account with Meta's guided sign-up. It takes about five minutes.", icon: Smartphone },
-  { n: "2", title: "Pick a flow", desc: "Choose your industry and install a ready-made set of replies, or write your own.", icon: Sparkles },
-  { n: "3", title: "Go live", desc: "Customers get instant answers. You get the leads, orders and bookings.", icon: CheckCircle2 },
+  { stage: 1, title: "Answer the common questions in seconds", text: "Pick the words customers use, like price or hours, and write the reply once. It goes out day or night, with no one watching the phone." },
+  { stage: 2, title: "Guide the rest through a short chat", text: "Offer buttons and menus, ask for a name or an email, check the answer, and save the lead. You build it by dragging blocks, and you can see it exactly as a customer will." },
+  { stage: 3, title: "Follow up only with people who agreed", text: "Send approved templates to contacts who opted in. Replying STOP ends messaging at once, and the date and time are kept as proof." },
 ];
 
-const INDUSTRIES = ["E-commerce", "Restaurants", "Clinics", "Real estate", "Education", "Salons", "Auto services", "General business"];
+const FEATURES = [
+  { title: "Automatic replies", text: "A keyword or any message starts a reply. Edit the words any time.", art: <RuleFragment /> },
+  { title: "Broadcasts that respect consent", text: "Meta-approved templates, sent in the background. Contacts who opted out are skipped for you.", art: <BroadcastFragment /> },
+  { title: "One shared inbox", text: "Every conversation in one place. Assign a chat to a teammate when a person needs to step in.", art: <InboxFragment /> },
+  { title: "A record of every opt-in", text: "Who agreed, to what, when and how. Ready to show under India's DPDP Act.", art: <ConsentFragment /> },
+];
 
-const TRUST = [
-  { icon: ShieldCheck, title: "Official WhatsApp Cloud API", desc: "No unofficial workarounds, so your number stays safe." },
-  { icon: Bell, title: "One-word opt-out", desc: "Customers reply STOP and messaging ends immediately." },
-  { icon: Users, title: "Consent records", desc: "Who agreed, when, how and to what, kept as an audit trail." },
-  { icon: FileText, title: "90-day message retention", desc: "Message content is erased automatically after 90 days." },
+const FACTS = [
+  ["Official WhatsApp Cloud API", "No unofficial tools, so your number is not put at risk."],
+  ["One-word opt-out", "Customers reply STOP and messaging ends immediately."],
+  ["Consent records", "Who agreed, to what, when and how, kept as an audit trail."],
+  ["90-day message retention", "Message content is erased automatically after 90 days."],
+  ["You pay Meta directly", "Conversation fees go to Meta at Meta's rates, with no markup from us."],
+  ["Delete on request", "Customers can ask for their data to be exported or erased."],
 ];
 
 export default function LandingPage() {
   return (
-    <div className="overflow-x-hidden bg-white text-slate-900">
-      {/* Hero with live demo */}
-      <section className="relative">
-        <div className="absolute inset-x-0 top-0 -z-10 h-[640px] bg-[radial-gradient(60%_60%_at_70%_20%,#25D3661f,transparent)]" aria-hidden />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-28 sm:px-6 md:pt-36 lg:grid-cols-[1.1fr_0.9fr] lg:gap-8 lg:pb-24">
-          <div className="text-center lg:text-left">
-            <p className="mx-auto mb-5 inline-flex items-center gap-2 rounded-full border border-[#25D366]/25 bg-[#25D366]/10 px-3.5 py-1.5 text-xs font-semibold text-[#128C7E] lg:mx-0">
-              <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Built on the official WhatsApp Cloud API
-            </p>
-            <h1 className="text-4xl font-black leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">
-              Answer every WhatsApp message{" "}
-              <span className="text-[#25D366]">automatically.</span>
-            </h1>
-            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-slate-600 lg:mx-0">
-              Auto-replies, broadcasts and a shared inbox for your business, with customer consent tracked from the first message. Try it live: type a word in the chat and watch it reply.
-            </p>
-            <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:justify-center lg:justify-start">
-              <Link href="/signin" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#25D366]/25 transition hover:bg-[#1DA851] active:scale-[0.98]">
-                Start free <ArrowRight className="h-4 w-4" aria-hidden />
-              </Link>
-              <Link href="#how-it-works" className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50">
-                See how it works
-              </Link>
-            </div>
-            <ul className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-500 lg:justify-start">
-              {["No credit card", "Live in minutes", "Cancel anytime"].map((t) => (
-                <li key={t} className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#25D366]" aria-hidden />{t}</li>
-              ))}
-            </ul>
+    <div className="bg-lp-ground pt-16 text-lp-ink">
+      <Stage>
+        {/* Hero */}
+        <section data-stage="0" className="flex min-h-[calc(100svh-4rem)] flex-col justify-center py-12 lg:py-16">
+          <h1 className="max-w-[16ch] text-[clamp(2.5rem,5.2vw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.035em]">Answer every WhatsApp chat.</h1>
+          <p className="mt-6 max-w-[34rem] text-xl leading-relaxed text-lp-soft">Auto-replies, guided chats and broadcasts for your business, with every customer&apos;s consent recorded from the first message.</p>
+          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <Link href="/signin" className={`${btn} bg-lp-accent text-lp-ink hover:bg-lp-accent-hover`}>Start free <ArrowRight className="h-5 w-5" aria-hidden /></Link>
+            <Link href="#how-it-works" className="py-2 text-base font-semibold underline-offset-4 hover:underline">See how it works</Link>
           </div>
-          <LiveDemo />
-        </div>
-      </section>
+          <p className="mt-4 text-base text-lp-soft">No credit card. Live in minutes.</p>
+          <InlinePhone stage={0} />
+        </section>
 
-      {/* How it works */}
-      <section id="how-it-works" className="scroll-mt-20 bg-slate-50 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Set up in three steps</h2>
-            <p className="mt-3 text-slate-600">No code and no developer needed.</p>
-          </div>
-          <ol className="mt-12 grid gap-5 md:grid-cols-3">
-            {STEPS.map(({ n, title, desc, icon: Icon }) => (
-              <li key={n} className="rounded-3xl bg-white p-7 shadow-sm ring-1 ring-slate-100">
-                <div className="flex items-center justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#25D366]/10 text-[#128C7E]"><Icon className="h-5 w-5" aria-hidden /></span>
-                  <span className="text-5xl font-black text-slate-100" aria-hidden>{n}</span>
+        {/* How it works */}
+        <section id="how-it-works" className="scroll-mt-20 pb-8">
+          <Reveal as="h2" className="max-w-[18ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Three jobs, handled while you work.</Reveal>
+          {STEPS.map((s) => (
+            <article key={s.stage} data-stage={s.stage} className="py-16 lg:flex lg:min-h-[70svh] lg:flex-col lg:justify-center">
+              <Reveal>
+                <h3 className="max-w-[20ch] text-[clamp(1.75rem,2.6vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.025em]">{s.title}</h3>
+                <p className="mt-4 max-w-[34rem] text-lg leading-relaxed text-lp-soft">{s.text}</p>
+              </Reveal>
+              <InlinePhone stage={s.stage} />
+            </article>
+          ))}
+        </section>
+
+        {/* Features */}
+        <section id="features" className="scroll-mt-20 pb-24 pt-8 lg:pb-32">
+          <Reveal as="h2" className="max-w-[20ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Everything you need for WhatsApp.</Reveal>
+          <div className="mt-14 space-y-16 lg:space-y-24">
+            {FEATURES.map((f) => (
+              <Reveal key={f.title} className="grid gap-6 xl:grid-cols-[minmax(0,360px)_1fr] xl:items-start xl:gap-10">
+                {f.art}
+                <div className="max-w-[26rem]">
+                  <h3 className="text-xl font-semibold tracking-tight">{f.title}</h3>
+                  <p className="mt-2 text-lg leading-relaxed text-lp-soft">{f.text}</p>
                 </div>
-                <h3 className="mt-5 text-lg font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{desc}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="scroll-mt-20 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Everything for WhatsApp, nothing you do not need</h2>
-          </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <article key={title} className="rounded-3xl p-7 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-900/5">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white"><Icon className="h-5 w-5" aria-hidden /></span>
-                <h3 className="mt-5 text-lg font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-600">{desc}</p>
-              </article>
+              </Reveal>
             ))}
           </div>
+        </section>
+      </Stage>
+
+      {/* Flow builder: breaks the split and runs full width */}
+      <section className="bg-lp-dark px-5 py-24 text-white sm:px-8 md:py-32 lg:px-14">
+        <div className="mx-auto grid max-w-[1400px] items-center gap-14 lg:grid-cols-2">
+          <Reveal>
+            <h2 className="max-w-[16ch] text-[clamp(2.25rem,4.4vw,4rem)] font-semibold leading-[1.04] tracking-[-0.035em]">Build chats by dragging.</h2>
+            <p className="mt-6 max-w-[32rem] text-xl leading-relaxed text-emerald-50/90">Greet, ask, offer a menu, save a lead, hand over to a person. Preview it like a customer and see anything that is wrong before it goes live. It works on your phone too.</p>
+            <Link href="/signin" className={`${btn} mt-9 bg-lp-accent text-lp-ink hover:bg-lp-accent-hover`}>Build your first flow <ArrowRight className="h-5 w-5" aria-hidden /></Link>
+          </Reveal>
+          <Reveal delay={120}><FlowFragment /></Reveal>
         </div>
       </section>
 
-      {/* Real dashboard */}
-      <section className="pb-16 md:pb-24">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
-          <h2 className="mb-10 text-center text-3xl font-black tracking-tight sm:text-4xl">One dashboard for every conversation</h2>
-          <DashboardPreview />
-        </div>
-      </section>
-
-      {/* Flow + industries */}
-      <section className="bg-slate-50 py-16 md:py-24">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
-          <div>
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Flows ready for your industry</h2>
-            <p className="mt-4 text-slate-600">
-              Choose your business type and install a complete set of replies in one click: a welcome message with opt-out notice, pricing, hours, bookings and more. Edit anything before it goes live.
-            </p>
-            <ul className="mt-6 flex flex-wrap gap-2">
-              {INDUSTRIES.map((i) => (
-                <li key={i} className="rounded-full bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-200">{i}</li>
-              ))}
-            </ul>
-          </div>
-          <FlowPreview />
-        </div>
-      </section>
-
-      {/* Trust & compliance */}
-      <section className="py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Respect your customers. Protect your number.</h2>
-            <p className="mt-3 text-slate-600">Consent-first messaging keeps quality ratings high and keeps you aligned with India&apos;s DPDP Act.</p>
-          </div>
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {TRUST.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="rounded-3xl bg-emerald-50/60 p-6 ring-1 ring-emerald-100">
-                <Icon className="h-6 w-6 text-[#128C7E]" aria-hidden />
-                <h3 className="mt-4 font-bold">{title}</h3>
-                <p className="mt-1.5 text-sm text-slate-600">{desc}</p>
-              </div>
+      {/* Compliance: plain facts in columns */}
+      <section className="px-5 py-24 sm:px-8 md:py-36 lg:px-14">
+        <div className="mx-auto grid max-w-[1400px] gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
+          <Reveal as="h2" className="max-w-[14ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Consent comes first.</Reveal>
+          <dl className="grid gap-x-12 gap-y-9 sm:grid-cols-2">
+            {FACTS.map(([t, d], i) => (
+              <Reveal key={t} delay={(i % 2) * 80}>
+                <dt className="text-xl font-semibold tracking-tight">{t}</dt>
+                <dd className="mt-1.5 text-lg leading-relaxed text-lp-soft">{d}</dd>
+              </Reveal>
             ))}
-          </div>
+          </dl>
         </div>
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="scroll-mt-20 bg-slate-50 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="mx-auto mb-10 max-w-2xl text-center">
-            <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Simple pricing</h2>
-            <p className="mt-3 text-slate-600">Start free. Upgrade when you need more.</p>
-          </div>
-          <Pricing />
+      <section id="pricing" className="scroll-mt-16 px-5 pb-24 sm:px-8 md:pb-36 lg:px-14">
+        <div className="mx-auto max-w-[1400px]">
+          <Reveal as="h2" className="max-w-[20ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Start free. Pay when you grow.</Reveal>
+          <div className="mt-10"><Pricing /></div>
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="scroll-mt-20 py-16 md:py-24">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6">
-          <h2 className="text-center text-3xl font-black tracking-tight sm:text-4xl">Questions, answered</h2>
-          <div className="mt-10 divide-y divide-slate-200 rounded-3xl ring-1 ring-slate-200">
-            {FAQS.map((f) => (
-              <details key={f.q} className="group px-6 py-5">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold [&::-webkit-details-marker]:hidden">
-                  {f.q}
-                  <span className="text-xl text-slate-400 transition group-open:rotate-45" aria-hidden>+</span>
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">{f.a}</p>
-              </details>
-            ))}
+      {/* FAQ: read as text */}
+      <section id="faq" className="scroll-mt-16 px-5 pb-24 sm:px-8 md:pb-36 lg:px-14">
+        <div className="mx-auto grid max-w-[1400px] gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
+          <h2 className="text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Questions, answered.</h2>
+          <div className="space-y-6 text-lg leading-relaxed lg:columns-2 lg:gap-14 lg:space-y-0 [&>p]:mb-6 [&>p]:break-inside-avoid">
+            {FAQS.map((f) => (<p key={f.q}><strong className="font-semibold">{f.q}</strong> {f.a}</p>))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="px-4 pb-16 sm:px-6 md:pb-24">
-        <div className="mx-auto max-w-4xl rounded-[2rem] bg-slate-900 px-6 py-14 text-center text-white sm:px-12">
-          <h2 className="text-3xl font-black tracking-tight sm:text-4xl">Your next customer is messaging you right now.</h2>
-          <p className="mx-auto mt-3 max-w-xl text-slate-300">Set up in minutes and reply to every message automatically.</p>
-          <Link href="/signin" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-[#25D366] px-7 py-3.5 text-sm font-bold text-white transition hover:bg-[#1DA851] active:scale-[0.98]">
-            Start free <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
+      {/* Close */}
+      <section className="bg-lp-accent px-5 py-24 text-lp-ink sm:px-8 md:py-36 lg:px-14">
+        <div className="mx-auto max-w-[1400px]">
+          <h2 className="max-w-[12ch] text-[clamp(3rem,8vw,7rem)] font-semibold leading-[0.95] tracking-[-0.045em]">Reply to everyone.</h2>
+          <p className="mt-6 max-w-[30rem] text-xl leading-relaxed">Connect your number, switch on a first reply, and your next customer gets an answer straight away.</p>
+          <Link href="/signin" className={`${btn} mt-9 bg-lp-ink text-white hover:bg-black`}>Start free <ArrowRight className="h-5 w-5" aria-hidden /></Link>
         </div>
       </section>
 
-      <Footer />
+      <LandingFooter />
     </div>
   );
 }

@@ -316,3 +316,47 @@ html { scroll-behavior: smooth; }
 @media (max-width: 640px) {
   input, select, textarea { font-size: 16px; }
 }
+
+/* ── App shell: one flat look for every dashboard screen ───────────────────────
+   Surfaces are separated by tone, not shadow; corners are small; small caps labels
+   read as plain sentence-case text. Dialogs and menus keep their shadow. */
+.app-shell [class*="rounded-3xl"],
+.app-shell [class*="rounded-2xl"],
+.app-shell [class*="rounded-xl"] { border-radius: 6px; }
+.app-shell [class*="shadow-"]:not([role="dialog"]):not([role="menu"]):not([class*="fixed"]) { box-shadow: none; }
+.app-shell .uppercase { text-transform: none; letter-spacing: normal; }
+.app-shell [class*="tracking-wider"], .app-shell [class*="tracking-widest"] { letter-spacing: normal; }
+.app-shell [class*="text-[9px]"], .app-shell [class*="text-[10px]"], .app-shell [class*="text-[11px]"] { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Gradients become flat fields: dark ones the ink colour, light ones the soft field tone. */
+.app-shell [class*="bg-gradient"] { background-image: none; background-color: #E3ECE7; }
+.app-shell [class*="bg-gradient"][class*="text-white"] { background-color: #0A1F16; }
+.app-shell [class*="rounded-full"][class*="bg-white/5"] { display: none; }
+
+/* Touch screens: every button is at least 40px, so a thumb can hit it. */
+@media (pointer: coarse) {
+  .app-shell button { min-height: 40px; min-width: 40px; }
+  .app-shell a[class*="text-xs"], .app-shell a[class*="text-sm"] { display: inline-block; padding-block: 0.5rem; }
+}
+
+/* Contrast: every text colour in the app meets 4.5:1 on its background.
+   White on WhatsApp green is only 2:1, so text on a green fill is the dark ink colour. */
+.app-shell [class~="bg-[#25D366]"].text-white,
+.app-shell [class~="bg-[#25D366]"] .text-white,
+.app-shell [class~="bg-[#25D366]"][class*="text-"] { color: #0A1F16; }
+.app-shell [class~="bg-[#25D366]"]:hover { background-color: #1FBF5B; }
+.app-shell .text-slate-400, .app-shell .text-slate-300 { color: #556158; }
+.app-shell .text-slate-500 { color: #43564C; }
+.app-shell [class~="text-[#25D366]"] { color: #0E7A5F; }
+.app-shell .text-amber-600, .app-shell .text-amber-700 { color: #92400E; }
+.app-shell .text-rose-500 { color: #BE123C; }
+.app-shell .text-blue-600 { color: #1D4ED8; }
+.app-shell .text-violet-600 { color: #6D28D9; }
+.app-shell ::placeholder { color: #64748B; opacity: 1; }
+.app-shell .text-green-600 { color: #15803D; }
+.app-shell .text-orange-500 { color: #C2410C; }
+.app-shell .text-blue-500 { color: #1D4ED8; }
+.app-shell .text-sky-500, .app-shell .text-sky-600 { color: #0369A1; }
