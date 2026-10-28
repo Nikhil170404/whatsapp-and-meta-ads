@@ -386,7 +386,7 @@ describe("webhook safety", () => {
     }
   });
   it("recognises private addresses, including IPv6 and mapped ones", () => {
-    for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.0.9", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1"]) expect(isPrivateAddress(ip), ip).toBe(true);
+    for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.0.9", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "::ffff:7f00:1", "64:ff9b::a00:1", "2002:7f00:1::"]) expect(isPrivateAddress(ip), ip).toBe(true);
     for (const ip of ["8.8.8.8", "142.250.80.46", "172.32.0.1", "2606:4700:4700::1111"]) expect(isPrivateAddress(ip), ip).toBe(false);
   });
   it("is refused in a flow until it has a valid address, and reminds about privacy", () => {
@@ -418,5 +418,19 @@ describe("message attachments", () => {
     expect(two.some((i) => i.level === "error" && /one attachment/.test(i.message))).toBe(true);
     const http = validateFlow(msgFlow({ text: "x", documentUrl: "http://a.example/d.pdf" }), undefined);
     expect(http.some((i) => i.level === "error" && /document address/.test(i.message))).toBe(true);
+  });
+});
+
+describe("payment links cannot be redirected by what a customer types", () => {
+  it("encodes answers placed inside the link", () => {
+    const d = structuredClone(tpl("order-and-pay").definition);
+    (d.nodes.find((n) => n.id === "pay")!.data as any).url = "https://rzp.io/l/abc?ref={{address}}";
+    let r = startFlow(d, ctx);
+    r = resumeFlow(d, r.session, { kind: "reply", id: "r_a", title: "Item A" }, ctx);
+    r = resumeFlow(d, r.session, { kind: "text", text: "Priya Sharma" }, ctx);
+    r = resumeFlow(d, r.session, { kind: "text", text: "x&redirect=https://evil.example/#" }, ctx);
+    const pay = r.actions.find((a) => a.type === "cta_url") as any;
+    expect(pay.url).toBe("https://rzp.io/l/abc?ref=x%26redirect%3Dhttps%3A%2F%2Fevil.example%2F%23");
+    expect(new URL(pay.url).host).toBe("rzp.io");
   });
 });

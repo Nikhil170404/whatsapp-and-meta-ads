@@ -12,7 +12,11 @@ export function isPrivateAddress(ip: string): boolean {
     if (v === "::1" || v === "::") return true;
     if (/^f[cd]/.test(v) || /^fe[89ab]/.test(v)) return true;
     const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    return mapped ? isPrivateIPv4(mapped[1]) : false;
+    if (mapped) return isPrivateIPv4(mapped[1]);
+    // IPv4 written in hex inside IPv6 (::ffff:7f00:1), and the translation ranges that wrap an IPv4 address.
+    const hex = v.match(/^(?:::ffff:|64:ff9b::)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hex) { const hi = parseInt(hex[1], 16), lo = parseInt(hex[2], 16); return isPrivateIPv4(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`); }
+    return v.startsWith("2002:") || v.startsWith("64:ff9b:");
   }
   return isPrivateIPv4(v);
 }

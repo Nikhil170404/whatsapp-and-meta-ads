@@ -57,12 +57,14 @@ export function newSession(): Session {
 }
 
 /** Fills {{variables}} in a message. Unknown variables become empty rather than showing braces. */
-export function render(text: string, vars: Record<string, string>, ctx: Ctx): string {
+export function render(text: string, vars: Record<string, string>, ctx: Ctx, encode = false): string {
   return text.replace(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi, (_m, name: string) => {
     const k = name.toLowerCase();
-    if (k === "contact_name") return ctx.contactName?.trim() || "there";
-    if (k === "phone") return ctx.phone.startsWith("+") ? ctx.phone : `+${ctx.phone}`;
-    return vars[k] ?? "";
+    const value = k === "contact_name" ? ctx.contactName?.trim() || "there"
+      : k === "phone" ? (ctx.phone.startsWith("+") ? ctx.phone : `+${ctx.phone}`)
+      : vars[k] ?? "";
+    // Inside a link, what a customer typed must not be able to change the link's host, path or other parameters.
+    return encode ? encodeURIComponent(value) : value;
   });
 }
 
@@ -139,7 +141,7 @@ function run(flow: FlowDefinition, session: Session, fromId: string | null, ctx:
       }
       case "pay": {
         const d = node.data as NodeDataMap["pay"];
-        actions.push({ type: "cta_url", text: render(d.text, v, ctx), label: d.buttonLabel, url: render(d.url, v, ctx) });
+        actions.push({ type: "cta_url", text: render(d.text, v, ctx), label: d.buttonLabel, url: render(d.url, v, ctx, true) });
         id = target(flow.edges, node.id, "next");
         break;
       }
