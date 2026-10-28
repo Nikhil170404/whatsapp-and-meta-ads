@@ -360,3 +360,14 @@ html { scroll-behavior: smooth; }
 .app-shell .text-orange-500 { color: #C2410C; }
 .app-shell .text-blue-500 { color: #1D4ED8; }
 .app-shell .text-sky-500, .app-shell .text-sky-600 { color: #0369A1; }
+
+/* Long-form text (privacy, terms): readable headings, spacing, lists and links. */
+.prose { color: #1f2d26; font-size: 1.0625rem; line-height: 1.7; max-width: 46rem; }
+.prose h2 { margin: 2.5rem 0 0.75rem; font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: #0A1F16; }
+.prose h3 { margin: 1.75rem 0 0.5rem; font-size: 1.2rem; font-weight: 600; color: #0A1F16; }
+.prose p, .prose ul, .prose ol { margin: 0 0 1rem; }
+.prose ul { list-style: square; padding-left: 1.4rem; }
+.prose ol { list-style: decimal; padding-left: 1.4rem; }
+.prose li { margin: 0.35rem 0; }
+.prose a { color: #0E7A5F; text-decoration: underline; text-underline-offset: 3px; }
+.prose strong { font-weight: 600; color: #0A1F16; }
