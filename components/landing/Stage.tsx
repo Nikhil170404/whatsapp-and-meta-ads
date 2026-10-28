@@ -39,5 +39,5 @@ export function Stage({ children }: { children: ReactNode }) {
 
 /** One conversation shown inline, for screens too narrow for the side-by-side stage. */
 export function InlinePhone({ stage }: { stage: number }) {
-  return <div className="mt-8 lg:hidden"><Phone stage={stage} /></div>;
+  return <div className="mt-8 md:mt-0 lg:hidden"><Phone stage={stage} /></div>;
 }

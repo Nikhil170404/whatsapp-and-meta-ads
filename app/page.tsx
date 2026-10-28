@@ -36,7 +36,8 @@ export default function LandingPage() {
     <div className="bg-lp-ground pt-16 text-lp-ink">
       <Stage>
         {/* Hero */}
-        <section data-stage="0" className="flex min-h-[calc(100svh-4rem)] flex-col justify-center py-12 lg:py-16">
+        <section data-stage="0" className="py-12 md:grid md:grid-cols-[minmax(0,1fr)_340px] md:items-center md:gap-10 lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col lg:justify-center lg:py-16">
+          <div>
           <h1 className="max-w-[16ch] text-[clamp(2.5rem,5.2vw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.035em]">Answer every WhatsApp chat.</h1>
           <p className="mt-6 max-w-[34rem] text-xl leading-relaxed text-lp-soft">Auto-replies, guided chats and broadcasts for your business, with every customer&apos;s consent recorded from the first message.</p>
           <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3">
@@ -44,6 +45,7 @@ export default function LandingPage() {
             <Link href="#how-it-works" className="py-2 text-base font-semibold underline-offset-4 hover:underline">See how it works</Link>
           </div>
           <p className="mt-4 text-base text-lp-soft">No credit card. Live in minutes.</p>
+          </div>
           <InlinePhone stage={0} />
         </section>
 
@@ -51,7 +53,7 @@ export default function LandingPage() {
         <section id="how-it-works" className="scroll-mt-20 pb-8">
           <Reveal as="h2" className="max-w-[18ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Three jobs, handled while you work.</Reveal>
           {STEPS.map((s) => (
-            <article key={s.stage} data-stage={s.stage} className="py-16 lg:flex lg:min-h-[70svh] lg:flex-col lg:justify-center">
+            <article key={s.stage} data-stage={s.stage} className="py-14 md:grid md:grid-cols-[minmax(0,1fr)_340px] md:items-center md:gap-10 lg:flex lg:min-h-[70svh] lg:flex-col lg:justify-center lg:py-16">
               <Reveal>
                 <h3 className="max-w-[20ch] text-[clamp(1.75rem,2.6vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.025em]">{s.title}</h3>
                 <p className="mt-4 max-w-[34rem] text-lg leading-relaxed text-lp-soft">{s.text}</p>
@@ -66,7 +68,7 @@ export default function LandingPage() {
           <Reveal as="h2" className="max-w-[20ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Everything you need for WhatsApp.</Reveal>
           <div className="mt-14 space-y-16 lg:space-y-24">
             {FEATURES.map((f) => (
-              <Reveal key={f.title} className="grid gap-6 xl:grid-cols-[minmax(0,360px)_1fr] xl:items-start xl:gap-10">
+              <Reveal key={f.title} className="grid gap-6 sm:grid-cols-[minmax(0,300px)_1fr] sm:items-start sm:gap-8 xl:grid-cols-[minmax(0,360px)_1fr] xl:gap-10">
                 {f.art}
                 <div className="max-w-[26rem]">
                   <h3 className="text-xl font-semibold tracking-tight">{f.title}</h3>
