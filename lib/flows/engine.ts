@@ -8,16 +8,25 @@ import {
   FLOW_LIMITS, type FlowButton, type FlowDefinition, type FlowEdge, type FlowNode, type FlowRow, type NodeDataMap,
 } from "./types";
 
+/** A readable file name for a document link, for example "price-list.pdf". */
+export function fileNameOf(url: string): string {
+  try { const last = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() ?? ""); return last || "document"; } catch { return "document"; }
+}
+
 export type Action =
   | { type: "text"; text: string }
   | { type: "image"; url: string; caption?: string }
+  | { type: "video"; url: string; caption?: string }
+  | { type: "document"; url: string; filename: string; caption?: string }
   | { type: "buttons"; text: string; buttons: FlowButton[] }
   | { type: "list"; text: string; buttonLabel: string; rows: FlowRow[] }
   | { type: "location_request"; text: string }
+  | { type: "cta_url"; text: string; label: string; url: string }
   | { type: "delay"; seconds: number }
   | { type: "tag"; label: string }
   | { type: "lead"; fields: Record<string, string>; note?: string }
-  | { type: "handoff"; note?: string };
+  | { type: "handoff"; note?: string }
+  | { type: "webhook"; url: string; fields: Record<string, string> };
 
 export type SessionStatus = "active" | "waiting" | "completed" | "handoff" | "abandoned";
 
@@ -48,12 +57,14 @@ export function newSession(): Session {
 }
 
 /** Fills {{variables}} in a message. Unknown variables become empty rather than showing braces. */
-export function render(text: string, vars: Record<string, string>, ctx: Ctx): string {
+export function render(text: string, vars: Record<string, string>, ctx: Ctx, encode = false): string {
   return text.replace(/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/gi, (_m, name: string) => {
     const k = name.toLowerCase();
-    if (k === "contact_name") return ctx.contactName?.trim() || "there";
-    if (k === "phone") return ctx.phone.startsWith("+") ? ctx.phone : `+${ctx.phone}`;
-    return vars[k] ?? "";
+    const value = k === "contact_name" ? ctx.contactName?.trim() || "there"
+      : k === "phone" ? (ctx.phone.startsWith("+") ? ctx.phone : `+${ctx.phone}`)
+      : vars[k] ?? "";
+    // Inside a link, what a customer typed must not be able to change the link's host, path or other parameters.
+    return encode ? encodeURIComponent(value) : value;
   });
 }
 
@@ -91,7 +102,9 @@ function run(flow: FlowDefinition, session: Session, fromId: string | null, ctx:
       case "message": {
         const d = node.data as NodeDataMap["message"];
         const text = render(d.text ?? "", v, ctx);
-        if (d.imageUrl) actions.push({ type: "image", url: d.imageUrl, caption: text || undefined });
+        if (d.documentUrl) actions.push({ type: "document", url: d.documentUrl, filename: d.documentName?.trim() || fileNameOf(d.documentUrl), caption: text || undefined });
+        else if (d.videoUrl) actions.push({ type: "video", url: d.videoUrl, caption: text || undefined });
+        else if (d.imageUrl) actions.push({ type: "image", url: d.imageUrl, caption: text || undefined });
         else if (text) actions.push({ type: "text", text });
         id = target(flow.edges, node.id, "next");
         break;
@@ -119,6 +132,18 @@ function run(flow: FlowDefinition, session: Session, fromId: string | null, ctx:
         actions.push({ type: "location_request", text: render(d.text, v, ctx) });
         session.currentNodeId = node.id; session.retries = 0; session.status = "active";
         return;
+      }
+      case "webhook": {
+        const d = node.data as NodeDataMap["webhook"];
+        actions.push({ type: "webhook", url: d.url, fields: { ...v, contact_name: ctx.contactName ?? "", phone: ctx.phone } });
+        id = target(flow.edges, node.id, "next");
+        break;
+      }
+      case "pay": {
+        const d = node.data as NodeDataMap["pay"];
+        actions.push({ type: "cta_url", text: render(d.text, v, ctx), label: d.buttonLabel, url: render(d.url, v, ctx, true) });
+        id = target(flow.edges, node.id, "next");
+        break;
       }
       case "condition": {
         const d = node.data as NodeDataMap["condition"];

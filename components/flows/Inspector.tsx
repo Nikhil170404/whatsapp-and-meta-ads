@@ -90,7 +90,26 @@ export function Inspector({ node, issues, variables, onChange, onDelete, onClose
       {node.type === "message" && (
         <>
           <div><label htmlFor="f-text" className={label}>Message</label><TextField id="f-text" value={d.text ?? ""} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.textMessage} rows={5} placeholder="Hi {{contact_name}}! Thanks for getting in touch." variables={chips} /></div>
-          <div><label htmlFor="f-img" className={label}>Picture (optional)</label><input id="f-img" className={input} value={d.imageUrl ?? ""} placeholder="https://yourshop.com/offer.jpg" onChange={(e) => set({ imageUrl: e.target.value })} /><Hint>A public link. The message becomes the picture&apos;s caption.</Hint></div>
+          {(() => {
+            const kind = d.documentUrl !== undefined ? "document" : d.videoUrl !== undefined ? "video" : d.imageUrl !== undefined ? "image" : "none";
+            const pick = (k: string) => set({ imageUrl: k === "image" ? "" : undefined, videoUrl: k === "video" ? "" : undefined, documentUrl: k === "document" ? "" : undefined, documentName: k === "document" ? (d.documentName ?? "") : undefined });
+            const field = kind === "document" ? "documentUrl" : kind === "video" ? "videoUrl" : "imageUrl";
+            return (
+              <div>
+                <label htmlFor="f-att" className={label}>Attach (optional)</label>
+                <select id="f-att" className={input} value={kind} onChange={(e) => pick(e.target.value)}>
+                  <option value="none">Nothing, just text</option><option value="image">A picture</option><option value="video">A video</option><option value="document">A document (PDF, price list, brochure)</option>
+                </select>
+                {kind !== "none" && (
+                  <>
+                    <input aria-label="Attachment link" className={`${input} mt-2`} value={d[field] ?? ""} placeholder={kind === "document" ? "https://yourshop.com/price-list.pdf" : kind === "video" ? "https://yourshop.com/intro.mp4" : "https://yourshop.com/offer.jpg"} onChange={(e) => set({ [field]: e.target.value.trim() })} />
+                    {kind === "document" && <input aria-label="File name customers see" className={`${input} mt-2`} value={d.documentName ?? ""} placeholder="Price list.pdf (optional)" onChange={(e) => set({ documentName: e.target.value })} />}
+                    <Hint>A public https link. The message above becomes the caption. {kind === "video" ? "MP4 up to 16 MB works best." : kind === "document" ? "PDF, Word or Excel files up to 100 MB." : "JPG or PNG up to 5 MB."}</Hint>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
 
@@ -217,6 +236,28 @@ export function Inspector({ node, issues, variables, onChange, onDelete, onClose
         <>
           <div><label htmlFor="f-text" className={label}>Tell the customer</label><TextField id="f-text" value={d.text} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.textMessage} variables={chips} /></div>
           <div><label htmlFor="f-note" className={label}>Note for your team (optional)</label><input id="f-note" className={input} value={d.note ?? ""} onChange={(e) => set({ note: e.target.value })} /><Hint>The bot stops and the conversation is flagged for a person in your inbox.</Hint></div>
+        </>
+      )}
+
+      {node.type === "webhook" && (
+        <>
+          <div><label htmlFor="f-wh" className={label}>Address to send to</label><input id="f-wh" type="url" inputMode="url" className={input} value={d.url} placeholder="https://hooks.zapier.com/hooks/catch/…" onChange={(e) => set({ url: e.target.value.trim() })} />
+            <Hint>Paste the “webhook” address from Zapier, Make, n8n or your own system. It must start with https://.</Hint></div>
+          <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+            <p className="font-semibold">What is sent</p>
+            <p className="mt-1">The customer&apos;s number, name and every answer collected so far, as JSON. Example: <code className="rounded bg-white px-1">{`{"phone":"9198…","details":{"name":"Priya","email":"…"}}`}</code></p>
+            <p className="mt-2">If your system is down, the conversation still continues.</p>
+          </div>
+        </>
+      )}
+
+      {node.type === "pay" && (
+        <>
+          <div><label htmlFor="f-text" className={label}>Message</label><TextField id="f-text" value={d.text} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.interactiveBody} variables={chips} placeholder="Your total is ₹499. Tap to pay." /></div>
+          <div><label htmlFor="f-url" className={label}>Payment link</label><input id="f-url" type="url" inputMode="url" className={input} value={d.url} placeholder="https://rzp.io/l/your-link" onChange={(e) => set({ url: e.target.value.trim() })} />
+            <Hint>Paste a link from your own payment provider: a Razorpay Payment Link, a PayU or Cashfree link, or a UPI payment page. The money goes straight to your account. ReplyKaro never touches it.</Hint></div>
+          <div><label htmlFor="f-lbl" className={label}>Button label</label><div className="flex items-center gap-2"><input id="f-lbl" className={input} value={d.buttonLabel} maxLength={FLOW_LIMITS.buttonTitle + 10} onChange={(e) => set({ buttonLabel: e.target.value })} /><Counter value={d.buttonLabel ?? ""} max={FLOW_LIMITS.buttonTitle} /></div></div>
+          <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">To know a customer paid, set your provider to notify you, or ask them to reply “paid” and use a Question block.</p>
         </>
       )}
 

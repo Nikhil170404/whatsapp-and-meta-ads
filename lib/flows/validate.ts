@@ -2,6 +2,7 @@
  * Finds the mistakes in a flow before a customer meets them, in plain language, each pointing at
  * the block that needs fixing. Errors block publishing; warnings are worth a look.
  */
+import { validWebhookUrl } from "./url";
 import {
   BUILTIN_VARIABLES, FLOW_LIMITS, VARIABLE_RE, isInputNode, outputHandles,
   type FlowDefinition, type FlowEdge, type FlowNode, type FlowSettings, type NodeDataMap, type NodeType,
@@ -16,6 +17,7 @@ export interface FlowIssue {
 export const NODE_LABELS: Record<NodeType, string> = {
   start: "Start", message: "Message", buttons: "Buttons", list: "Menu", question: "Question", location: "Location",
   condition: "Condition", wait: "Wait", tag: "Tag", lead: "Save lead", handoff: "Hand over to a person", end: "End",
+  pay: "Payment link", webhook: "Send to a URL",
 };
 
 const used = (text: string | undefined) =>
@@ -84,7 +86,12 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
     switch (n.type) {
       case "message": {
         const d = n.data as NodeDataMap["message"];
-        if (!d.text?.trim() && !d.imageUrl) err("This message is empty. Write something to send.", n.id);
+        const attached = [d.imageUrl, d.videoUrl, d.documentUrl].filter((x) => x?.trim());
+        if (!d.text?.trim() && !attached.length) err("This message is empty. Write something to send.", n.id);
+        if (attached.length > 1) err("A message can carry one attachment. Keep the picture, the video or the document, and remove the others.", n.id);
+        if (d.videoUrl && !/^https:\/\//i.test(d.videoUrl)) err("The video address must be a public link starting with https://", n.id);
+        if (d.documentUrl && !/^https:\/\//i.test(d.documentUrl)) err("The document address must be a public link starting with https://", n.id);
+        if ((d.videoUrl || d.documentUrl) && (d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`A caption is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
         if ((d.text ?? "").length > FLOW_LIMITS.textMessage) err(`Messages are limited to ${FLOW_LIMITS.textMessage} characters.`, n.id);
         if (d.imageUrl && !/^https:\/\//i.test(d.imageUrl)) err("The image address must be a public link starting with https://", n.id);
         if (d.imageUrl && (d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`An image caption is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
@@ -146,6 +153,23 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
         if ((d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`The location request is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
         break;
       }
+      case "webhook": {
+        const d = n.data as NodeDataMap["webhook"];
+        if (!validWebhookUrl(d.url ?? "")) err("Paste the address to send the details to. It must start with https:// and be a public website.", n.id);
+        warn("This sends customer details to another service. Say so in your privacy notice.", n.id);
+        if (!out(n, "next")) warn("The flow ends after sending. Add a thank-you message or an End block.", n.id);
+        break;
+      }
+      case "pay": {
+        const d = n.data as NodeDataMap["pay"];
+        if (!d.text?.trim()) err("Write the message that goes with the payment button, for example the amount and what it is for.", n.id);
+        if ((d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`The message is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
+        if (!d.buttonLabel?.trim()) err("Give the button a label, for example “Pay now”.", n.id);
+        else if (d.buttonLabel.length > FLOW_LIMITS.buttonTitle) err(`The button label is limited to ${FLOW_LIMITS.buttonTitle} characters.`, n.id);
+        if (!/^https:\/\/[^\s]+\.[^\s]+/i.test((d.url ?? "").trim())) err("Paste your payment link. It must start with https://", n.id);
+        if (!out(n, "next")) warn("The flow ends after the payment link. Add a thank-you message or an End block.", n.id);
+        break;
+      }
       case "condition": {
         const d = n.data as NodeDataMap["condition"];
         if (!d.variable?.trim()) err("Choose which answer to check.", n.id);
@@ -177,7 +201,7 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
     // Variables used in texts must be collected somewhere in the flow.
     const text = n.type === "message" ? (n.data as NodeDataMap["message"]).text
       : n.type === "buttons" || n.type === "list" || n.type === "question" || n.type === "location" ? (n.data as any).text
-      : n.type === "handoff" || n.type === "end" ? (n.data as any).text : "";
+      : n.type === "handoff" || n.type === "end" || n.type === "pay" ? (n.data as any).text : "";
     for (const v of new Set(used(text))) {
       if (!defined.has(v)) warn(`“{{${v}}}” is not collected anywhere in this flow, so it will show as empty.`, n.id);
     }

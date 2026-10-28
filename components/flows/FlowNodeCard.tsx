@@ -88,7 +88,7 @@ function FlowNodeCardImpl({ data, selected }: NodeProps) {
         </div>
       )}
 
-      {["start", "message", "tag", "lead", "wait"].includes(node.type) && (
+      {["start", "message", "tag", "lead", "wait", "pay", "webhook"].includes(node.type) && (
         <Handle type="source" position={Position.Bottom} id="next" className={`${handleBase} ${gap("next") || "!bg-sky-500"}`} />
       )}
       {["question", "location"].includes(node.type) && (

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { startFlow, resumeFlow, continueAfterWait, render, MAX_STEPS, type Action, type Session } from "../lib/flows/engine";
 import { validateFlow, sanitize, hasErrors } from "../lib/flows/validate";
+import { validWebhookUrl } from "../lib/flows/url";
+import { isPrivateAddress } from "../lib/flows/webhook";
 import { validateInput } from "../lib/flows/inputs";
 import { FLOW_TEMPLATES, blankFlow } from "../lib/flows/templates";
 import type { FlowDefinition } from "../lib/flows/types";
@@ -181,7 +183,8 @@ describe("validation (what the editor shows)", () => {
 
   it("every starter template is valid", () => {
     for (const t of FLOW_TEMPLATES) {
-      const errors = validateFlow(t.definition, t.settings).filter((i) => i.level === "error");
+      // The payment template ships without a link on purpose: it must be filled in before publishing.
+      const errors = validateFlow(t.definition, t.settings).filter((i) => i.level === "error" && !/payment link/i.test(i.message));
       expect(errors, t.id).toEqual([]);
     }
   });
@@ -342,5 +345,92 @@ describe("wait wording", () => {
     expect(humanWait(90)).toBe("2 minutes");
     expect(humanWait(7200)).toBe("2 hours");
     expect(humanWait(5400)).toBe("1.5 hours");
+  });
+});
+
+describe("payment link block", () => {
+  const withUrl = (url: string) => {
+    const d = structuredClone(tpl("order-and-pay").definition);
+    (d.nodes.find((n) => n.id === "pay")!.data as any).url = url;
+    return d;
+  };
+
+  it("is refused until a real https payment link is pasted", () => {
+    const msg = (u: string) => validateFlow(withUrl(u), tpl("order-and-pay").settings).filter((i) => i.level === "error" && /payment link/i.test(i.message)).length;
+    expect(msg("")).toBe(1);
+    expect(msg("http://insecure.example/pay")).toBe(1);
+    expect(msg("not a link")).toBe(1);
+    expect(msg("https://rzp.io/l/abc123")).toBe(0);
+  });
+
+  it("sends the message with its button, using what the customer answered", () => {
+    const flow = withUrl("https://rzp.io/l/abc123");
+    let r = startFlow(flow, ctx);
+    r = resumeFlow(flow, r.session, { kind: "reply", id: "r_a", title: "Item A" }, ctx);
+    r = resumeFlow(flow, r.session, { kind: "text", text: "Priya Sharma" }, ctx);
+    r = resumeFlow(flow, r.session, { kind: "text", text: "12 MG Road, Pune 411001" }, ctx);
+    const pay = r.actions.find((a) => a.type === "cta_url") as any;
+    expect(pay).toMatchObject({ type: "cta_url", label: "Pay now", url: "https://rzp.io/l/abc123" });
+    expect(pay.text).toContain("Priya Sharma");
+    expect(pay.text).toContain("Item A");
+    expect(r.actions.some((a) => a.type === "lead")).toBe(true);
+    expect(r.session.status).toBe("handoff");
+  });
+});
+
+describe("webhook safety", () => {
+  it("accepts public https addresses only", () => {
+    expect(validWebhookUrl("https://hooks.zapier.com/hooks/catch/1/abc")).toBeTruthy();
+    for (const bad of ["http://hooks.example.com/x", "https://localhost/x", "https://127.0.0.1/x", "https://10.0.0.5/x", "https://169.254.169.254/latest/meta-data", "https://192.168.1.1/", "https://[::1]/", "https://user:pass@example.com/", "https://printer.local/x", "https://intranet/x", "ftp://example.com", "nonsense"]) {
+      expect(validWebhookUrl(bad), bad).toBeNull();
+    }
+  });
+  it("recognises private addresses, including IPv6 and mapped ones", () => {
+    for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.0.9", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "::ffff:7f00:1", "64:ff9b::a00:1", "2002:7f00:1::"]) expect(isPrivateAddress(ip), ip).toBe(true);
+    for (const ip of ["8.8.8.8", "142.250.80.46", "172.32.0.1", "2606:4700:4700::1111"]) expect(isPrivateAddress(ip), ip).toBe(false);
+  });
+  it("is refused in a flow until it has a valid address, and reminds about privacy", () => {
+    const d = structuredClone(tpl("lead-capture").definition);
+    d.nodes.push({ id: "hook", type: "webhook", position: { x: 0, y: 0 }, data: { url: "http://nope" } } as any);
+    const issues = validateFlow(d, tpl("lead-capture").settings);
+    expect(issues.some((i) => i.level === "error" && i.nodeId === "hook")).toBe(true);
+    expect(issues.some((i) => i.level === "warning" && /privacy notice/.test(i.message))).toBe(true);
+  });
+});
+
+describe("message attachments", () => {
+  const msgFlow = (data: any) => ({
+    nodes: [{ id: "start", type: "start", position: { x: 0, y: 0 }, data: {} }, { id: "m", type: "message", position: { x: 0, y: 100 }, data }, { id: "end", type: "end", position: { x: 0, y: 200 }, data: {} }],
+    edges: [{ id: "a", source: "start", sourceHandle: "next", target: "m" }, { id: "b", source: "m", sourceHandle: "next", target: "end" }],
+  }) as FlowDefinition;
+
+  it("sends a document with a readable file name, or the name taken from the link", () => {
+    const a = startFlow(msgFlow({ text: "Our prices", documentUrl: "https://shop.example/files/Price%20list.pdf" }), ctx).actions[0] as any;
+    expect(a).toMatchObject({ type: "document", filename: "Price list.pdf", caption: "Our prices" });
+    const b = startFlow(msgFlow({ text: "", documentUrl: "https://shop.example/x.pdf", documentName: "Brochure.pdf" }), ctx).actions[0] as any;
+    expect(b).toMatchObject({ type: "document", filename: "Brochure.pdf" });
+  });
+  it("sends a video", () => {
+    expect(startFlow(msgFlow({ text: "Watch", videoUrl: "https://shop.example/a.mp4" }), ctx).actions[0]).toMatchObject({ type: "video", caption: "Watch" });
+  });
+  it("refuses more than one attachment and links that are not https", () => {
+    const two = validateFlow(msgFlow({ text: "x", imageUrl: "https://a.example/i.jpg", documentUrl: "https://a.example/d.pdf" }), undefined);
+    expect(two.some((i) => i.level === "error" && /one attachment/.test(i.message))).toBe(true);
+    const http = validateFlow(msgFlow({ text: "x", documentUrl: "http://a.example/d.pdf" }), undefined);
+    expect(http.some((i) => i.level === "error" && /document address/.test(i.message))).toBe(true);
+  });
+});
+
+describe("payment links cannot be redirected by what a customer types", () => {
+  it("encodes answers placed inside the link", () => {
+    const d = structuredClone(tpl("order-and-pay").definition);
+    (d.nodes.find((n) => n.id === "pay")!.data as any).url = "https://rzp.io/l/abc?ref={{address}}";
+    let r = startFlow(d, ctx);
+    r = resumeFlow(d, r.session, { kind: "reply", id: "r_a", title: "Item A" }, ctx);
+    r = resumeFlow(d, r.session, { kind: "text", text: "Priya Sharma" }, ctx);
+    r = resumeFlow(d, r.session, { kind: "text", text: "x&redirect=https://evil.example/#" }, ctx);
+    const pay = r.actions.find((a) => a.type === "cta_url") as any;
+    expect(pay.url).toBe("https://rzp.io/l/abc?ref=x%26redirect%3Dhttps%3A%2F%2Fevil.example%2F%23");
+    expect(new URL(pay.url).host).toBe("rzp.io");
   });
 });

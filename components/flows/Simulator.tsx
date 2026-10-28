@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCheck, ChevronDown, ListChecks, MapPin, RotateCcw, Send, Tag, Timer, UserPlus, Headset } from "lucide-react";
+import { CheckCheck, CreditCard, FileText, ChevronDown, ListChecks, MapPin, RotateCcw, Send, Tag, Timer, UserPlus, Headset } from "lucide-react";
 import { continueAfterWait, resumeFlow, startFlow, type Action, type Ctx, type Inbound, type Session } from "@/lib/flows/engine";
 import { sanitize } from "@/lib/flows/validate";
 import type { FlowDefinition, FlowButton, FlowRow } from "@/lib/flows/types";
@@ -10,9 +10,11 @@ import { humanWait } from "./nodeMeta";
 type Line =
   | { id: number; from: "bot" | "user"; kind: "text"; text: string }
   | { id: number; from: "bot"; kind: "image"; url: string; text?: string }
+  | { id: number; from: "bot"; kind: "file"; name: string; text?: string }
   | { id: number; from: "bot"; kind: "buttons"; text: string; buttons: FlowButton[]; answered?: boolean }
   | { id: number; from: "bot"; kind: "list"; text: string; label: string; rows: FlowRow[]; answered?: boolean }
   | { id: number; from: "bot"; kind: "location"; text: string; answered?: boolean }
+  | { id: number; from: "bot"; kind: "pay"; text: string; label: string; url: string }
   | { id: number; from: "note"; kind: "note"; text: string; icon: "tag" | "lead" | "handoff" | "wait" };
 
 type NewLine = Line extends infer L ? (L extends Line ? Omit<L, "id"> : never) : never;
@@ -56,20 +58,24 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
     for (let guard = 0; guard < 30; guard++) {
       for (const a of step.actions) {
         if (run.current !== runId) return;
-        if (["text", "image", "buttons", "list", "location_request"].includes(a.type)) {
+        if (["text", "image", "video", "document", "buttons", "list", "location_request", "cta_url"].includes(a.type)) {
           setTyping(true);
           const len = a.type === "text" ? a.text.length : 40;
           await sleep(Math.min(900, 350 + len * 8));
           if (run.current !== runId) return;
           setTyping(false);
           if (a.type === "text") push({ from: "bot", kind: "text", text: a.text });
+          else if (a.type === "video") push({ from: "bot", kind: "file", name: "Video", text: a.caption });
+          else if (a.type === "document") push({ from: "bot", kind: "file", name: a.filename, text: a.caption });
           else if (a.type === "image") push({ from: "bot", kind: "image", url: a.url, text: a.caption });
           else if (a.type === "buttons") push({ from: "bot", kind: "buttons", text: a.text, buttons: a.buttons });
           else if (a.type === "list") push({ from: "bot", kind: "list", text: a.text, label: a.buttonLabel, rows: a.rows });
           else if (a.type === "location_request") push({ from: "bot", kind: "location", text: a.text });
+          else if (a.type === "cta_url") push({ from: "bot", kind: "pay", text: a.text, label: a.label, url: a.url });
         } else if (a.type === "delay") push({ from: "note", kind: "note", icon: "wait", text: `Waits ${humanWait(a.seconds)} (skipped in preview)` });
         else if (a.type === "tag") push({ from: "note", kind: "note", icon: "tag", text: `Label added: ${a.label}` });
         else if (a.type === "lead") push({ from: "note", kind: "note", icon: "lead", text: `Lead saved (${Object.keys(a.fields).filter((k) => a.fields[k]).join(", ") || "no details yet"})` });
+        else if (a.type === "webhook") push({ from: "note", kind: "note", icon: "lead", text: "Details sent to your URL (skipped in preview)" });
         else if (a.type === "handoff") push({ from: "note", kind: "note", icon: "handoff", text: "Handed over to a person. The bot stops here." });
       }
       setSession(step.session);
@@ -137,6 +143,7 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
                 <div className="max-w-[84%] space-y-1.5">
                   <div className={`rounded-xl px-3 py-2 text-[13px] leading-snug shadow-sm ${mine ? "rounded-tr-sm bg-[#DCF8C7] text-slate-800" : "rounded-tl-sm bg-white text-slate-800"}`}>
                     {l.kind === "image" && (/* eslint-disable-next-line @next/next/no-img-element */ <img src={l.url} alt="" className="mb-1.5 max-h-40 w-full rounded-lg object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />)}
+                    {l.kind === "file" && <span className="mb-1.5 flex items-center gap-2 rounded-lg bg-slate-100 px-2.5 py-2 text-[13px] font-semibold text-slate-700"><FileText className="h-4 w-4 shrink-0" aria-hidden /> <span className="truncate">{l.name}</span></span>}
                     <span className="whitespace-pre-wrap">{"text" in l ? l.text : ""}</span>
                     {mine && <CheckCheck className="ml-1.5 inline h-3 w-3 text-sky-500" aria-hidden />}
                   </div>
@@ -163,6 +170,9 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
                         </div>
                       )}
                     </>
+                  )}
+                  {l.kind === "pay" && (
+                    <span className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2 text-[13px] font-semibold text-sky-700 shadow-sm"><CreditCard className="h-4 w-4" aria-hidden /> {l.label}</span>
                   )}
                   {l.kind === "location" && (
                     <button type="button" disabled={!live || l.answered || lastInteractive?.id !== l.id} onClick={() => answer({ kind: "location", latitude: 18.5204, longitude: 73.8567, name: "Shivajinagar", address: "Pune" }, "📍 Shivajinagar, Pune", l.id)}

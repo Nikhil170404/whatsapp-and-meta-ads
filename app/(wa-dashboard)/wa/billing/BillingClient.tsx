@@ -32,11 +32,11 @@ const PLANS: Plan[] = [
     planKeyMonthly: "",
     planKeyYearly: "",
     features: [
-      "3 Active Automations",
-      "100 Contacts",
-      "Keyword & Any Message Triggers",
-      "Message Inbox",
-      "Community Support",
+      "3 automatic replies",
+      "1 conversation flow",
+      "100 contacts",
+      "Shared inbox",
+      "Consent and opt-out tracking",
     ],
   },
   {
@@ -52,12 +52,12 @@ const PLANS: Plan[] = [
     planKeyMonthly: "growth_monthly",
     planKeyYearly: "growth_yearly",
     features: [
-      "10 Active Automations",
-      "Unlimited Contacts",
-      "Template Broadcasts",
-      "Contact CRM + Labels",
-            "Welcome Message Trigger",
-      "Email Support (48h)",
+      "10 automatic replies",
+      "10 conversation flows",
+      "Unlimited contacts",
+      "Template broadcasts",
+      "Leads with CSV export",
+      "Payment links and send-to-URL blocks in flows",
     ],
   },
   {
@@ -73,13 +73,11 @@ const PLANS: Plan[] = [
     planKeyMonthly: "pro_monthly",
     planKeyYearly: "pro_yearly",
     features: [
-      "Unlimited Automations",
-      "Unlimited Contacts",
-      "Priority Broadcast Queue",
-      "Advanced CRM + Segments",
-      "Advanced CRM + Segments",
-      "Detailed Analytics",
-      "Priority Support (12h)",
+      "Everything in Growth",
+      "Unlimited automatic replies",
+      "Unlimited conversation flows",
+      "Unlimited contacts",
+      "Priority email support",
     ],
   },
 ];
@@ -341,7 +339,7 @@ export function BillingClient({ currentPlan, isOwner, country = "IN" }: { curren
           {[
             { type: "Marketing", price: "₹0.86", desc: "Promotions, offers, broadcasts", color: "bg-rose-50 border-rose-100 text-rose-700" },
             { type: "Utility", price: "₹0.14", desc: "Order updates, OTPs, alerts", color: "bg-blue-50 border-blue-100 text-blue-700" },
-            { type: "Service", price: "Free*", desc: "Replies within 24h window", color: "bg-green-50 border-green-100 text-green-700" },
+            { type: "Service", price: "1,000 free", desc: "Per number each month, then charged", color: "bg-green-50 border-green-100 text-green-700" },
           ].map((item) => (
             <div key={item.type} className={`rounded-xl p-4 border ${item.color}`}>
               <p className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-1">{item.type}</p>

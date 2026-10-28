@@ -43,6 +43,8 @@ export interface FlowStore {
   addLabel(userId: string, phone: string, label: string): Promise<void>;
   markNeedsHuman(userId: string, phone: string, note: string): Promise<void>;
   logOutbound(userId: string, phone: string, content: string, kind: string, waMessageId: string | null): Promise<void>;
+  /** Sends collected details to the business's own URL. Never throws; a failure must not stop the conversation. */
+  postWebhook?(url: string, body: unknown): Promise<boolean>;
 }
 
 /** Sends one message action. Returns the WhatsApp message id. */
@@ -63,7 +65,7 @@ const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export function pauseBeforeMs(previous: Action | null): number {
   if (!previous) return 0;
-  const chars = previous.type === "text" ? previous.text.length : previous.type === "image" ? (previous.caption?.length ?? 0) : 40;
+  const chars = previous.type === "text" ? previous.text.length : previous.type === "image" || previous.type === "video" || previous.type === "document" ? (previous.caption?.length ?? 0) : 40;
   return Math.min(4000, 800 + chars * 15);
 }
 
@@ -71,14 +73,17 @@ export const actionPreview = (a: Action): string => {
   switch (a.type) {
     case "text": return a.text;
     case "image": return a.caption ? `[Image] ${a.caption}` : "[Image]";
+    case "video": return a.caption ? `[Video] ${a.caption}` : "[Video]";
+    case "document": return `[Document ${a.filename}]${a.caption ? " " + a.caption : ""}`;
     case "buttons": return `[Buttons] ${a.text} → ${a.buttons.map((b) => b.title).join(" · ")}`;
     case "list": return `[Menu] ${a.text} → ${a.rows.map((r) => r.title).join(" · ")}`;
     case "location_request": return `[Location request] ${a.text}`;
+    case "cta_url": return `[${a.label}] ${a.text}`;
     default: return "";
   }
 };
 
-const MESSAGE_ACTIONS = new Set(["text", "image", "buttons", "list", "location_request"]);
+const MESSAGE_ACTIONS = new Set(["text", "image", "video", "document", "buttons", "list", "location_request", "cta_url"]);
 
 interface RunDeps { store: FlowStore; sender: FlowSender; sleep?: (ms: number) => Promise<void>; now?: () => Date }
 
@@ -103,6 +108,9 @@ async function execute(deps: RunDeps, flow: FlowRecord, session: SessionRecord, 
         user_id: session.user_id, flow_id: flow.id, flow_name: flow.name, phone: session.phone,
         name: f.name || ctx.contactName || null, email: f.email || null, fields: f, note: a.note,
       });
+    } else if (a.type === "webhook") {
+      const ok = await deps.store.postWebhook?.(a.url, { event: "flow.details", flow: { id: flow.id, name: flow.name }, phone: session.phone, details: a.fields, sent_at: new Date().toISOString() }).catch(() => false);
+      if (ok === false) console.warn(`[flow ${flow.id}] webhook was not accepted by ${new URL(a.url).host}`);
     } else if (a.type === "handoff") {
       await deps.store.markNeedsHuman(session.user_id, session.phone, a.note ?? `From flow “${flow.name}”`);
     }

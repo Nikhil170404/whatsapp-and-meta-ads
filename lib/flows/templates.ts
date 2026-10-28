@@ -99,6 +99,28 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
       ],
     },
   },
+  {
+    id: "order-and-pay",
+    name: "Take an order and get paid",
+    description: "Show what you sell, ask for a name, then send a payment button. Paste your own payment link before publishing.",
+    settings: { trigger_type: "keyword", keywords: ["order", "buy"], exit_keywords: exits },
+    definition: {
+      nodes: [
+        n("start", "start", 160, 0, {}),
+        n("menu", "list", 160, 130, { text: "What would you like to order?", buttonLabel: "See items", rows: [{ id: "r_a", title: "Item A", description: "Edit the name and price" }, { id: "r_b", title: "Item B", description: "Edit the name and price" }, { id: "r_c", title: "Something else" }], variable: "item", maxRetries: 2 }),
+        n("name", "question", 160, 380, { text: "Great choice. What name should we put on the order?", variable: "name", input: "name", maxRetries: 2 }),
+        n("addr", "question", 160, 520, { text: "Where should we deliver it? Send the full address.", variable: "address", input: "text", maxRetries: 1 }),
+        n("pay", "pay", 160, 660, { text: "Thanks {{name}}! To confirm your {{item}}, please pay using the button below.", url: "", buttonLabel: "Pay now" }),
+        n("lead", "lead", 160, 800, { note: "Order started" }),
+        n("hand", "handoff", 160, 930, { text: "Once your payment arrives we will confirm your order here.", note: "Check payment and confirm order" }),
+        n("other", "handoff", 440, 380, { text: "Sure. A team member will help you with that shortly.", note: "Custom order request" }),
+      ],
+      edges: [
+        e("start", "next", "menu"), e("menu", "row:r_a", "name"), e("menu", "row:r_b", "name"), e("menu", "row:r_c", "other"),
+        e("name", "next", "addr"), e("addr", "next", "pay"), e("pay", "next", "lead"), e("lead", "next", "hand"),
+      ],
+    },
+  },
 ];
 
 export const blankFlow = (): { settings: FlowSettings; definition: FlowDefinition } => ({
