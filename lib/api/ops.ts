@@ -4,6 +4,7 @@
  * takes a service-role Supabase client and the owning user's id, and returns a
  * result instead of throwing, so callers choose how to present failures.
  */
+import { decryptSecret, isEncryptionConfigured } from "@/lib/crypto/secrets";
 import { PRICING_PLANS } from "@/lib/pricing";
 import { hasMarketingConsent, recordConsent, type ConsentPurpose } from "@/lib/consent";
 import { validateListOptions } from "@/lib/whatsapp/flow";
@@ -67,6 +68,7 @@ export async function getAccountHealth(db: Db, userId: string) {
     restriction: restricted ? { summary: c.restriction_summary as string, until: c.restricted_until as string | null } : null,
     token_expires_at: c.token_expires_at as string | null,
     last_error: c.last_error as string | null,
+    tokens_encrypted: isEncryptionConfigured(),
   };
 }
 
@@ -200,7 +202,7 @@ export async function createTemplate(db: Db, userId: string, body: Record<string
     try {
       const res = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${conn.access_token}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${decryptSecret(conn.access_token)}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           name: metaName, category: input.category, language: input.language,
           components: isOtp ? buildAuthComponents({ expiry_minutes: Number(expiry_minutes) || 10 }) : buildMetaComponents(input),

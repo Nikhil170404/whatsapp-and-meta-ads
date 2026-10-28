@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
+import { buildStrictCsp, cspHeaderName, cspMode, needsStrictCsp, newNonce } from "@/lib/security/csp";
 
 // CRITICAL: Session secret must be set in environment
 const SESSION_SECRET = process.env.SESSION_SECRET;
@@ -94,7 +95,21 @@ export async function middleware(request: NextRequest) {
   // Set country cookie for currency detection (accessible to both client and server)
   const country = request.headers.get("x-vercel-ip-country") || "IN";
   
+  // Signed-in pages get a strict, nonce-based Content Security Policy in production. The nonce is
+  // also passed to the page request so Next.js stamps it on its own scripts.
   let response = NextResponse.next();
+  const mode = cspMode();
+  const csp = process.env.NODE_ENV === "production" && mode !== "off" && needsStrictCsp(pathname)
+    ? { name: cspHeaderName(mode), value: buildStrictCsp(newNonce()) }
+    : null;
+  if (csp) {
+    const nonce = /'nonce-([^']+)'/.exec(csp.value)![1];
+    const forwarded = new Headers(request.headers);
+    forwarded.set("x-nonce", nonce);
+    forwarded.set(csp.name, csp.value);
+    response = NextResponse.next({ request: { headers: forwarded } });
+    response.headers.set(csp.name, csp.value);
+  }
 
   // Redirect unauthenticated users from protected routes
   if (isProtectedRoute && !session) {

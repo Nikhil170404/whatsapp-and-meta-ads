@@ -1,3 +1,4 @@
+import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
@@ -120,7 +121,7 @@ export async function GET(req: Request) {
         waba_id: firstWaba.id,
         phone_number: phoneNumber,
         display_name: displayName,
-        access_token: finalToken,
+        access_token: encryptSecret(finalToken),
         token_expires_at: tokenExpiresAt,
         status: "active",
         updated_at: new Date().toISOString(),
@@ -136,7 +137,7 @@ export async function GET(req: Request) {
     // 7. Also update the user's stored access token
     await supabase
       .from("users")
-      .update({ fb_access_token: finalToken, fb_token_expires_at: tokenExpiresAt })
+      .update({ fb_access_token: encryptSecret(finalToken), fb_token_expires_at: tokenExpiresAt })
       .eq("id", session.id)
       .catch(() => {});
 

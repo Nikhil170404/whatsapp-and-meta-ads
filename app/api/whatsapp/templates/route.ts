@@ -1,3 +1,4 @@
+import { decryptSecret } from "@/lib/crypto/secrets";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
@@ -31,7 +32,7 @@ export async function GET() {
     if (conn?.waba_id && conn?.access_token) {
       try {
         const metaRes = await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?fields=name,status,category,language,components,rejected_reason&limit=100`, {
-          headers: { Authorization: `Bearer ${conn.access_token}` },
+          headers: { Authorization: `Bearer ${decryptSecret(conn.access_token)}` },
         });
         if (metaRes.ok) {
           const metaData = await metaRes.json();
@@ -116,7 +117,7 @@ export async function DELETE(req: Request) {
       try {
         await fetch(`${WA_API_URL}/${conn.waba_id}/message_templates?name=${encodeURIComponent(tpl.name)}`, {
           method: "DELETE",
-          headers: { Authorization: `Bearer ${conn.access_token}` },
+          headers: { Authorization: `Bearer ${decryptSecret(conn.access_token)}` },
         });
       } catch { /* non-fatal — still delete locally */ }
     }

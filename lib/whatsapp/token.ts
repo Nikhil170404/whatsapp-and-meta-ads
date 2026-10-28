@@ -1,3 +1,4 @@
+import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const WA_API_URL = "https://graph.facebook.com/v25.0";
@@ -39,8 +40,10 @@ export async function refreshWaTokenFull(
   },
   options: { force?: boolean } = {}
 ): Promise<TokenRefreshResult> {
+  // The database holds the token encrypted; everything below works with the plain value.
+  const plainToken = decryptSecret(connection.access_token);
   const base: TokenRefreshResult = {
-    token: connection.access_token,
+    token: plainToken,
     refreshed: false,
     expiresAt: connection.token_expires_at,
   };
@@ -66,7 +69,7 @@ export async function refreshWaTokenFull(
 
   try {
     const res = await fetch(
-      `${WA_API_URL}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${connection.access_token}`
+      `${WA_API_URL}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${plainToken}`
     );
     const data = await res.json();
 
@@ -83,7 +86,7 @@ export async function refreshWaTokenFull(
     await supabase
       .from("wa_connections")
       .update({
-        access_token: data.access_token,
+        access_token: encryptSecret(data.access_token),
         token_expires_at: newExpiresAt,
         status: "active",
         last_error: null,

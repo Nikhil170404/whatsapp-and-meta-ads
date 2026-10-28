@@ -1,3 +1,4 @@
+import { decryptSecret } from "@/lib/crypto/secrets";
 import { getPhoneNumberQuality } from "@/lib/whatsapp/service";
 import { parseQuality } from "@/lib/whatsapp/limits";
 
@@ -19,7 +20,7 @@ export async function runQualitySync(supabase: any) {
   let synced = 0, paused = 0, restored = 0;
 
   for (const conn of connections) {
-    const quality = await getPhoneNumberQuality(conn.phone_number_id, conn.access_token);
+    const quality = await getPhoneNumberQuality(conn.phone_number_id, decryptSecret(conn.access_token));
     if (!quality) continue;
 
     const isPoor = parseQuality(quality.qualityRating).level === "poor";

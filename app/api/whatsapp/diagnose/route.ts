@@ -1,3 +1,4 @@
+import { decryptSecret } from "@/lib/crypto/secrets";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { NextResponse } from "next/server";
@@ -22,7 +23,7 @@ export async function GET() {
     .eq("id", session.id)
     .single();
 
-  const token = userRow?.fb_access_token;
+  const token = userRow?.fb_access_token ? decryptSecret(userRow.fb_access_token) : undefined;
   if (!token) {
     return NextResponse.json({ ok: false, checks: [{ name: "Stored token", status: "fail", detail: "No Facebook token stored. Sign in again." }] });
   }

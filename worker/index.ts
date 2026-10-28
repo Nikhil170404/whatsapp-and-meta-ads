@@ -22,6 +22,9 @@ if (!url || !key) {
   process.exit(1);
 }
 
+import { isEncryptionConfigured } from "@/lib/crypto/secrets";
+if (!isEncryptionConfigured()) console.warn("[secrets] TOKEN_ENCRYPTION_KEY is not set: new tokens are stored unencrypted, and any already-encrypted token cannot be read.");
+
 const supabase: any = createClient(url, key, { auth: { persistSession: false } });
 const instanceId = `${process.env.RAILWAY_REPLICA_ID ?? "local"}-${randomUUID().slice(0, 8)}`;
 const running = new Set<string>();

@@ -1,3 +1,4 @@
+import { encryptSecret, toPublicConnection } from "@/lib/crypto/secrets";
 import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
@@ -51,7 +52,7 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
     const supabase = getSupabaseAdmin() as any;
 
     // Always keep the freshest user token, even if no WABA is attached to it.
-    await supabase.from("users").update({ fb_access_token: finalToken, fb_token_expires_at: tokenExpiresAt }).eq("id", userId);
+    await supabase.from("users").update({ fb_access_token: encryptSecret(finalToken), fb_token_expires_at: tokenExpiresAt }).eq("id", userId);
 
     // 4. No WABA on this token — do not fabricate an "active" connection. Report why.
     if (!wabaId) {
@@ -85,7 +86,7 @@ async function handleCodeExchange(code: string, userId: string): Promise<{ succe
         waba_id: wabaId,
         phone_number: phoneNumber,
         display_name: displayName,
-        access_token: finalToken,
+        access_token: encryptSecret(finalToken),
         token_expires_at: tokenExpiresAt,
         status: "active",
         last_error: null,
@@ -146,7 +147,8 @@ export default async function WaConnectPage({
   // as "active". Surface it as not-connected so the user gets the signup button back,
   // while still showing why the previous attempt failed.
   const isUsable = row?.status === "active" && row?.waba_id && row.waba_id !== "unknown";
-  const connection = isUsable ? row : null;
+  // The row holds the access token: never hand it to the browser.
+  const connection = isUsable ? toPublicConnection(row) : null;
   const previousError: string | null = !isUsable ? row?.last_error ?? null : null;
 
   // The one-click "use the server's test account" option is only for admins (ADMIN_EMAILS).

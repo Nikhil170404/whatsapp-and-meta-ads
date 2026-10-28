@@ -1,3 +1,4 @@
+import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import { NextResponse } from "next/server";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
@@ -123,7 +124,7 @@ export async function GET(req: Request) {
       .upsert({
         facebook_user_id: meData.id,
         display_name: meData.name,
-        fb_access_token: accessToken,
+        fb_access_token: encryptSecret(accessToken),
         fb_token_expires_at: tokenExpiresAt,
         email: meData.email || null,
         profile_picture_url: meData.picture?.data?.url || null,
@@ -153,7 +154,7 @@ export async function GET(req: Request) {
           waba_id: firstWaba.id,
           phone_number: firstPhone?.display_phone_number || "Verified Number",
           display_name: firstPhone?.verified_name || "WhatsApp Business",
-          access_token: accessToken,
+          access_token: encryptSecret(accessToken),
           token_expires_at: tokenExpiresAt,
           status: "active",
           updated_at: new Date().toISOString(),
