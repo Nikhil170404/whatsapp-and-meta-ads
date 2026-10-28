@@ -2,16 +2,14 @@ import { getSession } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  MessageSquare, Zap, Users, Send, CheckCircle2,
-  ArrowUpRight, ArrowDownLeft, FileText, ChevronRight, AlertTriangle,
-  Plus, Power, BarChart3, ShieldCheck
-} from "lucide-react";
+import { AlertTriangle, ArrowRight } from "lucide-react";
 import { MetaBillingCard } from "@/components/wa-dashboard/MetaBillingCard";
 import { AccountHealthCard } from "@/components/wa-dashboard/AccountHealthCard";
 import { getAccountHealth } from "@/lib/api/ops";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { pickDisplayName } from "@/lib/auth/display-name";
+
+const weekday = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { weekday: "short" });
 
 export default async function WaOverviewPage() {
   const session = await getSession();
@@ -22,330 +20,200 @@ export default async function WaOverviewPage() {
   const [
     { data: connection },
     { data: automations },
-    { count: templateCount },
     { count: contactCount },
+    { count: flowCount },
     { data: recentMessages },
     { data: userRow },
+    { data: daily },
+    { data: waiting },
   ] = await Promise.all([
-    supabase.from("wa_connections").select("*").eq("user_id", session.id).single(),
-    supabase.from("wa_automations").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(5),
-    supabase.from("wa_templates").select("*", { count: "exact", head: true }).eq("user_id", session.id),
+    supabase.from("wa_connections").select("*").eq("user_id", session.id).maybeSingle(),
+    supabase.from("wa_automations").select("id, name, is_active, trigger_type, trigger_keyword, sent_count").eq("user_id", session.id).order("created_at", { ascending: false }).limit(6),
     supabase.from("wa_contacts").select("*", { count: "exact", head: true }).eq("user_id", session.id),
-    supabase.from("wa_messages").select("*").eq("user_id", session.id).order("created_at", { ascending: false }).limit(4),
+    supabase.from("wa_flows").select("*", { count: "exact", head: true }).eq("user_id", session.id).eq("status", "published"),
+    supabase.from("wa_messages").select("id, direction, from_phone, to_phone, content, created_at").eq("user_id", session.id).order("created_at", { ascending: false }).limit(6),
     supabase.from("users").select("display_name, email").eq("id", session.id).maybeSingle(),
+    supabase.rpc("message_daily_counts", { p_user: session.id, p_days: 7 }),
+    supabase.from("wa_conversations").select("phone, human_note, needs_human_at").eq("user_id", session.id).not("needs_human_at", "is", null).order("needs_human_at", { ascending: false }).limit(5),
   ]);
 
-  // The WhatsApp verified business name, not the Facebook account name — that one
-  // is often the provider's System User and would read the same for every customer.
-  const displayName = pickDisplayName(
-    connection?.display_name,
-    userRow?.display_name ?? session.display_name,
-    userRow?.email ?? session.email
-  );
+  // The verified WhatsApp business name, not the Facebook account name.
+  const name = pickDisplayName(connection?.display_name, userRow?.display_name ?? session.display_name, userRow?.email ?? session.email);
 
   const isConnected = connection?.status === "active";
+  const isExpired = connection?.status === "expired";
   const health = isConnected ? await getAccountHealth(supabase, session.id) : null;
-  const isTokenExpired = connection?.status === "expired";
-  const activeAutomations = automations?.filter((a: any) => a.is_active) ?? [];
-  const allAutomations = automations ?? [];
+  const rules = automations ?? [];
+  const running = rules.filter((a: any) => a.is_active).length;
   const msgs = recentMessages ?? [];
+  const days: { day: string; inbound: number; outbound: number }[] = daily ?? [];
+  const inTotal = days.reduce((n, d) => n + d.inbound, 0);
+  const outTotal = days.reduce((n, d) => n + d.outbound, 0);
+  const peak = Math.max(1, ...days.map((d) => d.inbound + d.outbound));
+  const people: any[] = waiting ?? [];
 
-  const setupDone = [isConnected, allAutomations.length > 0, (contactCount ?? 0) > 0].filter(Boolean).length;
-  const setupComplete = setupDone === 3;
+  const steps = [
+    { done: isConnected, label: "Connect your WhatsApp number", href: "/wa/connect" },
+    { done: rules.length > 0 || (flowCount ?? 0) > 0, label: "Turn on a first reply or flow", href: "/wa/automations" },
+    { done: (contactCount ?? 0) > 0, label: "Add or receive your first contact", href: "/wa/contacts" },
+  ];
+  const nextStep = steps.find((s) => !s.done);
 
   return (
-    <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-      {/* ── Expired token warning ── */}
-      {isTokenExpired && (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
-          <AlertTriangle className="w-5 h-5 text-rose-500 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-bold text-rose-800">WhatsApp token expired — automations are paused</p>
-            <p className="text-xs text-rose-600 font-medium">Reconnect to resume auto-replies.</p>
-          </div>
-          <Link href="/wa/connect" className="shrink-0 px-4 py-2.5 bg-rose-600 text-white text-xs font-bold rounded-xl hover:bg-rose-700 transition-colors text-center">
-            Reconnect Now
-          </Link>
+    <div className="space-y-10 animate-in fade-in duration-500">
+      {isExpired && (
+        <div role="alert" className="flex flex-col gap-3 bg-rose-50 p-4 text-rose-900 sm:flex-row sm:items-center">
+          <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden />
+          <p className="flex-1 text-sm"><strong className="font-semibold">Your WhatsApp connection expired, so replies are paused.</strong> Reconnect to resume.</p>
+          <Link href="/wa/connect" className="inline-flex min-h-11 items-center justify-center bg-rose-700 px-5 text-sm font-semibold text-white hover:bg-rose-800">Reconnect</Link>
         </div>
       )}
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-3">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-            Welcome back, {displayName}
-          </h1>
-          <p className="text-slate-500 font-medium mt-1 text-sm">
-            {activeAutomations.length > 0
-              ? `${activeAutomations.length} automation${activeAutomations.length > 1 ? "s" : ""} running 24/7 for you.`
-              : "Set up your first automation to start auto-replying."}
+          <h1 className="text-2xl font-semibold tracking-tight text-lp-ink">{name}</h1>
+          <p className="mt-1 text-base text-lp-soft">
+            {!isConnected ? "WhatsApp is not connected yet." : running + (flowCount ?? 0) > 0 ? `${running} automation${running === 1 ? "" : "s"} and ${flowCount ?? 0} flow${flowCount === 1 ? "" : "s"} are answering customers.` : "Nothing is answering customers yet."}
           </p>
         </div>
-        <Link
-          href="/wa/automations"
-          className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all shadow-md shadow-[#25D366]/20 active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">New Automation</span>
-          <span className="sm:hidden">New</span>
+        <Link href="/wa/flows" className="inline-flex min-h-11 items-center gap-2 bg-lp-accent px-5 text-sm font-semibold text-lp-ink transition hover:bg-lp-accent-hover active:scale-[0.98]">
+          New flow <ArrowRight className="h-4 w-4" aria-hidden />
         </Link>
-      </div>
+      </header>
 
-      {/* ── Setup guide (until all 3 steps are done) ── */}
-      {!setupComplete && !isTokenExpired && (
-        <Link href="/wa/setup" className="block">
-          <div className="bg-gradient-to-br from-[#25D366]/10 to-[#25D366]/5 border border-[#25D366]/20 rounded-2xl p-5 md:p-6 hover:shadow-md transition-all group">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[#25D366] flex items-center justify-center shrink-0">
-                <MessageSquare className="w-6 h-6 text-white fill-current" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                  <p className="text-base font-bold text-slate-900">
-                    {setupDone === 0 ? "Let's get you set up" : "Finish your setup"}
-                  </p>
-                  <span className="text-xs font-bold text-[#25D366] shrink-0">{setupDone}/3 done</span>
-                </div>
-                <p className="text-sm text-slate-500 font-medium mb-3">
-                  {!isConnected
-                    ? "Connect WhatsApp, add an automation, and add a contact — 5 minutes total."
-                    : allAutomations.length === 0
-                      ? "WhatsApp is connected. Next: create your first automation."
-                      : "Almost there! Add your first contact to start broadcasting."}
-                </p>
-                <div className="w-full h-2 bg-white rounded-full overflow-hidden mb-3">
-                  <div className="h-full bg-[#25D366] rounded-full transition-all" style={{ width: `${Math.round((setupDone / 3) * 100)}%` }} />
-                </div>
-                <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm group-hover:bg-[#1DA851] transition-all shadow-md shadow-[#25D366]/15">
-                  Open Setup Guide <ArrowUpRight className="w-4 h-4" />
-                </span>
-              </div>
-            </div>
-          </div>
-        </Link>
+      {nextStep && !isExpired && (
+        <section aria-labelledby="setup" className="bg-lp-field p-5 sm:p-6">
+          <h2 id="setup" className="text-base font-semibold text-lp-ink">Finish setting up, {steps.filter((s) => s.done).length} of 3 done</h2>
+          <ol className="mt-3 space-y-1">
+            {steps.map((s) => (
+              <li key={s.label}>
+                <Link href={s.href} className={`flex min-h-11 items-center gap-3 text-base ${s.done ? "text-lp-soft line-through" : "font-semibold text-lp-ink hover:underline"}`}>
+                  <span aria-hidden className={`h-3 w-3 shrink-0 ${s.done ? "bg-lp-ink" : "border-2 border-lp-ink"}`} />
+                  {s.label}{s.done && <span className="sr-only"> (done)</span>}
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
-      {/* ── Automations section ── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Your Automations</h2>
-          <Link href="/wa/automations" className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-0.5">
-            Manage all <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {allAutomations.length === 0 ? (
-          /* Empty state: show 3 quick-start examples */
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="p-5 border-b border-slate-50">
-              <p className="text-sm font-bold text-slate-700">No automations yet. Ideas to start with (pick one on the next screen):</p>
-            </div>
-            <div className="divide-y divide-slate-50">
-              {[
-                { keyword: "price", reply: "Hi! Thanks for asking. Here is our price list: [link]" },
-                { keyword: "catalog", reply: "Here's our full catalog: [link]. Reply DEMO to book a free call." },
-                { keyword: "support", reply: "Hi! Our support team will get back to you within 2 hours. WhatsApp us anytime." },
-              ].map((ex) => (
-                <Link key={ex.keyword} href="/wa/automations" className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors group">
-                  <div className="w-9 h-9 rounded-xl bg-[#25D366]/10 flex items-center justify-center shrink-0 group-hover:bg-[#25D366]/15 transition-colors">
-                    <Zap className="w-4 h-4 text-[#25D366]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900">Keyword: <span className="text-[#25D366]">"{ex.keyword}"</span></p>
-                    <p className="text-xs text-slate-400 font-medium truncate">{ex.reply}</p>
-                  </div>
-                  <Plus className="w-4 h-4 text-slate-300 group-hover:text-[#25D366] transition-colors shrink-0" />
+      {people.length > 0 && (
+        <section aria-labelledby="waiting">
+          <h2 id="waiting" className="text-lg font-semibold text-lp-ink">Waiting for a person</h2>
+          <ul className="mt-3 divide-y divide-slate-200 bg-white">
+            {people.map((p) => (
+              <li key={p.phone}>
+                <Link href="/wa/messages" className="flex min-h-14 items-center gap-4 px-4 py-2 transition-colors hover:bg-lp-ground">
+                  <span className="font-semibold tabular-nums text-lp-ink">+{p.phone}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm text-lp-soft">{p.human_note || "Asked for a person in a flow"}</span>
+                  <RelativeTime date={p.needs_human_at} className="shrink-0 text-sm text-lp-soft" />
                 </Link>
-              ))}
-            </div>
-            <div className="p-4 border-t border-slate-50">
-              <Link href="/wa/automations" className="flex items-center justify-center gap-2 py-2.5 bg-[#25D366] text-white rounded-xl font-bold text-sm hover:bg-[#1DA851] transition-all">
-                <Plus className="w-4 h-4" /> Create Your First Automation
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-            <div className="divide-y divide-slate-50">
-              {allAutomations.map((auto: any) => (
-                <div key={auto.id} className="flex items-center gap-3 p-4">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-slate-900 truncate">{auto.name}</p>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${auto.is_active ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-400"}`}>
-                        {auto.is_active ? "ON" : "OFF"}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 font-medium truncate">
-                      {auto.trigger_type === "keyword" ? `"${auto.trigger_keyword}"` : auto.trigger_type === "any" ? "Any message" : "First message"}
-                      {" · "}{auto.sent_count ?? 0} sent
-                    </p>
-                  </div>
-                  <Power className={`w-4 h-4 shrink-0 ${auto.is_active ? "text-[#25D366]" : "text-slate-300"}`} />
-                </div>
-              ))}
-            </div>
-            <div className="p-3 border-t border-slate-50">
-              <Link href="/wa/automations" className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold text-[#25D366] hover:bg-[#25D366]/5 rounded-xl transition-colors">
-                Manage automations <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      {health && <AccountHealthCard health={health} />}
-
-      {isConnected && <MetaBillingCard compact />}
-
-      {/* ── Stats row ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          {
-            label: "Connection",
-            value: isConnected ? "Active" : isTokenExpired ? "Expired" : "Not set up",
-            icon: MessageSquare,
-            color: isConnected ? "text-[#25D366]" : "text-rose-500",
-            bg: isConnected ? "bg-[#25D366]/10" : "bg-rose-50",
-            href: "/wa/connect",
-          },
-          { label: "Active Automations", value: `${activeAutomations.length}`, icon: Zap, color: "text-violet-600", bg: "bg-violet-50", href: "/wa/automations" },
-          { label: "Contacts", value: `${contactCount ?? 0}`, icon: Users, color: "text-blue-600", bg: "bg-blue-50", href: "/wa/contacts" },
-          { label: "Templates", value: `${templateCount ?? 0}`, icon: FileText, color: "text-amber-600", bg: "bg-amber-50", href: "/wa/templates" },
-        ].map((s) => (
-          <Link key={s.label} href={s.href}>
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-all group cursor-pointer">
-              <div className={`w-9 h-9 rounded-xl ${s.bg} flex items-center justify-center mb-2.5`}>
-                <s.icon className={`w-4 h-4 ${s.color}`} />
-              </div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">{s.label}</p>
-              <p className="text-xl font-bold text-slate-900 capitalize">{s.value}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* ── Mobile Quick Send ── */}
-      <div className="grid grid-cols-2 gap-3 md:hidden">
-        <Link href="/wa/broadcasts" className="bg-[#25D366] rounded-2xl p-5 text-white active:scale-95 transition-all">
-          <Send className="w-6 h-6 mb-2" />
-          <p className="font-bold text-sm">New Broadcast</p>
-          <p className="text-xs opacity-80 mt-0.5">Send to all contacts</p>
-        </Link>
-        <Link href="/wa/automations" className="bg-violet-600 rounded-2xl p-5 text-white active:scale-95 transition-all">
-          <Zap className="w-6 h-6 mb-2" />
-          <p className="font-bold text-sm">Add Automation</p>
-          <p className="text-xs opacity-80 mt-0.5">Auto-reply keywords</p>
-        </Link>
-      </div>
-
-      {/* ── Quick actions ── */}
-      <div>
-        <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {[
-            { title: "Send a Broadcast", desc: "Message all contacts at once with a template", href: "/wa/broadcasts", icon: Send, color: "text-blue-600", bg: "bg-blue-50" },
-            { title: "Add a Template", desc: "Create reusable message templates", href: "/wa/templates", icon: FileText, color: "text-amber-600", bg: "bg-amber-50" },
-            { title: "View Messages", desc: "See all incoming conversations", href: "/wa/messages", icon: MessageSquare, color: "text-[#25D366]", bg: "bg-[#25D366]/10" },
-          ].map((qa) => (
-            <Link key={qa.title} href={qa.href}>
-              <div className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md hover:border-slate-200 transition-all group flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl ${qa.bg} flex items-center justify-center shrink-0  transition-transform`}>
-                  <qa.icon className={`w-5 h-5 ${qa.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{qa.title}</p>
-                  <p className="text-xs text-slate-400 font-medium truncate">{qa.desc}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" />
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Meta Policy / Messaging Limits ── */}
-      {isConnected && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">Meta Messaging Limits</h2>
-              <p className="text-xs text-slate-400 font-medium">Your daily broadcast capacity</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      {/* The numbers that matter: plain figures, one chart */}
+      <section aria-labelledby="week" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div>
+          <h2 id="week" className="text-lg font-semibold text-lp-ink">Last 7 days</h2>
+          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-6">
             {[
-              { tier: "Tier 1", limit: "1,000/day", desc: "New accounts start here", active: true },
-              { tier: "Tier 2", limit: "10,000/day", desc: "Unlocks with good quality", active: false },
-              { tier: "Tier 3", limit: "100,000/day", desc: "High-volume senders", active: false },
-              { tier: "Unlimited", limit: "No limit", desc: "Top-rated businesses", active: false },
-            ].map((t) => (
-              <div key={t.tier} className={`rounded-xl p-3 border text-center ${t.active ? "bg-blue-50 border-blue-200" : "bg-slate-50 border-slate-100"}`}>
-                <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${t.active ? "text-blue-600" : "text-slate-400"}`}>{t.tier}</p>
-                <p className={`text-sm font-bold ${t.active ? "text-blue-900" : "text-slate-400"}`}>{t.limit}</p>
-                <p className={`text-[9px] font-medium mt-0.5 ${t.active ? "text-blue-500" : "text-slate-300"}`}>{t.desc}</p>
+              ["Customer messages", inTotal],
+              ["Your replies", outTotal],
+              ["Contacts", contactCount ?? 0],
+              ["Live flows", flowCount ?? 0],
+            ].map(([k, v]) => (
+              <div key={k as string}>
+                <dd className="text-4xl font-semibold tracking-tight tabular-nums text-lp-ink">{(v as number).toLocaleString("en-IN")}</dd>
+                <dt className="mt-1 text-sm text-lp-soft">{k}</dt>
               </div>
             ))}
-          </div>
-          <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-slate-50 pt-3">
-            <p>• Tier increases automatically when you send consistently and get low block rates</p>
-            <p>• Templates must be Meta-approved before broadcasting. Rejected templates cannot be used.</p>
-            <p>• Contacts who reply <span className="font-bold text-slate-700">STOP</span> are automatically opted out — ReplyKaro enforces this.</p>
-            <p>• 24-hour window rule: free-text replies only work when customer messaged you first within 24 hrs.</p>
-          </div>
+          </dl>
         </div>
-      )}
 
-      {/* ── Recent messages ── */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recent Messages</h2>
-          <Link href="/wa/messages" className="text-xs font-bold text-[#25D366] hover:underline flex items-center gap-0.5">
-            View all <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-          {msgs.length > 0 ? (
-            <div className="divide-y divide-slate-50">
-              {msgs.map((msg: any) => {
-                const isOutbound = msg.direction === "outbound";
-                return (
-                <Link key={msg.id} href="/wa/messages">
-                  <div className="flex items-center gap-3 p-4 hover:bg-slate-50 transition-colors">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isOutbound ? "bg-[#25D366]/10 text-[#25D366]" : "bg-slate-100 text-slate-500"}`}>
-                      {isOutbound ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownLeft className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate">
-                        <span className={`font-medium ${isOutbound ? "text-[#25D366]" : "text-slate-400"}`}>
-                          {isOutbound ? "Sent to " : "From "}
-                        </span>
-                        {isOutbound ? msg.to_phone : msg.from_phone}
-                      </p>
-                      <p className="text-xs text-slate-400 truncate font-medium">{msg.content}</p>
-                    </div>
-                    <RelativeTime date={msg.created_at} className="text-[10px] text-slate-400 font-bold shrink-0" />
-                  </div>
-                </Link>
-                );
-              })}
-            </div>
+        <div className="bg-white p-5">
+          <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-lp-soft">
+            <span className="flex items-center gap-2"><span aria-hidden className="h-3 w-3 bg-lp-ink" />Customer messages</span>
+            <span className="flex items-center gap-2"><span aria-hidden className="h-3 w-3 bg-[#25D366]" />Your replies</span>
+          </p>
+          {days.length === 0 ? (
+            <p className="mt-6 py-10 text-center text-base text-lp-soft">No messages yet. They appear here as customers write in.</p>
           ) : (
-            <div className="p-10 text-center">
-              <MessageSquare className="w-8 h-8 text-slate-200 mx-auto mb-3" />
-              <p className="text-sm text-slate-400 font-medium">No messages yet.</p>
-              <p className="text-xs text-slate-300 font-medium mt-1">Messages will appear here once WhatsApp is connected.</p>
+            <div className="mt-4 flex h-44 items-end gap-2 sm:gap-4" role="img" aria-label={`Messages per day, last 7 days: ${inTotal} from customers and ${outTotal} replies`}>
+              {days.map((d) => (
+                <div key={d.day} className="flex h-full flex-1 flex-col justify-end gap-1 text-center">
+                  <div className="flex flex-1 flex-col justify-end">
+                    <span className="block w-full bg-[#25D366] transition-[height] duration-700" style={{ height: `${(d.outbound / peak) * 100}%` }} title={`${d.outbound} replies`} />
+                    <span className="block w-full bg-lp-ink transition-[height] duration-700" style={{ height: `${(d.inbound / peak) * 100}%` }} title={`${d.inbound} customer messages`} />
+                  </div>
+                  <span className="text-xs text-lp-soft">{weekday(d.day)}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      </div>
+      </section>
+
+      {health && <AccountHealthCard health={health} />}
+      {isConnected && <MetaBillingCard compact />}
+
+      <section aria-labelledby="auto" className="grid gap-8 xl:grid-cols-2">
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 id="auto" className="text-lg font-semibold text-lp-ink">Automatic replies</h2>
+            <Link href="/wa/automations" className="py-2 text-sm font-semibold text-lp-ink underline-offset-4 hover:underline">Manage</Link>
+          </div>
+          {rules.length === 0 ? (
+            <div className="mt-3 bg-white p-6">
+              <p className="text-base font-semibold text-lp-ink">No automatic replies yet.</p>
+              <p className="mt-1 text-base text-lp-soft">Start with the word customers use most, like “price”, and write the answer once.</p>
+              <Link href="/wa/automations" className="mt-4 inline-flex min-h-11 items-center bg-lp-ink px-5 text-sm font-semibold text-white hover:bg-black">Create the first reply</Link>
+            </div>
+          ) : (
+            <ul className="mt-3 divide-y divide-slate-200 bg-white">
+              {rules.map((a: any) => (
+                <li key={a.id} className="flex min-h-14 items-center gap-4 px-4 py-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-semibold text-lp-ink">{a.name}</span>
+                    <span className="block truncate text-sm text-lp-soft">{a.trigger_type === "keyword" ? `When someone says “${a.trigger_keyword}”` : a.trigger_type === "any" ? "Any message" : "A new customer's first message"}</span>
+                  </span>
+                  <span className="shrink-0 text-sm tabular-nums text-lp-soft">{(a.sent_count ?? 0).toLocaleString("en-IN")} sent</span>
+                  <span className={`shrink-0 text-sm font-semibold ${a.is_active ? "text-[#0E7A5F]" : "text-lp-soft"}`}>{a.is_active ? "On" : "Off"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-lg font-semibold text-lp-ink">Recent messages</h2>
+            <Link href="/wa/messages" className="py-2 text-sm font-semibold text-lp-ink underline-offset-4 hover:underline">Open inbox</Link>
+          </div>
+          {msgs.length === 0 ? (
+            <p className="mt-3 bg-white p-6 text-base text-lp-soft">No messages yet. Send “hi” to your WhatsApp number to see the first one here.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-slate-200 bg-white">
+              {msgs.map((m: any) => {
+                const out = m.direction === "outbound";
+                return (
+                  <li key={m.id}>
+                    <Link href="/wa/messages" className="flex min-h-14 items-center gap-4 px-4 py-2 transition-colors hover:bg-lp-ground">
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm text-lp-soft">{out ? "You to" : "From"} <span className="tabular-nums">+{out ? m.to_phone : m.from_phone}</span></span>
+                        <span className="block truncate text-base text-lp-ink">{m.content || "(no text)"}</span>
+                      </span>
+                      <RelativeTime date={m.created_at} className="shrink-0 text-sm text-lp-soft" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

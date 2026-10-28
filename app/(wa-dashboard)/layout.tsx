@@ -23,7 +23,7 @@ export default async function WaDashboardLayout({
   const planType: string = (userRow?.plan_type || "free").toLowerCase();
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="app-shell min-h-screen bg-lp-ground font-sans text-lp-ink">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-slate-900 focus:px-4 focus:py-2 focus:text-sm focus:font-bold focus:text-white">
         Skip to content
       </a>

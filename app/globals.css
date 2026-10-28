@@ -316,3 +316,22 @@ html { scroll-behavior: smooth; }
 @media (max-width: 640px) {
   input, select, textarea { font-size: 16px; }
 }
+
+/* ── App shell: one flat look for every dashboard screen ───────────────────────
+   Surfaces are separated by tone, not shadow; corners are small; small caps labels
+   read as plain sentence-case text. Dialogs and menus keep their shadow. */
+.app-shell [class*="rounded-3xl"],
+.app-shell [class*="rounded-2xl"],
+.app-shell [class*="rounded-xl"] { border-radius: 6px; }
+.app-shell [class*="shadow-"]:not([role="dialog"]):not([role="menu"]):not([class*="fixed"]) { box-shadow: none; }
+.app-shell .uppercase { text-transform: none; letter-spacing: normal; }
+.app-shell [class*="tracking-wider"], .app-shell [class*="tracking-widest"] { letter-spacing: normal; }
+.app-shell [class*="text-[9px]"], .app-shell [class*="text-[10px]"], .app-shell [class*="text-[11px]"] { font-size: 13px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+
+/* Gradients become flat fields: dark ones the ink colour, light ones the soft field tone. */
+.app-shell [class*="bg-gradient"] { background-image: none; background-color: #E3ECE7; }
+.app-shell [class*="bg-gradient"][class*="text-white"] { background-color: #0A1F16; }
+.app-shell [class*="rounded-full"][class*="bg-white/5"] { display: none; }
