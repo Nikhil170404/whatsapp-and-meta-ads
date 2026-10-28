@@ -36,7 +36,7 @@ export default function LandingPage() {
     <div className="bg-lp-ground pt-16 text-lp-ink">
       <Stage>
         {/* Hero */}
-        <section data-stage="0" className="py-12 md:grid md:grid-cols-[minmax(0,1fr)_340px] md:items-center md:gap-10 lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col lg:justify-center lg:py-16">
+        <section data-stage="0" className="py-12 md:grid md:grid-cols-[minmax(0,1fr)_340px] md:items-center md:gap-10 lg:flex lg:min-h-[calc(100svh-4rem)] lg:flex-col lg:justify-center lg:py-12">
           <div>
           <h1 className="max-w-[16ch] text-[clamp(2.5rem,5.2vw,4.5rem)] font-semibold leading-[1.02] tracking-[-0.035em]">Answer every WhatsApp chat.</h1>
           <p className="mt-6 max-w-[34rem] text-xl leading-relaxed text-lp-soft">Auto-replies, guided chats and broadcasts for your business, with every customer&apos;s consent recorded from the first message.</p>
@@ -53,7 +53,7 @@ export default function LandingPage() {
         <section id="how-it-works" className="scroll-mt-20 pb-8">
           <Reveal as="h2" className="max-w-[18ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Three jobs, handled while you work.</Reveal>
           {STEPS.map((s) => (
-            <article key={s.stage} data-stage={s.stage} className="py-14 md:grid md:grid-cols-[minmax(0,1fr)_340px] md:items-center md:gap-10 lg:flex lg:min-h-[70svh] lg:flex-col lg:justify-center lg:py-16">
+            <article key={s.stage} data-stage={s.stage} className="py-8 md:grid md:grid-cols-[minmax(0,1fr)_340px] md:items-center md:gap-10 lg:flex lg:min-h-[60svh] lg:flex-col lg:justify-center lg:py-12">
               <Reveal>
                 <h3 className="max-w-[20ch] text-[clamp(1.75rem,2.6vw,2.5rem)] font-semibold leading-[1.1] tracking-[-0.025em]">{s.title}</h3>
                 <p className="mt-4 max-w-[34rem] text-lg leading-relaxed text-lp-soft">{s.text}</p>
@@ -64,9 +64,9 @@ export default function LandingPage() {
         </section>
 
         {/* Features */}
-        <section id="features" className="scroll-mt-20 pb-24 pt-8 lg:pb-32">
+        <section id="features" className="scroll-mt-20 pb-10 pt-4 lg:pb-24">
           <Reveal as="h2" className="max-w-[20ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Everything you need for WhatsApp.</Reveal>
-          <div className="mt-14 space-y-16 lg:space-y-24">
+          <div className="mt-8 space-y-10 lg:mt-12 lg:space-y-14">
             {FEATURES.map((f) => (
               <Reveal key={f.title} className="grid gap-6 sm:grid-cols-[minmax(0,300px)_1fr] sm:items-start sm:gap-8 xl:grid-cols-[minmax(0,360px)_1fr] xl:gap-10">
                 {f.art}
@@ -81,7 +81,7 @@ export default function LandingPage() {
       </Stage>
 
       {/* Flow builder: breaks the split and runs full width */}
-      <section className="bg-lp-dark px-5 py-24 text-white sm:px-8 md:py-32 lg:px-14">
+      <section className="bg-lp-dark px-5 py-12 text-white sm:px-8 md:py-24 lg:px-14">
         <div className="mx-auto grid max-w-[1400px] items-center gap-14 lg:grid-cols-2">
           <Reveal>
             <h2 className="max-w-[16ch] text-[clamp(2.25rem,4.4vw,4rem)] font-semibold leading-[1.04] tracking-[-0.035em]">Build chats by dragging.</h2>
@@ -93,7 +93,7 @@ export default function LandingPage() {
       </section>
 
       {/* Compliance: plain facts in columns */}
-      <section className="px-5 py-24 sm:px-8 md:py-36 lg:px-14">
+      <section className="px-5 py-12 sm:px-8 md:py-24 lg:px-14">
         <div className="mx-auto grid max-w-[1400px] gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
           <Reveal as="h2" className="max-w-[14ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Consent comes first.</Reveal>
           <dl className="grid gap-x-12 gap-y-9 sm:grid-cols-2">
@@ -108,7 +108,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="scroll-mt-16 px-5 pb-24 sm:px-8 md:pb-36 lg:px-14">
+      <section id="pricing" className="scroll-mt-16 px-5 pb-12 sm:px-8 md:pb-24 lg:px-14">
         <div className="mx-auto max-w-[1400px]">
           <Reveal as="h2" className="max-w-[20ch] text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Start free. Pay when you grow.</Reveal>
           <div className="mt-10"><Pricing /></div>
@@ -116,7 +116,7 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ: read as text */}
-      <section id="faq" className="scroll-mt-16 px-5 pb-24 sm:px-8 md:pb-36 lg:px-14">
+      <section id="faq" className="scroll-mt-16 px-5 pb-12 sm:px-8 md:pb-24 lg:px-14">
         <div className="mx-auto grid max-w-[1400px] gap-10 lg:grid-cols-[minmax(0,4fr)_minmax(0,7fr)]">
           <h2 className="text-[clamp(2rem,3.4vw,3rem)] font-semibold leading-[1.08] tracking-[-0.03em]">Questions, answered.</h2>
           <div className="space-y-6 text-lg leading-relaxed lg:columns-2 lg:gap-14 lg:space-y-0 [&>p]:mb-6 [&>p]:break-inside-avoid">
@@ -126,7 +126,7 @@ export default function LandingPage() {
       </section>
 
       {/* Close */}
-      <section className="bg-lp-accent px-5 py-24 text-lp-ink sm:px-8 md:py-36 lg:px-14">
+      <section className="bg-lp-accent px-5 py-12 text-lp-ink sm:px-8 md:py-24 lg:px-14">
         <div className="mx-auto max-w-[1400px]">
           <h2 className="max-w-[12ch] text-[clamp(3rem,8vw,7rem)] font-semibold leading-[0.95] tracking-[-0.045em]">Reply to everyone.</h2>
           <p className="mt-6 max-w-[30rem] text-xl leading-relaxed">Connect your number, switch on a first reply, and your next customer gets an answer straight away.</p>
