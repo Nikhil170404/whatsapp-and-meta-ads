@@ -14,6 +14,7 @@ export type Action =
   | { type: "buttons"; text: string; buttons: FlowButton[] }
   | { type: "list"; text: string; buttonLabel: string; rows: FlowRow[] }
   | { type: "location_request"; text: string }
+  | { type: "cta_url"; text: string; label: string; url: string }
   | { type: "delay"; seconds: number }
   | { type: "tag"; label: string }
   | { type: "lead"; fields: Record<string, string>; note?: string }
@@ -119,6 +120,12 @@ function run(flow: FlowDefinition, session: Session, fromId: string | null, ctx:
         actions.push({ type: "location_request", text: render(d.text, v, ctx) });
         session.currentNodeId = node.id; session.retries = 0; session.status = "active";
         return;
+      }
+      case "pay": {
+        const d = node.data as NodeDataMap["pay"];
+        actions.push({ type: "cta_url", text: render(d.text, v, ctx), label: d.buttonLabel, url: render(d.url, v, ctx) });
+        id = target(flow.edges, node.id, "next");
+        break;
       }
       case "condition": {
         const d = node.data as NodeDataMap["condition"];

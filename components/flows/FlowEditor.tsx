@@ -43,6 +43,14 @@ function Editor({ flow, otherKeywords }: Props) {
   const [status, setStatus] = useState(flow.status);
   const [dirtySincePublish, setDirty] = useState(false);
   const [active, setActive] = useState<string | null>(null);
+  // The side panel (desktop) and the bottom sheet (phone) are never both on the page, so ids stay unique.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const q = window.matchMedia("(min-width: 1024px)");
+    const on = () => setWide(q.matches);
+    on(); q.addEventListener("change", on);
+    return () => q.removeEventListener("change", on);
+  }, []);
   const [busy, setBusy] = useState<null | "publish" | "test">(null);
   const [toast, setToast] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
   const [testPhone, setTestPhone] = useState("");
@@ -367,7 +375,7 @@ function Editor({ flow, otherKeywords }: Props) {
 
         {/* Desktop side panel */}
         <aside className={`hidden shrink-0 overflow-y-auto border-l border-slate-200 bg-white transition-all duration-300 lg:block ${panel ? "w-[380px] p-5" : "w-0 overflow-hidden border-0 p-0"}`}>
-          {panel && (<>{panel !== "inspect" && <button type="button" onClick={() => setPanel(null)} aria-label="Close panel" className="float-right -mr-1 -mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>}{sideContent}</>)}
+          {panel && wide && (<>{panel !== "inspect" && <button type="button" onClick={() => setPanel(null)} aria-label="Close panel" className="float-right -mr-1 -mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>}{sideContent}</>)}
         </aside>
       </div>
 
@@ -387,7 +395,7 @@ function Editor({ flow, otherKeywords }: Props) {
       </nav>
 
       {/* Mobile bottom sheet */}
-      {panel && (
+      {panel && !wide && (
         <div className="fixed inset-0 z-30 flex items-end bg-slate-900/30 lg:hidden" onClick={() => setPanel(null)}>
           <div role="dialog" aria-modal="true" className="max-h-[78vh] w-full animate-in slide-in-from-bottom overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />

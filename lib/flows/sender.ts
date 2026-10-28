@@ -1,4 +1,4 @@
-import { markReadWithTyping, sendButtonMessage, sendImageMessage, sendListMessage, sendLocationRequest, sendTextMessage } from "@/lib/whatsapp/service";
+import { markReadWithTyping, sendButtonMessage, sendImageMessage, sendListMessage, sendLocationRequest, sendTextMessage, sendCtaUrlMessage } from "@/lib/whatsapp/service";
 import type { Action } from "./engine";
 import type { FlowSender } from "./runtime";
 
@@ -14,6 +14,7 @@ export function whatsappFlowSender(opts: { phoneNumberId: string; token: string;
         case "buttons": res = await sendButtonMessage(phoneNumberId, to, a.text, a.buttons, token); break;
         case "list": res = await sendListMessage(phoneNumberId, to, a.text, a.buttonLabel, a.rows, token); break;
         case "location_request": res = await sendLocationRequest(phoneNumberId, to, a.text, token); break;
+        case "cta_url": res = await sendCtaUrlMessage(phoneNumberId, to, a.text, a.label, a.url, token); break;
         default: return null;
       }
       return res?.messages?.[0]?.id ?? null;

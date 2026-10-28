@@ -5,11 +5,11 @@ import Link from "next/link";
 
 const PLANS = [
   { key: "free", name: "Free", inr: [0, 0], usd: [0, 0], blurb: "Try it with real customers.", cta: "Start free", main: false,
-    features: ["3 active automations", "100 contacts", "1 conversation flow", "Shared inbox", "Consent and opt-out tracking"] },
+    features: ["3 automatic replies", "1 conversation flow", "100 contacts", "Shared inbox", "Consent and opt-out tracking"] },
   { key: "growth", name: "Growth", inr: [999, 799], usd: [12, 8], blurb: "For growing businesses.", cta: "Choose Growth", main: true,
-    features: ["10 active automations", "Unlimited contacts", "10 conversation flows", "Template broadcasts", "Contact labels and CRM", "Email support within 48 hours"] },
+    features: ["10 automatic replies", "10 conversation flows", "Unlimited contacts", "Template broadcasts", "Leads with CSV export", "Payment-link blocks in flows"] },
   { key: "pro", name: "Pro", inr: [1999, 1599], usd: [24, 20], blurb: "For teams and agencies.", cta: "Choose Pro", main: false,
-    features: ["Unlimited automations", "Unlimited flows", "Priority broadcast queue", "Advanced segments", "Detailed analytics", "Priority support within 12 hours"] },
+    features: ["Everything in Growth", "Unlimited automatic replies", "Unlimited conversation flows", "Unlimited contacts", "Priority email support"] },
 ];
 
 export function Pricing() {

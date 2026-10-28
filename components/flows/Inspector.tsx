@@ -220,6 +220,16 @@ export function Inspector({ node, issues, variables, onChange, onDelete, onClose
         </>
       )}
 
+      {node.type === "pay" && (
+        <>
+          <div><label htmlFor="f-text" className={label}>Message</label><TextField id="f-text" value={d.text} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.interactiveBody} variables={chips} placeholder="Your total is ₹499. Tap to pay." /></div>
+          <div><label htmlFor="f-url" className={label}>Payment link</label><input id="f-url" type="url" inputMode="url" className={input} value={d.url} placeholder="https://rzp.io/l/your-link" onChange={(e) => set({ url: e.target.value.trim() })} />
+            <Hint>Paste a link from your own payment provider: a Razorpay Payment Link, a PayU or Cashfree link, or a UPI payment page. The money goes straight to your account. ReplyKaro never touches it.</Hint></div>
+          <div><label htmlFor="f-lbl" className={label}>Button label</label><div className="flex items-center gap-2"><input id="f-lbl" className={input} value={d.buttonLabel} maxLength={FLOW_LIMITS.buttonTitle + 10} onChange={(e) => set({ buttonLabel: e.target.value })} /><Counter value={d.buttonLabel ?? ""} max={FLOW_LIMITS.buttonTitle} /></div></div>
+          <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">To know a customer paid, set your provider to notify you, or ask them to reply “paid” and use a Question block.</p>
+        </>
+      )}
+
       {node.type === "end" && <div><label htmlFor="f-text" className={label}>Closing message (optional)</label><TextField id="f-text" value={d.text ?? ""} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.textMessage} variables={chips} /></div>}
 
       {links.length > 0 && (

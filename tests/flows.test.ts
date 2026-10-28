@@ -181,7 +181,8 @@ describe("validation (what the editor shows)", () => {
 
   it("every starter template is valid", () => {
     for (const t of FLOW_TEMPLATES) {
-      const errors = validateFlow(t.definition, t.settings).filter((i) => i.level === "error");
+      // The payment template ships without a link on purpose: it must be filled in before publishing.
+      const errors = validateFlow(t.definition, t.settings).filter((i) => i.level === "error" && !/payment link/i.test(i.message));
       expect(errors, t.id).toEqual([]);
     }
   });
@@ -342,5 +343,35 @@ describe("wait wording", () => {
     expect(humanWait(90)).toBe("2 minutes");
     expect(humanWait(7200)).toBe("2 hours");
     expect(humanWait(5400)).toBe("1.5 hours");
+  });
+});
+
+describe("payment link block", () => {
+  const withUrl = (url: string) => {
+    const d = structuredClone(tpl("order-and-pay").definition);
+    (d.nodes.find((n) => n.id === "pay")!.data as any).url = url;
+    return d;
+  };
+
+  it("is refused until a real https payment link is pasted", () => {
+    const msg = (u: string) => validateFlow(withUrl(u), tpl("order-and-pay").settings).filter((i) => i.level === "error" && /payment link/i.test(i.message)).length;
+    expect(msg("")).toBe(1);
+    expect(msg("http://insecure.example/pay")).toBe(1);
+    expect(msg("not a link")).toBe(1);
+    expect(msg("https://rzp.io/l/abc123")).toBe(0);
+  });
+
+  it("sends the message with its button, using what the customer answered", () => {
+    const flow = withUrl("https://rzp.io/l/abc123");
+    let r = startFlow(flow, ctx);
+    r = resumeFlow(flow, r.session, { kind: "reply", id: "r_a", title: "Item A" }, ctx);
+    r = resumeFlow(flow, r.session, { kind: "text", text: "Priya Sharma" }, ctx);
+    r = resumeFlow(flow, r.session, { kind: "text", text: "12 MG Road, Pune 411001" }, ctx);
+    const pay = r.actions.find((a) => a.type === "cta_url") as any;
+    expect(pay).toMatchObject({ type: "cta_url", label: "Pay now", url: "https://rzp.io/l/abc123" });
+    expect(pay.text).toContain("Priya Sharma");
+    expect(pay.text).toContain("Item A");
+    expect(r.actions.some((a) => a.type === "lead")).toBe(true);
+    expect(r.session.status).toBe("handoff");
   });
 });

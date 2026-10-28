@@ -16,6 +16,7 @@ export interface FlowIssue {
 export const NODE_LABELS: Record<NodeType, string> = {
   start: "Start", message: "Message", buttons: "Buttons", list: "Menu", question: "Question", location: "Location",
   condition: "Condition", wait: "Wait", tag: "Tag", lead: "Save lead", handoff: "Hand over to a person", end: "End",
+  pay: "Payment link",
 };
 
 const used = (text: string | undefined) =>
@@ -146,6 +147,16 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
         if ((d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`The location request is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
         break;
       }
+      case "pay": {
+        const d = n.data as NodeDataMap["pay"];
+        if (!d.text?.trim()) err("Write the message that goes with the payment button, for example the amount and what it is for.", n.id);
+        if ((d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`The message is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
+        if (!d.buttonLabel?.trim()) err("Give the button a label, for example “Pay now”.", n.id);
+        else if (d.buttonLabel.length > FLOW_LIMITS.buttonTitle) err(`The button label is limited to ${FLOW_LIMITS.buttonTitle} characters.`, n.id);
+        if (!/^https:\/\/[^\s]+\.[^\s]+/i.test((d.url ?? "").trim())) err("Paste your payment link. It must start with https://", n.id);
+        if (!out(n, "next")) warn("The flow ends after the payment link. Add a thank-you message or an End block.", n.id);
+        break;
+      }
       case "condition": {
         const d = n.data as NodeDataMap["condition"];
         if (!d.variable?.trim()) err("Choose which answer to check.", n.id);
@@ -177,7 +188,7 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
     // Variables used in texts must be collected somewhere in the flow.
     const text = n.type === "message" ? (n.data as NodeDataMap["message"]).text
       : n.type === "buttons" || n.type === "list" || n.type === "question" || n.type === "location" ? (n.data as any).text
-      : n.type === "handoff" || n.type === "end" ? (n.data as any).text : "";
+      : n.type === "handoff" || n.type === "end" || n.type === "pay" ? (n.data as any).text : "";
     for (const v of new Set(used(text))) {
       if (!defined.has(v)) warn(`“{{${v}}}” is not collected anywhere in this flow, so it will show as empty.`, n.id);
     }

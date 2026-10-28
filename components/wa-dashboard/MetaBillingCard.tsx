@@ -25,8 +25,8 @@ export function MetaBillingCard({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
           {[
-            ["Free", "Messages customers send you, and replies in the first 1,000 service messages each month. Chats started from a Click-to-WhatsApp ad are free for 72 hours."],
-            ["Charged by Meta", "Template messages (marketing, utility, authentication) and service replies beyond 1,000 a month, per delivered message."],
+            ["Free", "Messages customers send you, and the first 1,000 delivered service messages each month for each WhatsApp number. Chats started from a Click-to-WhatsApp ad have a free window of up to 7 days."],
+            ["Charged by Meta", "Template messages (marketing, utility and authentication), and from 1 October 2026 service replies after the first 1,000 a month and utility templates sent inside an open chat window, per delivered message. Check Meta's pricing page for your country's rates."],
           ].map(([t, d]) => (
             <div key={t} className="rounded-2xl bg-slate-50 p-4">
               <dt className="font-semibold text-slate-900">{t}</dt>

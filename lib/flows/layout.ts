@@ -8,7 +8,7 @@ function heightOf(n: FlowNode): number {
   const d = n.data as any;
   if (n.type === "buttons") return 130 + 42 * (d.buttons?.length ?? 2);
   if (n.type === "list") return 130 + 42 * Math.min(d.rows?.length ?? 2, 10);
-  if (n.type === "question" || n.type === "location") return 150;
+  if (n.type === "question" || n.type === "location" || n.type === "pay") return 150;
   return 120;
 }
 

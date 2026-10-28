@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CheckCheck, ChevronDown, ListChecks, MapPin, RotateCcw, Send, Tag, Timer, UserPlus, Headset } from "lucide-react";
+import { CheckCheck, CreditCard, ChevronDown, ListChecks, MapPin, RotateCcw, Send, Tag, Timer, UserPlus, Headset } from "lucide-react";
 import { continueAfterWait, resumeFlow, startFlow, type Action, type Ctx, type Inbound, type Session } from "@/lib/flows/engine";
 import { sanitize } from "@/lib/flows/validate";
 import type { FlowDefinition, FlowButton, FlowRow } from "@/lib/flows/types";
@@ -13,6 +13,7 @@ type Line =
   | { id: number; from: "bot"; kind: "buttons"; text: string; buttons: FlowButton[]; answered?: boolean }
   | { id: number; from: "bot"; kind: "list"; text: string; label: string; rows: FlowRow[]; answered?: boolean }
   | { id: number; from: "bot"; kind: "location"; text: string; answered?: boolean }
+  | { id: number; from: "bot"; kind: "pay"; text: string; label: string; url: string }
   | { id: number; from: "note"; kind: "note"; text: string; icon: "tag" | "lead" | "handoff" | "wait" };
 
 type NewLine = Line extends infer L ? (L extends Line ? Omit<L, "id"> : never) : never;
@@ -56,7 +57,7 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
     for (let guard = 0; guard < 30; guard++) {
       for (const a of step.actions) {
         if (run.current !== runId) return;
-        if (["text", "image", "buttons", "list", "location_request"].includes(a.type)) {
+        if (["text", "image", "buttons", "list", "location_request", "cta_url"].includes(a.type)) {
           setTyping(true);
           const len = a.type === "text" ? a.text.length : 40;
           await sleep(Math.min(900, 350 + len * 8));
@@ -67,6 +68,7 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
           else if (a.type === "buttons") push({ from: "bot", kind: "buttons", text: a.text, buttons: a.buttons });
           else if (a.type === "list") push({ from: "bot", kind: "list", text: a.text, label: a.buttonLabel, rows: a.rows });
           else if (a.type === "location_request") push({ from: "bot", kind: "location", text: a.text });
+          else if (a.type === "cta_url") push({ from: "bot", kind: "pay", text: a.text, label: a.label, url: a.url });
         } else if (a.type === "delay") push({ from: "note", kind: "note", icon: "wait", text: `Waits ${humanWait(a.seconds)} (skipped in preview)` });
         else if (a.type === "tag") push({ from: "note", kind: "note", icon: "tag", text: `Label added: ${a.label}` });
         else if (a.type === "lead") push({ from: "note", kind: "note", icon: "lead", text: `Lead saved (${Object.keys(a.fields).filter((k) => a.fields[k]).join(", ") || "no details yet"})` });
@@ -163,6 +165,9 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
                         </div>
                       )}
                     </>
+                  )}
+                  {l.kind === "pay" && (
+                    <span className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-white px-3 py-2 text-[13px] font-semibold text-sky-700 shadow-sm"><CreditCard className="h-4 w-4" aria-hidden /> {l.label}</span>
                   )}
                   {l.kind === "location" && (
                     <button type="button" disabled={!live || l.answered || lastInteractive?.id !== l.id} onClick={() => answer({ kind: "location", latitude: 18.5204, longitude: 73.8567, name: "Shivajinagar", address: "Pune" }, "📍 Shivajinagar, Pune", l.id)}

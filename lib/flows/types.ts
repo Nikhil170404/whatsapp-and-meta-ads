@@ -4,7 +4,7 @@
  */
 export type NodeType =
   | "start" | "message" | "buttons" | "list" | "question" | "location"
-  | "condition" | "wait" | "tag" | "lead" | "handoff" | "end";
+  | "condition" | "wait" | "tag" | "lead" | "handoff" | "end" | "pay";
 
 export interface FlowButton { id: string; title: string }
 export interface FlowRow { id: string; title: string; description?: string }
@@ -24,6 +24,8 @@ export interface NodeDataMap {
   lead: { note?: string };
   handoff: { text: string; note?: string };
   end: { text?: string };
+  /** A message with a button that opens the business's own payment page (any gateway, UPI or Razorpay link). */
+  pay: { text: string; url: string; buttonLabel: string };
 }
 
 export interface FlowNode<T extends NodeType = NodeType> {
@@ -69,7 +71,7 @@ export const FLOW_LIMITS = {
 /** The connection points a block exposes. */
 export function outputHandles(node: FlowNode): string[] {
   switch (node.type) {
-    case "start": case "message": case "tag": case "lead": case "wait": return ["next"];
+    case "start": case "message": case "tag": case "lead": case "wait": case "pay": return ["next"];
     case "question": case "location": return ["next", "giveup"];
     case "buttons": return [...(node.data as NodeDataMap["buttons"]).buttons.map((b) => `btn:${b.id}`), "giveup"];
     case "list": return [...(node.data as NodeDataMap["list"]).rows.map((r) => `row:${r.id}`), "giveup"];

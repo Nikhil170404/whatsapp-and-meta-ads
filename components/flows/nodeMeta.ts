@@ -1,5 +1,5 @@
 import {
-  Flag, GitBranch, Headset, ListChecks, MapPin, MessageCircleQuestion, MessageSquare, MousePointerClick, Play, Tag, Timer, UserPlus,
+  CreditCard, Flag, GitBranch, Headset, ListChecks, MapPin, MessageCircleQuestion, MessageSquare, MousePointerClick, Play, Tag, Timer, UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import type { FlowNode, NodeDataMap, NodeType } from "@/lib/flows/types";
@@ -31,10 +31,11 @@ export const NODE_META: Record<NodeType, NodeMeta> = {
   tag: { label: "Add label", help: "Label the contact, for example “interested”.", icon: Tag, tint: "bg-teal-50", chip: "bg-teal-500 text-white", ring: "ring-teal-400", group: "Act", defaults: () => ({ label: "" }) },
   lead: { label: "Save lead", help: "Store everything collected so far as a lead.", icon: UserPlus, tint: "bg-green-50", chip: "bg-green-600 text-white", ring: "ring-green-400", group: "Act", defaults: () => ({ note: "" }) },
   handoff: { label: "Hand to a person", help: "Stop the bot and flag the chat for your team.", icon: Headset, tint: "bg-pink-50", chip: "bg-pink-500 text-white", ring: "ring-pink-400", group: "Act", defaults: () => ({ text: "Thanks! A team member will reply here shortly." }) },
+  pay: { label: "Payment link", help: "Send a button that opens your payment page, so customers can pay in two taps.", icon: CreditCard, tint: "bg-lime-50", chip: "bg-lime-600 text-white", ring: "ring-lime-400", group: "Act", defaults: () => ({ text: "Your total is ₹499. Tap the button to pay securely.", url: "", buttonLabel: "Pay now" }) },
   end: { label: "End", help: "Finish the conversation.", icon: Flag, tint: "bg-slate-100", chip: "bg-slate-700 text-white", ring: "ring-slate-400", group: "Act", defaults: () => ({ text: "" }) },
 };
 
-export const PALETTE: NodeType[] = ["message", "buttons", "list", "question", "location", "condition", "wait", "tag", "lead", "handoff", "end"];
+export const PALETTE: NodeType[] = ["message", "buttons", "list", "question", "location", "condition", "wait", "tag", "lead", "handoff", "pay", "end"];
 
 export function newNode(type: NodeType, position: { x: number; y: number }): FlowNode {
   return { id: uid(type.slice(0, 3)), type, position, data: NODE_META[type].defaults() } as FlowNode;
@@ -64,5 +65,6 @@ export function summary(node: FlowNode): string {
     case "lead": return "Save the details collected so far";
     case "handoff": return d.text?.trim() || "Hand over to your team";
     case "end": return d.text?.trim() || "Conversation ends";
+    case "pay": return d.url?.trim() ? `${d.buttonLabel || "Pay"} → ${d.url.replace(/^https?:\/\//, "").slice(0, 28)}` : "Paste your payment link…";
   }
 }

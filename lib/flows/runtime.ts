@@ -74,11 +74,12 @@ export const actionPreview = (a: Action): string => {
     case "buttons": return `[Buttons] ${a.text} → ${a.buttons.map((b) => b.title).join(" · ")}`;
     case "list": return `[Menu] ${a.text} → ${a.rows.map((r) => r.title).join(" · ")}`;
     case "location_request": return `[Location request] ${a.text}`;
+    case "cta_url": return `[${a.label}] ${a.text}`;
     default: return "";
   }
 };
 
-const MESSAGE_ACTIONS = new Set(["text", "image", "buttons", "list", "location_request"]);
+const MESSAGE_ACTIONS = new Set(["text", "image", "buttons", "list", "location_request", "cta_url"]);
 
 interface RunDeps { store: FlowStore; sender: FlowSender; sleep?: (ms: number) => Promise<void>; now?: () => Date }
 
