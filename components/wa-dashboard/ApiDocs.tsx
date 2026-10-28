@@ -33,6 +33,30 @@ export function ApiDocs({ baseUrl, apiKey }: { baseUrl: string; apiKey: string |
   const key = apiKey ?? "YOUR_API_KEY";
   return (
     <div className="space-y-8">
+
+      <section aria-labelledby="recipes" className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8">
+        <h2 id="recipes" className="text-lg font-bold text-slate-900">Connect your store, sheet or CRM</h2>
+        <p className="mt-1 text-sm text-slate-600">No code needed. Use Zapier, Make or n8n as the bridge. Both directions work.</p>
+
+        <h3 className="mt-6 text-sm font-bold text-slate-900">1. Send a WhatsApp message when something happens in your store</h3>
+        <p className="mt-1 text-sm text-slate-600">Examples: a new Shopify or WooCommerce order, a form submitted, a new row in Google Sheets. In Zapier or Make, add a step “Webhooks → POST” with:</p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">
+          <li>URL: <code className="rounded bg-slate-100 px-1">{baseUrl}/api/v1/send</code></li>
+          <li>Header: <code className="rounded bg-slate-100 px-1">Authorization: Bearer {key}</code></li>
+          <li>Body (JSON), using a template you created and Meta approved. Customers outside the 24-hour window can only receive templates:</li>
+        </ul>
+        <div className="mt-2"><Copyable code={`{\n  "phone": "919876543210",\n  "template": "order_confirmation",\n  "language": "en_US",\n  "params": ["Priya", "ORD-1001", "Oct 30"]\n}`} /></div>
+        <p className="mt-2 text-xs text-slate-500">Only send to people who agreed to hear from you about that topic. Order updates are a utility message; offers are marketing.</p>
+
+        <h3 className="mt-6 text-sm font-bold text-slate-900">2. Send what customers tell you to Google Sheets, a CRM or your team</h3>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-slate-600">
+          <li>In Zapier or Make, create a “Catch Hook” (webhook trigger) and copy its https address.</li>
+          <li>In a conversation flow, add a <strong>Send to a URL</strong> block after the questions and paste that address.</li>
+          <li>Add the next step in Zapier: “Google Sheets → Create row”, “HubSpot → Create contact”, an email, and so on. The customer&apos;s number and every answer arrive as fields.</li>
+        </ol>
+        <p className="mt-2 text-xs text-slate-500">This sends customer details to another service. Mention it in your privacy notice.</p>
+      </section>
+
       <section className="rounded-3xl border border-slate-100 bg-white p-6 md:p-8">
         <div className="mb-4 flex items-center gap-3">
           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-violet-100 text-violet-700"><Bot className="h-5 w-5" aria-hidden /></span>
