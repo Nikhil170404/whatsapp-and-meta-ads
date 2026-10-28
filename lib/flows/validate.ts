@@ -237,7 +237,9 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
   // Collecting details is a promise to handle them carefully.
   const hasLead = nodes.some((n) => n.type === "lead");
   const asksPersonal = nodes.some((n) => n.type === "question" && ["email", "phone", "name"].includes((n.data as NodeDataMap["question"]).input));
-  if (hasLead && !asksPersonal) warn("You save a lead but never ask for a name, email or phone. Add a question first.");
+  // A lead always holds the customer's WhatsApp number; it is only empty of detail when nothing is asked.
+  const asksAnything = nodes.some((n) => ["question", "buttons", "list", "location"].includes(n.type));
+  if (hasLead && !asksAnything) warn("You save a lead but never ask anything, so it will hold only the phone number. Add a question first.");
   if (asksPersonal && !nodes.some((n) => n.type === "lead")) warn("You collect personal details but never save them as a lead, so they are only used inside this flow.");
   return issues;
 }

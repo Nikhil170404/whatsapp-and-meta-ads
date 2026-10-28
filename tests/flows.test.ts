@@ -260,7 +260,7 @@ describe("validation (what the editor shows)", () => {
 
   it("warns when a keyword clashes with another automation", () => {
     const t = tpl("lead-capture");
-    expect(validateFlow(t.definition, t.settings, { otherKeywords: ["hello"] }).some((i) => /also starts another/.test(i.message))).toBe(true);
+    expect(validateFlow(t.definition, t.settings, { otherKeywords: ["enquiry"] }).some((i) => /also starts another/.test(i.message))).toBe(true);
   });
 });
 
