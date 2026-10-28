@@ -1,45 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, Suspense } from "react";
-import {
-  MessageSquare,
-  BarChart3,
-  Zap,
-  ShieldCheck,
-  TrendingUp,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-} from "lucide-react";
+import { AlertCircle, Loader2, MessageSquare } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-const FEATURES = [
-  {
-    icon: Zap,
-    title: "Smart Automations",
-    desc: "Auto-reply to keywords 24/7. Never miss a lead.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Broadcast Campaigns",
-    desc: "Send one message to thousands of opted-in contacts.",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics",
-    desc: "See messages sent, delivered and answered in one place.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Shared Inbox",
-    desc: "Ready-made templates and a team inbox for every chat.",
-  },
+const POINTS = [
+  ["Automatic replies", "Answer price, hours and order questions day and night."],
+  ["Guided chats", "Ask for a name or email, show menus, and save the lead."],
+  ["Broadcasts with consent", "Send approved templates only to people who agreed."],
+  ["You pay Meta directly", "Message fees go to Meta at Meta's rates, with no markup."],
 ];
 
 function FacebookIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
     </svg>
   );
@@ -62,170 +37,62 @@ function SignInContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <main className="grid min-h-screen bg-lp-ground text-lp-ink lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <section className="flex flex-col justify-between bg-lp-field px-5 py-8 sm:px-10 lg:px-14 lg:py-12">
+        <Link href="/" className="flex w-fit items-center gap-2.5" aria-label="ReplyKaro home">
+          <span className="flex h-9 w-9 items-center justify-center bg-lp-accent"><MessageSquare className="h-5 w-5 fill-lp-ink text-lp-ink" aria-hidden /></span>
+          <span className="text-lg font-semibold tracking-tight">ReplyKaro</span>
+        </Link>
 
-      {/* ── LEFT BRAND PANEL ── */}
-      <div className="hidden lg:flex lg:w-[52%] bg-[#0c1421] flex-col justify-between p-14 relative overflow-hidden">
-        {/* Subtle grid overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
-        {/* Green glow orbs */}
-        <div className="absolute top-[-120px] left-[-80px] w-[400px] h-[400px] rounded-full bg-[#25D366]/10 blur-[100px]" />
-        <div className="absolute bottom-[-80px] right-[-60px] w-[300px] h-[300px] rounded-full bg-[#1877F2]/10 blur-[80px]" />
-
-        {/* Logo */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-16">
-            <div className="w-10 h-10 rounded-xl bg-[#25D366] flex items-center justify-center shadow-lg shadow-[#25D366]/30">
-              <MessageSquare className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-white font-bold text-lg tracking-tight">ReplyKaro</span>
-          </div>
-
-          <h1 className="text-4xl xl:text-5xl font-bold text-white leading-[1.1] tracking-tight mb-5">
-            WhatsApp automation<br />
-            <span className="text-[#25D366]">that actually works.</span>
-          </h1>
-          <p className="text-slate-400 text-base font-medium leading-relaxed max-w-md">
-            Connect your WhatsApp Business account, set up automations and reply to customers — all from one dashboard.
-          </p>
+        <div className="py-12 lg:py-0">
+          <h1 className="max-w-[14ch] text-[clamp(2.25rem,4.4vw,3.75rem)] font-semibold leading-[1.04] tracking-[-0.035em]">Answer every WhatsApp chat.</h1>
+          <ul className="mt-8 hidden max-w-md space-y-5 lg:block">
+            {POINTS.map(([t, d]) => (
+              <li key={t}><p className="text-lg font-semibold">{t}</p><p className="text-base text-lp-soft">{d}</p></li>
+            ))}
+          </ul>
         </div>
 
-        {/* Feature list */}
-        <div className="relative z-10 space-y-4 my-10">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="flex items-start gap-4">
-              <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
-                <f.icon className="w-4 h-4 text-[#25D366]" />
-              </div>
-              <div>
-                <p className="text-white font-bold text-sm">{f.title}</p>
-                <p className="text-slate-400 text-xs font-medium mt-0.5 leading-relaxed">{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <p className="hidden text-base text-lp-soft lg:block">Built on the official WhatsApp Cloud API. Customer consent is recorded under India&apos;s DPDP Act.</p>
+      </section>
 
-        {/* Trust badges */}
-        <div className="relative z-10 flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#25D366]" />
-            <span className="text-xs text-slate-400 font-semibold">Meta verified</span>
-          </div>
-          <div className="w-px h-4 bg-white/10" />
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#25D366]" />
-            <span className="text-xs text-slate-400 font-semibold">GDPR compliant</span>
-          </div>
-          <div className="w-px h-4 bg-white/10" />
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-[#25D366]" />
-            <span className="text-xs text-slate-400 font-semibold">Data encrypted</span>
-          </div>
-        </div>
-      </div>
+      <section className="flex items-center px-5 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto w-full max-w-md">
+          <h2 className="text-3xl font-semibold tracking-tight">Sign in</h2>
+          <p className="mt-2 text-lg text-lp-soft">Use the Facebook account that manages your WhatsApp Business account. New here? The same button creates your account.</p>
 
-      {/* ── RIGHT SIGN-IN PANEL ── */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-white px-6 py-12 lg:py-0 min-h-screen lg:min-h-0">
-        {/* Mobile logo */}
-        <div className="lg:hidden flex items-center gap-3 mb-10">
-          <div className="w-9 h-9 rounded-xl bg-[#25D366] flex items-center justify-center">
-            <MessageSquare className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-slate-900 font-bold text-lg tracking-tight">ReplyKaro</span>
-        </div>
-
-        <div className="w-full max-w-[380px]">
-          {/* Heading */}
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 tracking-tight mb-2">
-              Sign in to your account
-            </h2>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed">
-              Use your Facebook account — the same one connected to your WhatsApp Business account.
-            </p>
-          </div>
-
-          {/* Error */}
           {error && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
-              <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />
-              <p className="text-sm font-medium text-rose-700 leading-snug">{error}</p>
+            <div role="alert" className="mt-6 flex items-start gap-3 bg-rose-50 p-4 text-rose-900">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+              <p className="text-base leading-snug">{error}</p>
             </div>
           )}
 
-          {/* Facebook button */}
           <button
+            type="button"
             onClick={handleFacebookLogin}
             disabled={isLoading}
-            className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-[#1877F2] hover:bg-[#166fe5] active:bg-[#1468d9] disabled:opacity-60 text-white font-bold text-base rounded-2xl transition-all shadow-lg shadow-[#1877F2]/25 focus:outline-none focus:ring-2 focus:ring-[#1877F2]/40 focus:ring-offset-2"
+            className="mt-8 flex min-h-14 w-full items-center justify-center gap-3 bg-[#1877F2] px-6 text-lg font-semibold text-white transition hover:bg-[#166fe5] active:scale-[0.99] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1877F2]"
           >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <FacebookIcon className="w-5 h-5" />
-            )}
-            <span>{isLoading ? "Signing in…" : "Continue with Facebook"}</span>
-            {!isLoading && <ArrowRight className="w-4 h-4 ml-auto opacity-60" />}
+            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden /> : <FacebookIcon className="h-5 w-5" />}
+            {isLoading ? "Signing in…" : "Continue with Facebook"}
           </button>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-slate-100" />
-            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">What you get</span>
-            <div className="flex-1 h-px bg-slate-100" />
-          </div>
-
-          {/* Mobile feature list (compact) */}
-          <div className="grid grid-cols-2 gap-3 lg:hidden mb-8">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <f.icon className="w-4 h-4 text-[#25D366] shrink-0 mt-0.5" />
-                <p className="text-xs font-bold text-slate-700 leading-snug">{f.title}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Terms */}
-          <p className="text-center text-xs text-slate-400 font-medium leading-relaxed">
-            By continuing you agree to our{" "}
-            <Link href="/terms" className="text-slate-600 hover:text-slate-900 underline underline-offset-2">
-              Terms
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="text-slate-600 hover:text-slate-900 underline underline-offset-2">
-              Privacy Policy
-            </Link>
-            .
+          <p className="mt-6 text-base leading-relaxed text-lp-soft">
+            We only read the account details Meta shares to connect your WhatsApp number. By continuing you agree to our{" "}
+            <Link href="/terms" className="font-semibold text-lp-ink underline underline-offset-4">Terms</Link> and{" "}
+            <Link href="/privacy" className="font-semibold text-lp-ink underline underline-offset-4">Privacy Policy</Link>.
           </p>
+          <Link href="/" className="mt-8 inline-block py-2 text-base font-semibold text-lp-ink underline-offset-4 hover:underline">Back to home</Link>
         </div>
-
-        <Link
-          href="/"
-          className="mt-10 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors flex items-center gap-1"
-        >
-          ← Back to home
-        </Link>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
 export default function SignInPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-[#1877F2] animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={null}>
       <SignInContent />
     </Suspense>
   );

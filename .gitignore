@@ -18,3 +18,4 @@ yarn-error.log*
 # Build artifacts
 build_output.log
 tsconfig.tsbuildinfo
+.taste-skill/

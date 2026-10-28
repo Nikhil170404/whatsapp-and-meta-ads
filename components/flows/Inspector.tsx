@@ -51,14 +51,18 @@ interface Props {
   onChange: (data: any) => void;
   onDelete: () => void;
   onClose?: () => void;
+  /** Where each output of this block goes, so it can be set from a list instead of by dragging. */
+  links: { handle: string; label: string; target: string | null; optional?: boolean }[];
+  targets: { id: string; label: string }[];
+  onLink: (handle: string, target: string | null) => void;
 }
 
-export function Inspector({ node, issues, variables, onChange, onDelete, onClose }: Props) {
+export function Inspector({ node, issues, variables, onChange, onDelete, onClose, links, targets, onLink }: Props) {
   const meta = NODE_META[node.type];
   const Icon = meta.icon;
   const d = node.data as any;
   const set = (patch: Record<string, unknown>) => onChange({ ...d, ...patch });
-  const chips = ["contact_name", ...variables];
+  const chips = [...new Set(["contact_name", ...variables])];
 
   return (
     <div className="space-y-5">
@@ -217,6 +221,25 @@ export function Inspector({ node, issues, variables, onChange, onDelete, onClose
       )}
 
       {node.type === "end" && <div><label htmlFor="f-text" className={label}>Closing message (optional)</label><TextField id="f-text" value={d.text ?? ""} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.textMessage} variables={chips} /></div>}
+
+      {links.length > 0 && (
+        <div>
+          <h4 className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-500">What happens next</h4>
+          <p className="mb-2 text-xs text-slate-500">Pick the next block here, or drag from the coloured dot on the block.</p>
+          <div className="space-y-2">
+            {links.map((l) => (
+              <label key={l.handle} className="block">
+                <span className="mb-0.5 block text-sm font-semibold text-slate-800">{l.label}{l.optional && <span className="font-normal text-slate-500"> (optional)</span>}</span>
+                <select value={l.target ?? ""} onChange={(e) => onLink(l.handle, e.target.value || null)}
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-base transition focus:outline-none focus:ring-2 focus:ring-[#25D366]/30 sm:text-sm ${!l.target && !l.optional ? "border-amber-400" : "border-slate-200"}`}>
+                  <option value="">{l.optional ? "Nothing, end the conversation" : "Choose the next block…"}</option>
+                  {targets.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {node.type !== "start" && (
         <button type="button" onClick={onDelete} className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-50">

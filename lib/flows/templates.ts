@@ -17,7 +17,7 @@ export const FLOW_TEMPLATES: FlowTemplate[] = [
     id: "lead-capture",
     name: "Capture a lead",
     description: "Greet, ask for a name and email, learn what they need, save the lead.",
-    settings: { trigger_type: "keyword", keywords: ["hi", "hello"], exit_keywords: exits },
+    settings: { trigger_type: "keyword", keywords: ["enquiry", "contact us"], exit_keywords: exits },
     definition: {
       nodes: [
         n("start", "start", 0, 0, {}),
