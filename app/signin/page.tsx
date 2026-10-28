@@ -37,15 +37,15 @@ function SignInContent() {
   };
 
   return (
-    <main className="grid min-h-screen bg-lp-ground text-lp-ink lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <section className="flex flex-col justify-between bg-lp-field px-5 py-8 sm:px-10 lg:px-14 lg:py-12">
+    <main className="grid min-h-screen grid-rows-[auto_1fr] bg-lp-ground text-lp-ink lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-1">
+      <section className="flex flex-col justify-between gap-8 bg-lp-field px-5 py-6 sm:px-10 lg:px-14 lg:py-12">
         <Link href="/" className="flex w-fit items-center gap-2.5" aria-label="ReplyKaro home">
           <span className="flex h-9 w-9 items-center justify-center bg-lp-accent"><MessageSquare className="h-5 w-5 fill-lp-ink text-lp-ink" aria-hidden /></span>
           <span className="text-lg font-semibold tracking-tight">ReplyKaro</span>
         </Link>
 
-        <div className="py-12 lg:py-0">
-          <h1 className="max-w-[14ch] text-[clamp(2.25rem,4.4vw,3.75rem)] font-semibold leading-[1.04] tracking-[-0.035em]">Answer every WhatsApp chat.</h1>
+        <div className="lg:py-0">
+          <h1 className="max-w-[14ch] text-[clamp(2rem,4.4vw,3.75rem)] font-semibold leading-[1.04] tracking-[-0.035em]">Answer every WhatsApp chat.</h1>
           <ul className="mt-8 hidden max-w-md space-y-5 lg:block">
             {POINTS.map(([t, d]) => (
               <li key={t}><p className="text-lg font-semibold">{t}</p><p className="text-base text-lp-soft">{d}</p></li>
@@ -56,7 +56,7 @@ function SignInContent() {
         <p className="hidden text-base text-lp-soft lg:block">Built on the official WhatsApp Cloud API. Customer consent is recorded under India&apos;s DPDP Act.</p>
       </section>
 
-      <section className="flex items-center px-5 py-12 sm:px-10 lg:px-16">
+      <section className="flex items-start px-5 py-10 sm:px-10 lg:items-center lg:px-16">
         <div className="mx-auto w-full max-w-md">
           <h2 className="text-3xl font-semibold tracking-tight">Sign in</h2>
           <p className="mt-2 text-lg text-lp-soft">Use the Facebook account that manages your WhatsApp Business account. New here? The same button creates your account.</p>
