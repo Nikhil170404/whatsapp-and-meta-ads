@@ -90,7 +90,26 @@ export function Inspector({ node, issues, variables, onChange, onDelete, onClose
       {node.type === "message" && (
         <>
           <div><label htmlFor="f-text" className={label}>Message</label><TextField id="f-text" value={d.text ?? ""} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.textMessage} rows={5} placeholder="Hi {{contact_name}}! Thanks for getting in touch." variables={chips} /></div>
-          <div><label htmlFor="f-img" className={label}>Picture (optional)</label><input id="f-img" className={input} value={d.imageUrl ?? ""} placeholder="https://yourshop.com/offer.jpg" onChange={(e) => set({ imageUrl: e.target.value })} /><Hint>A public link. The message becomes the picture&apos;s caption.</Hint></div>
+          {(() => {
+            const kind = d.documentUrl !== undefined ? "document" : d.videoUrl !== undefined ? "video" : d.imageUrl !== undefined ? "image" : "none";
+            const pick = (k: string) => set({ imageUrl: k === "image" ? "" : undefined, videoUrl: k === "video" ? "" : undefined, documentUrl: k === "document" ? "" : undefined, documentName: k === "document" ? (d.documentName ?? "") : undefined });
+            const field = kind === "document" ? "documentUrl" : kind === "video" ? "videoUrl" : "imageUrl";
+            return (
+              <div>
+                <label htmlFor="f-att" className={label}>Attach (optional)</label>
+                <select id="f-att" className={input} value={kind} onChange={(e) => pick(e.target.value)}>
+                  <option value="none">Nothing, just text</option><option value="image">A picture</option><option value="video">A video</option><option value="document">A document (PDF, price list, brochure)</option>
+                </select>
+                {kind !== "none" && (
+                  <>
+                    <input aria-label="Attachment link" className={`${input} mt-2`} value={d[field] ?? ""} placeholder={kind === "document" ? "https://yourshop.com/price-list.pdf" : kind === "video" ? "https://yourshop.com/intro.mp4" : "https://yourshop.com/offer.jpg"} onChange={(e) => set({ [field]: e.target.value.trim() })} />
+                    {kind === "document" && <input aria-label="File name customers see" className={`${input} mt-2`} value={d.documentName ?? ""} placeholder="Price list.pdf (optional)" onChange={(e) => set({ documentName: e.target.value })} />}
+                    <Hint>A public https link. The message above becomes the caption. {kind === "video" ? "MP4 up to 16 MB works best." : kind === "document" ? "PDF, Word or Excel files up to 100 MB." : "JPG or PNG up to 5 MB."}</Hint>
+                  </>
+                )}
+              </div>
+            );
+          })()}
         </>
       )}
 

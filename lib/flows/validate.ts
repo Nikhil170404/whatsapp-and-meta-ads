@@ -86,7 +86,12 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
     switch (n.type) {
       case "message": {
         const d = n.data as NodeDataMap["message"];
-        if (!d.text?.trim() && !d.imageUrl) err("This message is empty. Write something to send.", n.id);
+        const attached = [d.imageUrl, d.videoUrl, d.documentUrl].filter((x) => x?.trim());
+        if (!d.text?.trim() && !attached.length) err("This message is empty. Write something to send.", n.id);
+        if (attached.length > 1) err("A message can carry one attachment. Keep the picture, the video or the document, and remove the others.", n.id);
+        if (d.videoUrl && !/^https:\/\//i.test(d.videoUrl)) err("The video address must be a public link starting with https://", n.id);
+        if (d.documentUrl && !/^https:\/\//i.test(d.documentUrl)) err("The document address must be a public link starting with https://", n.id);
+        if ((d.videoUrl || d.documentUrl) && (d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`A caption is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
         if ((d.text ?? "").length > FLOW_LIMITS.textMessage) err(`Messages are limited to ${FLOW_LIMITS.textMessage} characters.`, n.id);
         if (d.imageUrl && !/^https:\/\//i.test(d.imageUrl)) err("The image address must be a public link starting with https://", n.id);
         if (d.imageUrl && (d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`An image caption is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);

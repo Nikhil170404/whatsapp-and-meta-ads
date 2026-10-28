@@ -55,7 +55,7 @@ export function summary(node: FlowNode): string {
   const d = node.data as any;
   switch (node.type) {
     case "start": return "Conversation begins here";
-    case "message": return d.text?.trim() || (d.imageUrl ? "Picture" : "Write your message…");
+    case "message": return d.text?.trim() || (d.imageUrl ? "Picture" : d.videoUrl ? "Video" : d.documentUrl ? `Document: ${d.documentName || "file"}` : "Write your message…");
     case "buttons": return d.text?.trim() || "Ask a question…";
     case "list": return d.text?.trim() || "Offer a menu…";
     case "question": return d.text?.trim() || "Ask a question…";

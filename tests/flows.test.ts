@@ -397,3 +397,26 @@ describe("webhook safety", () => {
     expect(issues.some((i) => i.level === "warning" && /privacy notice/.test(i.message))).toBe(true);
   });
 });
+
+describe("message attachments", () => {
+  const msgFlow = (data: any) => ({
+    nodes: [{ id: "start", type: "start", position: { x: 0, y: 0 }, data: {} }, { id: "m", type: "message", position: { x: 0, y: 100 }, data }, { id: "end", type: "end", position: { x: 0, y: 200 }, data: {} }],
+    edges: [{ id: "a", source: "start", sourceHandle: "next", target: "m" }, { id: "b", source: "m", sourceHandle: "next", target: "end" }],
+  }) as FlowDefinition;
+
+  it("sends a document with a readable file name, or the name taken from the link", () => {
+    const a = startFlow(msgFlow({ text: "Our prices", documentUrl: "https://shop.example/files/Price%20list.pdf" }), ctx).actions[0] as any;
+    expect(a).toMatchObject({ type: "document", filename: "Price list.pdf", caption: "Our prices" });
+    const b = startFlow(msgFlow({ text: "", documentUrl: "https://shop.example/x.pdf", documentName: "Brochure.pdf" }), ctx).actions[0] as any;
+    expect(b).toMatchObject({ type: "document", filename: "Brochure.pdf" });
+  });
+  it("sends a video", () => {
+    expect(startFlow(msgFlow({ text: "Watch", videoUrl: "https://shop.example/a.mp4" }), ctx).actions[0]).toMatchObject({ type: "video", caption: "Watch" });
+  });
+  it("refuses more than one attachment and links that are not https", () => {
+    const two = validateFlow(msgFlow({ text: "x", imageUrl: "https://a.example/i.jpg", documentUrl: "https://a.example/d.pdf" }), undefined);
+    expect(two.some((i) => i.level === "error" && /one attachment/.test(i.message))).toBe(true);
+    const http = validateFlow(msgFlow({ text: "x", documentUrl: "http://a.example/d.pdf" }), undefined);
+    expect(http.some((i) => i.level === "error" && /document address/.test(i.message))).toBe(true);
+  });
+});

@@ -13,7 +13,8 @@ export type ConditionOp = "equals" | "contains" | "exists" | "not_exists";
 
 export interface NodeDataMap {
   start: { label?: string };
-  message: { text: string; imageUrl?: string };
+  /** At most one attachment: a picture, a video, or a document such as a PDF brochure or price list. */
+  message: { text: string; imageUrl?: string; videoUrl?: string; documentUrl?: string; documentName?: string };
   buttons: { text: string; buttons: FlowButton[]; variable?: string; maxRetries?: number };
   list: { text: string; buttonLabel: string; rows: FlowRow[]; variable?: string; maxRetries?: number };
   question: { text: string; variable: string; input: InputKind; retryText?: string; maxRetries?: number; skippable?: boolean };

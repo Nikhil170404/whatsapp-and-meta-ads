@@ -65,7 +65,7 @@ const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export function pauseBeforeMs(previous: Action | null): number {
   if (!previous) return 0;
-  const chars = previous.type === "text" ? previous.text.length : previous.type === "image" ? (previous.caption?.length ?? 0) : 40;
+  const chars = previous.type === "text" ? previous.text.length : previous.type === "image" || previous.type === "video" || previous.type === "document" ? (previous.caption?.length ?? 0) : 40;
   return Math.min(4000, 800 + chars * 15);
 }
 
@@ -73,6 +73,8 @@ export const actionPreview = (a: Action): string => {
   switch (a.type) {
     case "text": return a.text;
     case "image": return a.caption ? `[Image] ${a.caption}` : "[Image]";
+    case "video": return a.caption ? `[Video] ${a.caption}` : "[Video]";
+    case "document": return `[Document ${a.filename}]${a.caption ? " " + a.caption : ""}`;
     case "buttons": return `[Buttons] ${a.text} → ${a.buttons.map((b) => b.title).join(" · ")}`;
     case "list": return `[Menu] ${a.text} → ${a.rows.map((r) => r.title).join(" · ")}`;
     case "location_request": return `[Location request] ${a.text}`;
@@ -81,7 +83,7 @@ export const actionPreview = (a: Action): string => {
   }
 };
 
-const MESSAGE_ACTIONS = new Set(["text", "image", "buttons", "list", "location_request", "cta_url"]);
+const MESSAGE_ACTIONS = new Set(["text", "image", "video", "document", "buttons", "list", "location_request", "cta_url"]);
 
 interface RunDeps { store: FlowStore; sender: FlowSender; sleep?: (ms: number) => Promise<void>; now?: () => Date }
 

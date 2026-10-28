@@ -20,6 +20,9 @@ Make every marketing and billing statement match what the product does, add the 
 - Meta pricing text corrected (landing FAQ, billing card).
 
 - "Send to a URL" flow block: posts the collected details as JSON to the business's own address (Zapier, Make, n8n, Google Sheets, a CRM). Public https only; addresses are checked at connection time so names that point at private networks are refused. Failures never stop the conversation. Editor warns to mention it in the privacy notice (DPDP).
+- Message block can carry a picture, a video or a document (PDF price list, brochure), one per message, with caption.
+- Website button: copy-paste, script-free WhatsApp button on the Chat link page.
+- Already existed (checked, not rebuilt): contact CSV import and export, saved quick replies in the inbox, chat link and QR, scheduled broadcasts, business hours and away message, leads with CSV export, REST API and MCP.
 
 ## Not done / next
 - Native `order_details` payments, WhatsApp Flows forms, catalog and carousel messages.
