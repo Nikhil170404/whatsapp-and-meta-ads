@@ -15,7 +15,7 @@ import { autoLayout } from "@/lib/flows/layout";
 import { FlowNodeCard, type BlockData } from "./FlowNodeCard";
 import { Inspector } from "./Inspector";
 import { Simulator } from "./Simulator";
-import { NODE_META, PALETTE, newNode } from "./nodeMeta";
+import { NODE_META, PALETTE, newNode, summary } from "./nodeMeta";
 
 interface FlowRecord {
   id: string; name: string; status: "draft" | "published"; trigger_type: FlowSettings["trigger_type"]; keywords: string[]; exit_keywords: string[];
@@ -87,10 +87,34 @@ function Editor({ flow, otherKeywords }: Props) {
     return m;
   }, [issues]);
 
+  const handleLabel = (n: FlowNode, h: string): string => {
+    const d = n.data as any;
+    if (h === "next") return n.type === "start" ? "Starts with" : "Then";
+    if (h === "yes") return "If yes";
+    if (h === "no") return "If no";
+    if (h === "giveup") return "If they give up";
+    if (h.startsWith("btn:")) return `If they tap “${d.buttons?.find((b: any) => `btn:${b.id}` === h)?.title || "button"}”`;
+    if (h.startsWith("row:")) return `If they pick “${d.rows?.find((r: any) => `row:${r.id}` === h)?.title || "option"}”`;
+    return h;
+  };
+  const edgeFrom = (id: string, h: string) => edges.find((e) => e.source === id && e.sourceHandle === h)?.target ?? null;
+  const openByNode = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const n of nodes) m.set(n.id, outputHandles(n).filter((h) => h !== "giveup" && !edges.some((e) => e.source === n.id && e.sourceHandle === h)));
+    return m;
+  }, [nodes, edges]);
+  const openCount = [...openByNode.values()].reduce((a, v) => a + v.length, 0);
+  const targetOptions = useMemo(() => nodes.filter((n) => n.type !== "start").map((n) => ({ id: n.id, label: `${NODE_LABELS[n.type]}: ${(summary(n) || "").replace(/…$/, "").slice(0, 32) || "(empty)"}` })), [nodes]);
+  const links = selectedNode ? outputHandles(selectedNode).map((h) => ({ handle: h, label: handleLabel(selectedNode, h), target: edgeFrom(selectedNode.id, h), optional: h === "giveup" })) : [];
+  const setLink = (handle: string, target: string | null) => {
+    if (!selectedNode) return;
+    setEdges((es) => { const rest = es.filter((e) => !(e.source === selectedNode.id && e.sourceHandle === handle)); return target ? [...rest, { id: uid(), source: selectedNode.id, sourceHandle: handle, target }] : rest; });
+  };
+
   const rfNodes: Node[] = useMemo(() => nodes.map((n) => ({
     id: n.id, type: "block", position: n.position, selected: n.id === selected, draggable: true, measured: dims[n.id], deletable: n.type !== "start",
-    data: { node: n, errors: issuesByNode.get(n.id)?.e ?? 0, warnings: issuesByNode.get(n.id)?.w ?? 0, active: n.id === active } satisfies BlockData,
-  })), [nodes, issuesByNode, selected, active, dims]);
+    data: { node: n, errors: issuesByNode.get(n.id)?.e ?? 0, warnings: issuesByNode.get(n.id)?.w ?? 0, active: n.id === active, open: openByNode.get(n.id) ?? [] } satisfies BlockData,
+  })), [nodes, issuesByNode, selected, active, dims, openByNode]);
   const rfEdges = useMemo(() => edges.map(toRfEdge), [edges]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -177,8 +201,17 @@ function Editor({ flow, otherKeywords }: Props) {
     } catch (e: any) { say(e.message, "err"); } finally { setBusy(null); }
   };
 
-  const saveLabel = save === "saving" ? "Saving…" : save === "error" ? "Not saved" : "Saved";
   const needsRepublish = status === "published" && dirtySincePublish;
+  // One plain next step, so nobody has to guess what to do.
+  const guide: { text: string; action?: { label: string; run: () => void } } =
+    nodes.length <= 1 ? { text: "Step 1 of 4. Add your first block: it sends your opening message.", action: { label: "Add a block", run: () => setPanel("add") } }
+    : errors.length ? { text: `Step 2 of 4. Fix ${errors.length} thing${errors.length > 1 ? "s" : ""} before this can go live.`, action: { label: "Show me", run: () => setPanel("problems") } }
+    : openCount ? { text: `Step 2 of 4. ${openCount} block${openCount > 1 ? "s" : ""} lead nowhere yet. Connect the pulsing dots, or pick the next block from the list.`, action: { label: "Show me", run: () => setPanel("problems") } }
+    : status !== "published" ? { text: "Step 3 of 4. Looks good. Try it as a customer, then publish.", action: { label: "Preview", run: () => setPanel("preview") } }
+    : needsRepublish ? { text: "You changed a live flow. Publish to send the changes to customers.", action: { label: "Publish changes", run: publish } }
+    : { text: "Step 4 of 4. This flow is live. Test it on your own phone.", action: { label: "Test on WhatsApp", run: () => setPanel("test") } };
+
+  const saveLabel = save === "saving" ? "Saving…" : save === "error" ? "Not saved" : "Saved";
 
   const sideContent = (
     <>
@@ -207,7 +240,7 @@ function Editor({ flow, otherKeywords }: Props) {
       )}
 
       {panel === "inspect" && selectedNode && (
-        <Inspector node={selectedNode} issues={issues.filter((i) => i.nodeId === selectedNode.id)} variables={variables} onChange={updateData} onDelete={deleteSelected} onClose={() => setPanel(null)} />
+        <Inspector node={selectedNode} issues={issues.filter((i) => i.nodeId === selectedNode.id)} variables={variables} onChange={updateData} onDelete={deleteSelected} onClose={() => setPanel(null)} links={links} targets={targetOptions.filter((t) => t.id !== selectedNode.id)} onLink={setLink} />
       )}
 
       {panel === "preview" && (
@@ -306,6 +339,11 @@ function Editor({ flow, otherKeywords }: Props) {
         </button>
       </header>
 
+      <div role="status" className="flex items-center gap-3 border-b border-slate-200 bg-emerald-50 px-3 py-2 text-sm text-slate-800 sm:px-4">
+        <p className="min-w-0 flex-1 leading-snug">{guide.text}</p>
+        {guide.action && <button type="button" onClick={guide.action.run} className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-black active:scale-95">{guide.action.label}</button>}
+      </div>
+
       <div className="flex min-h-0 flex-1">
         <div ref={wrapper} className="relative min-w-0 flex-1" onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }} onDrop={onDrop}>
           <ReactFlow
@@ -322,11 +360,6 @@ function Editor({ flow, otherKeywords }: Props) {
             <Background variant={BackgroundVariant.Dots} gap={22} size={1.5} color="#cbd5e1" />
             <Controls showInteractive={false} position="bottom-right" className="!mb-24 lg:!mb-3" />
           </ReactFlow>
-          {nodes.length <= 1 && (
-            <div className="pointer-events-none absolute inset-x-0 top-24 mx-auto max-w-xs animate-in fade-in rounded-2xl bg-white/90 p-4 text-center text-sm text-slate-600 shadow-lg">
-              <p className="font-bold text-slate-800">Start building</p><p>Tap <strong>Add</strong> to place your first block. It connects to Start for you.</p>
-            </div>
-          )}
           {toast && (
             <div role="status" className={`absolute left-1/2 top-3 z-10 max-w-[92%] -translate-x-1/2 animate-in fade-in slide-in-from-top-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-lg ${toast.tone === "ok" ? "bg-slate-900 text-white" : "bg-rose-600 text-white"}`}>{toast.text}</div>
           )}
@@ -334,7 +367,7 @@ function Editor({ flow, otherKeywords }: Props) {
 
         {/* Desktop side panel */}
         <aside className={`hidden shrink-0 overflow-y-auto border-l border-slate-200 bg-white transition-all duration-300 lg:block ${panel ? "w-[380px] p-5" : "w-0 overflow-hidden border-0 p-0"}`}>
-          {panel && (<><button type="button" onClick={() => setPanel(null)} aria-label="Close panel" className="float-right -mr-1 -mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>{sideContent}</>)}
+          {panel && (<>{panel !== "inspect" && <button type="button" onClick={() => setPanel(null)} aria-label="Close panel" className="float-right -mr-1 -mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-4 w-4" /></button>}{sideContent}</>)}
         </aside>
       </div>
 
@@ -358,7 +391,7 @@ function Editor({ flow, otherKeywords }: Props) {
         <div className="fixed inset-0 z-30 flex items-end bg-slate-900/30 lg:hidden" onClick={() => setPanel(null)}>
           <div role="dialog" aria-modal="true" className="max-h-[78vh] w-full animate-in slide-in-from-bottom overflow-y-auto rounded-t-3xl bg-white p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl duration-300" onClick={(e) => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-200" />
-            <button type="button" onClick={() => setPanel(null)} aria-label="Close" className="float-right -mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            {panel !== "inspect" && <button type="button" onClick={() => setPanel(null)} aria-label="Close" className="float-right -mt-1 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>}
             {sideContent}
           </div>
         </div>
