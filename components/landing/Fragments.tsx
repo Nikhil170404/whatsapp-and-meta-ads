@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 
 /** Small, true-to-product pieces of the interface. Each is marked data-ui: the product's own conventions apply inside. */
 
-const panel = "flex min-h-[210px] w-full max-w-[360px] flex-col justify-center bg-lp-field p-5 text-base text-slate-800";
+const panel = "flex min-h-[210px] w-full flex-col justify-center bg-lp-field sm:max-w-[360px] p-5 text-base text-slate-800";
 
 export function RuleFragment() {
   return (
