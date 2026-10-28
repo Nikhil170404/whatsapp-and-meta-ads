@@ -72,6 +72,7 @@ export function Simulator({ definition, exitKeywords, onVisit }: Props) {
         } else if (a.type === "delay") push({ from: "note", kind: "note", icon: "wait", text: `Waits ${humanWait(a.seconds)} (skipped in preview)` });
         else if (a.type === "tag") push({ from: "note", kind: "note", icon: "tag", text: `Label added: ${a.label}` });
         else if (a.type === "lead") push({ from: "note", kind: "note", icon: "lead", text: `Lead saved (${Object.keys(a.fields).filter((k) => a.fields[k]).join(", ") || "no details yet"})` });
+        else if (a.type === "webhook") push({ from: "note", kind: "note", icon: "lead", text: "Details sent to your URL (skipped in preview)" });
         else if (a.type === "handoff") push({ from: "note", kind: "note", icon: "handoff", text: "Handed over to a person. The bot stops here." });
       }
       setSession(step.session);

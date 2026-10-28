@@ -18,7 +18,8 @@ export type Action =
   | { type: "delay"; seconds: number }
   | { type: "tag"; label: string }
   | { type: "lead"; fields: Record<string, string>; note?: string }
-  | { type: "handoff"; note?: string };
+  | { type: "handoff"; note?: string }
+  | { type: "webhook"; url: string; fields: Record<string, string> };
 
 export type SessionStatus = "active" | "waiting" | "completed" | "handoff" | "abandoned";
 
@@ -120,6 +121,12 @@ function run(flow: FlowDefinition, session: Session, fromId: string | null, ctx:
         actions.push({ type: "location_request", text: render(d.text, v, ctx) });
         session.currentNodeId = node.id; session.retries = 0; session.status = "active";
         return;
+      }
+      case "webhook": {
+        const d = node.data as NodeDataMap["webhook"];
+        actions.push({ type: "webhook", url: d.url, fields: { ...v, contact_name: ctx.contactName ?? "", phone: ctx.phone } });
+        id = target(flow.edges, node.id, "next");
+        break;
       }
       case "pay": {
         const d = node.data as NodeDataMap["pay"];

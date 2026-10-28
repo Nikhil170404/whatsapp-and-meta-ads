@@ -5,6 +5,7 @@ import { FLOW_TEMPLATES } from "../lib/flows/templates";
 
 function memory(flows: FlowRecord[]) {
   const sessions: SessionRecord[] = [];
+  const hooks: any[] = [];
   const leads: any[] = [], labels: string[] = [], humans: string[] = [], logs: string[] = [];
   const store: FlowStore = {
     async getLiveSession(u, p) { return sessions.find((s) => s.user_id === u && s.phone === p && (s.status === "active" || s.status === "waiting")) ?? null; },
@@ -19,8 +20,9 @@ function memory(flows: FlowRecord[]) {
     async addLabel(_u, _p, l) { labels.push(l); },
     async markNeedsHuman(_u, _p, n) { humans.push(n); },
     async logOutbound(_u, _p, c) { logs.push(c); },
+    async postWebhook(url, body) { hooks.push({ url, body }); return !url.includes("down"); },
   };
-  return { store, sessions, leads, labels, humans, logs };
+  return { store, sessions, leads, labels, humans, logs, hooks };
 }
 
 function sender(failOn?: number) {
@@ -174,5 +176,39 @@ describe("pacing", () => {
     expect(pauseBeforeMs(null)).toBe(0);
     expect(pauseBeforeMs({ type: "text", text: "Hi" })).toBeLessThan(pauseBeforeMs({ type: "text", text: "x".repeat(300) }));
     expect(pauseBeforeMs({ type: "text", text: "x".repeat(5000) })).toBe(4000);
+  });
+});
+
+describe("send to a URL block", () => {
+  const flowWith = (url: string): FlowRecord => {
+    const f = flowFrom("lead-capture");
+    const def = structuredClone(f.published_definition!);
+    def.nodes.push({ id: "hook", type: "webhook", position: { x: 0, y: 0 }, data: { url } } as any);
+    const e = def.edges.find((x) => x.source === "lead" && x.sourceHandle === "next")!;
+    def.edges.push({ id: "lead-hook", source: "lead", sourceHandle: "next", target: "hook" }, { id: "hook-next", source: "hook", sourceHandle: "next", target: e.target });
+    def.edges = def.edges.filter((x) => x !== e);
+    return { ...f, published_definition: def };
+  };
+  const walk = async (m: ReturnType<typeof memory>, x: ReturnType<typeof sender>) => {
+    const deps = { store: m.store, sender: x.s, sleep: noSleep };
+    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "Enquiry" }, messageId: msg() });
+    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "Priya" }, messageId: msg() });
+    await handleFlowInbound(deps, { ...base, inbound: { kind: "text", text: "priya@example.com" }, messageId: msg() });
+    await handleFlowInbound(deps, { ...base, inbound: { kind: "reply", id: "b_price", title: "Pricing" }, messageId: msg() });
+  };
+
+  it("sends the answers to the business's URL and the conversation carries on", async () => {
+    const m = memory([flowWith("https://hooks.example.com/abc")]); const x = sender();
+    await walk(m, x);
+    expect(m.hooks).toHaveLength(1);
+    expect(m.hooks[0].url).toBe("https://hooks.example.com/abc");
+    expect(m.hooks[0].body).toMatchObject({ event: "flow.details", phone: base.phone, details: { name: "Priya", email: "priya@example.com" } });
+    expect(m.sessions[0].status).toBe("completed");
+  });
+
+  it("keeps going when the other system is down", async () => {
+    const m = memory([flowWith("https://down.example.com/x")]); const x = sender();
+    await walk(m, x);
+    expect(m.sessions[0].status).toBe("completed");
   });
 });

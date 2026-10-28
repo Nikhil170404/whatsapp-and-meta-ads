@@ -43,6 +43,8 @@ export interface FlowStore {
   addLabel(userId: string, phone: string, label: string): Promise<void>;
   markNeedsHuman(userId: string, phone: string, note: string): Promise<void>;
   logOutbound(userId: string, phone: string, content: string, kind: string, waMessageId: string | null): Promise<void>;
+  /** Sends collected details to the business's own URL. Never throws; a failure must not stop the conversation. */
+  postWebhook?(url: string, body: unknown): Promise<boolean>;
 }
 
 /** Sends one message action. Returns the WhatsApp message id. */
@@ -104,6 +106,9 @@ async function execute(deps: RunDeps, flow: FlowRecord, session: SessionRecord, 
         user_id: session.user_id, flow_id: flow.id, flow_name: flow.name, phone: session.phone,
         name: f.name || ctx.contactName || null, email: f.email || null, fields: f, note: a.note,
       });
+    } else if (a.type === "webhook") {
+      const ok = await deps.store.postWebhook?.(a.url, { event: "flow.details", flow: { id: flow.id, name: flow.name }, phone: session.phone, details: a.fields, sent_at: new Date().toISOString() }).catch(() => false);
+      if (ok === false) console.warn(`[flow ${flow.id}] webhook was not accepted by ${new URL(a.url).host}`);
     } else if (a.type === "handoff") {
       await deps.store.markNeedsHuman(session.user_id, session.phone, a.note ?? `From flow “${flow.name}”`);
     }

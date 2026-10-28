@@ -47,7 +47,7 @@ export const PRICING_PLANS = {
             "Unlimited contacts",
             "Template broadcasts",
             "Leads with CSV export",
-            "Payment-link blocks in flows",
+            "Payment links and send-to-URL blocks in flows",
             "Email support",
         ],
         limits: {

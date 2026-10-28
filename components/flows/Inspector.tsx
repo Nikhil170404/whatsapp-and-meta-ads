@@ -220,6 +220,18 @@ export function Inspector({ node, issues, variables, onChange, onDelete, onClose
         </>
       )}
 
+      {node.type === "webhook" && (
+        <>
+          <div><label htmlFor="f-wh" className={label}>Address to send to</label><input id="f-wh" type="url" inputMode="url" className={input} value={d.url} placeholder="https://hooks.zapier.com/hooks/catch/…" onChange={(e) => set({ url: e.target.value.trim() })} />
+            <Hint>Paste the “webhook” address from Zapier, Make, n8n or your own system. It must start with https://.</Hint></div>
+          <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+            <p className="font-semibold">What is sent</p>
+            <p className="mt-1">The customer&apos;s number, name and every answer collected so far, as JSON. Example: <code className="rounded bg-white px-1">{`{"phone":"9198…","details":{"name":"Priya","email":"…"}}`}</code></p>
+            <p className="mt-2">If your system is down, the conversation still continues.</p>
+          </div>
+        </>
+      )}
+
       {node.type === "pay" && (
         <>
           <div><label htmlFor="f-text" className={label}>Message</label><TextField id="f-text" value={d.text} onChange={(v) => set({ text: v })} max={FLOW_LIMITS.interactiveBody} variables={chips} placeholder="Your total is ₹499. Tap to pay." /></div>

@@ -7,7 +7,7 @@ const PLANS = [
   { key: "free", name: "Free", inr: [0, 0], usd: [0, 0], blurb: "Try it with real customers.", cta: "Start free", main: false,
     features: ["3 automatic replies", "1 conversation flow", "100 contacts", "Shared inbox", "Consent and opt-out tracking"] },
   { key: "growth", name: "Growth", inr: [999, 799], usd: [12, 8], blurb: "For growing businesses.", cta: "Choose Growth", main: true,
-    features: ["10 automatic replies", "10 conversation flows", "Unlimited contacts", "Template broadcasts", "Leads with CSV export", "Payment-link blocks in flows"] },
+    features: ["10 automatic replies", "10 conversation flows", "Unlimited contacts", "Template broadcasts", "Leads with CSV export", "Payment links and send-to-URL blocks in flows"] },
   { key: "pro", name: "Pro", inr: [1999, 1599], usd: [24, 20], blurb: "For teams and agencies.", cta: "Choose Pro", main: false,
     features: ["Everything in Growth", "Unlimited automatic replies", "Unlimited conversation flows", "Unlimited contacts", "Priority email support"] },
 ];

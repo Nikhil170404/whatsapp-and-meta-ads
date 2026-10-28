@@ -14,7 +14,7 @@ export type FlowResult<T> = { ok: true; data: T } | { ok: false; status: number;
 const ok = <T,>(data: T): FlowResult<T> => ({ ok: true, data });
 const fail = (status: number, error: string, code?: string, issues?: FlowIssue[]): FlowResult<never> => ({ ok: false, status, error, code, issues });
 
-const NODE_TYPES = new Set<NodeType>(["start", "message", "buttons", "list", "question", "location", "condition", "wait", "tag", "lead", "handoff", "end", "pay"]);
+const NODE_TYPES = new Set<NodeType>(["start", "message", "buttons", "list", "question", "location", "condition", "wait", "tag", "lead", "handoff", "end", "pay", "webhook"]);
 export const MAX_NODES = 150;
 export const MAX_EDGES = 400;
 

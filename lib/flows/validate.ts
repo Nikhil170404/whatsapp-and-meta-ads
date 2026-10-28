@@ -2,6 +2,7 @@
  * Finds the mistakes in a flow before a customer meets them, in plain language, each pointing at
  * the block that needs fixing. Errors block publishing; warnings are worth a look.
  */
+import { validWebhookUrl } from "./url";
 import {
   BUILTIN_VARIABLES, FLOW_LIMITS, VARIABLE_RE, isInputNode, outputHandles,
   type FlowDefinition, type FlowEdge, type FlowNode, type FlowSettings, type NodeDataMap, type NodeType,
@@ -16,7 +17,7 @@ export interface FlowIssue {
 export const NODE_LABELS: Record<NodeType, string> = {
   start: "Start", message: "Message", buttons: "Buttons", list: "Menu", question: "Question", location: "Location",
   condition: "Condition", wait: "Wait", tag: "Tag", lead: "Save lead", handoff: "Hand over to a person", end: "End",
-  pay: "Payment link",
+  pay: "Payment link", webhook: "Send to a URL",
 };
 
 const used = (text: string | undefined) =>
@@ -145,6 +146,13 @@ export function validateFlow(def: FlowDefinition, settings?: Partial<FlowSetting
         if (!d.text?.trim()) err("Write the message that asks for the location.", n.id);
         if (!d.variable?.trim() || !VARIABLE_RE.test(d.variable)) err("Name the location answer, for example “location”.", n.id);
         if ((d.text ?? "").length > FLOW_LIMITS.interactiveBody) err(`The location request is limited to ${FLOW_LIMITS.interactiveBody} characters.`, n.id);
+        break;
+      }
+      case "webhook": {
+        const d = n.data as NodeDataMap["webhook"];
+        if (!validWebhookUrl(d.url ?? "")) err("Paste the address to send the details to. It must start with https:// and be a public website.", n.id);
+        warn("This sends customer details to another service. Say so in your privacy notice.", n.id);
+        if (!out(n, "next")) warn("The flow ends after sending. Add a thank-you message or an End block.", n.id);
         break;
       }
       case "pay": {

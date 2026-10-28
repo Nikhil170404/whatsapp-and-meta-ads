@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { startFlow, resumeFlow, continueAfterWait, render, MAX_STEPS, type Action, type Session } from "../lib/flows/engine";
 import { validateFlow, sanitize, hasErrors } from "../lib/flows/validate";
+import { validWebhookUrl } from "../lib/flows/url";
+import { isPrivateAddress } from "../lib/flows/webhook";
 import { validateInput } from "../lib/flows/inputs";
 import { FLOW_TEMPLATES, blankFlow } from "../lib/flows/templates";
 import type { FlowDefinition } from "../lib/flows/types";
@@ -373,5 +375,25 @@ describe("payment link block", () => {
     expect(pay.text).toContain("Item A");
     expect(r.actions.some((a) => a.type === "lead")).toBe(true);
     expect(r.session.status).toBe("handoff");
+  });
+});
+
+describe("webhook safety", () => {
+  it("accepts public https addresses only", () => {
+    expect(validWebhookUrl("https://hooks.zapier.com/hooks/catch/1/abc")).toBeTruthy();
+    for (const bad of ["http://hooks.example.com/x", "https://localhost/x", "https://127.0.0.1/x", "https://10.0.0.5/x", "https://169.254.169.254/latest/meta-data", "https://192.168.1.1/", "https://[::1]/", "https://user:pass@example.com/", "https://printer.local/x", "https://intranet/x", "ftp://example.com", "nonsense"]) {
+      expect(validWebhookUrl(bad), bad).toBeNull();
+    }
+  });
+  it("recognises private addresses, including IPv6 and mapped ones", () => {
+    for (const ip of ["127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.255", "192.168.0.9", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1"]) expect(isPrivateAddress(ip), ip).toBe(true);
+    for (const ip of ["8.8.8.8", "142.250.80.46", "172.32.0.1", "2606:4700:4700::1111"]) expect(isPrivateAddress(ip), ip).toBe(false);
+  });
+  it("is refused in a flow until it has a valid address, and reminds about privacy", () => {
+    const d = structuredClone(tpl("lead-capture").definition);
+    d.nodes.push({ id: "hook", type: "webhook", position: { x: 0, y: 0 }, data: { url: "http://nope" } } as any);
+    const issues = validateFlow(d, tpl("lead-capture").settings);
+    expect(issues.some((i) => i.level === "error" && i.nodeId === "hook")).toBe(true);
+    expect(issues.some((i) => i.level === "warning" && /privacy notice/.test(i.message))).toBe(true);
   });
 });

@@ -1,3 +1,4 @@
+import { postWebhook } from "./webhook";
 import type { FlowStore, FlowRecord, SessionRecord } from "./runtime";
 
 /** Flow storage in Supabase. */
@@ -30,6 +31,7 @@ export function supabaseFlowStore(db: any): FlowStore {
       const { error } = await db.from("wa_flow_sessions").update(patch).eq("id", id);
       if (error) throw error;
     },
+    postWebhook: (url, body) => postWebhook(url, body),
     async insertLead(lead) {
       const { error } = await db.from("wa_leads").insert(lead);
       if (error) throw error;
