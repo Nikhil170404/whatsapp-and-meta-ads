@@ -16,7 +16,10 @@ const config: Config = {
       },
     },
     extend: {
+      fontFamily: { sans: ["var(--font-sans)", "var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"] },
       colors: {
+        // Landing page palette: one ground, one ink, one accent (the WhatsApp green).
+        lp: { ground: "#F3F6F4", field: "#E3ECE7", ink: "#0A1F16", soft: "#43564C", dark: "#0A1F16", accent: "#25D366", "accent-hover": "#1FBF5B" },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
