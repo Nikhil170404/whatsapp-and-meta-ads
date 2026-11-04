@@ -86,6 +86,7 @@ const navGroups = [
       { name: "Team members", href: "/wa/team", icon: Users },
       { name: "Plan & billing", href: "/wa/billing", icon: CreditCard },
       { name: "API & integrations", href: "/wa/integrate", icon: Code2 },
+      { name: "ReplyKaro Unified", href: "/wa/unified", icon: Link2 },
     ],
   },
 ];

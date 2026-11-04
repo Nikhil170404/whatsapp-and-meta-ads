@@ -27,7 +27,7 @@ export async function POST(req: Request) {
 
     const result = await sendApiMessage(getSupabaseAdmin() as any, session.id, template
       ? { phone: to, type: "template", template, params, language }
-      : { phone: to, type: "text", text: message.trim() });
+      : { phone: to, type: "text", text: message.trim() }, { origin: "dashboard" });
 
     if (!result.ok) {
       return NextResponse.json({ error: result.error, ...(result.code ? { code: result.code } : {}) }, { status: result.status });

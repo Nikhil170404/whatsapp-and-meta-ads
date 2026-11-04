@@ -82,3 +82,14 @@ npm run wa:link -- --user you@example.com --yes    # links the number to that Re
 ```
 
 These variables are read only by these two commands. The app itself sends through the connection stored in the database, which `wa:link` (or Facebook login) creates. Use a permanent System User token for anything beyond a quick test: temporary tokens from the API Setup page last about 24 hours.
+
+## ReplyKaro Unified link (replykaro.com)
+
+Shows WhatsApp chats in the shared inbox on replykaro.com, and lets a person reply or take over from there.
+
+1. Run `supabase/unified-bridge.sql` once in this project's Supabase SQL editor (after `schema.sql`). It is safe to run again.
+2. Deploy the web app and the worker (the worker pushes events). Both need `TOKEN_ENCRYPTION_KEY`; nothing else is new.
+3. On replykaro.com create a WhatsApp link (Unified > Channels), then open **ReplyKaro Unified** in this dashboard (`/wa/unified`) and paste the address, Link ID and secret.
+
+Endpoints called by .com (signed with the link secret): `POST /api/bridge/send` and `POST /api/bridge/pause`. Events pushed to .com: `message.inbound`, `message.outbound`, `consent.changed`.
+While a chat is paused (`wa_contacts.automation_paused_until`), flows, automations and away messages skip that person.
