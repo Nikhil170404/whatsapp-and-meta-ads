@@ -89,7 +89,9 @@ Shows WhatsApp chats in the shared inbox on replykaro.com, and lets a person rep
 
 1. Run `supabase/unified-bridge.sql` once in this project's Supabase SQL editor (after `schema.sql`). It is safe to run again.
 2. Deploy the web app and the worker (the worker pushes events). Both need `TOKEN_ENCRYPTION_KEY`; nothing else is new.
-3. On replykaro.com create a WhatsApp link (Unified > Channels), then open **ReplyKaro Unified** in this dashboard (`/wa/unified`) and paste the address, Link ID and secret.
+3. On replykaro.com open Unified > Channels and press **Connect WhatsApp**. It opens this app's sign-up or sign-in, links the two accounts by itself (a single-use code, no secret to copy), and brings the person back. If they have not connected their WhatsApp number yet, the page offers that as the next step.
+   Trusted return addresses: `UNIFIED_COM_ORIGINS` (comma separated, default `https://www.replykaro.com,https://replykaro.com`). Set it only if .com runs on another address.
+   `/wa/unified` stays as a manual fallback (paste address, Link ID and secret).
 
 Endpoints called by .com (signed with the link secret): `POST /api/bridge/send` and `POST /api/bridge/pause`. Events pushed to .com: `message.inbound`, `message.outbound`, `consent.changed`.
 While a chat is paused (`wa_contacts.automation_paused_until`), flows, automations and away messages skip that person.

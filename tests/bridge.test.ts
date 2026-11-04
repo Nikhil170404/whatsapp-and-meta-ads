@@ -181,3 +181,30 @@ describe("pushDue", () => {
     delete process.env.TOKEN_ENCRYPTION_KEY;
   });
 });
+
+import { allowedComOrigins, connectPath, isSafeAfterLogin, isValidCode, trustedOrigin } from "@/lib/bridge/connect";
+
+describe("one-click connect safety", () => {
+  const code = "A".repeat(43);
+  it("trusts only listed .com addresses", () => {
+    expect(trustedOrigin("https://www.replykaro.com/dashboard/u/channels?x=1", {})).toBe("https://www.replykaro.com");
+    expect(trustedOrigin("https://evil.example/dashboard", {})).toBeNull();
+    expect(trustedOrigin("https://www.replykaro.com.evil.example/x", {})).toBeNull();
+    expect(trustedOrigin("http://www.replykaro.com/x", {})).toBeNull();
+    expect(trustedOrigin("https://u:p@www.replykaro.com/x", {})).toBeNull();
+    expect(trustedOrigin("javascript:alert(1)", {})).toBeNull();
+    expect(trustedOrigin(undefined, {})).toBeNull();
+  });
+  it("can be pointed at another address by env", () => {
+    expect(allowedComOrigins({ UNIFIED_COM_ORIGINS: "https://app.example.com/, https://b.example" })).toEqual(["https://app.example.com", "https://b.example"]);
+    expect(trustedOrigin("https://app.example.com/x", { UNIFIED_COM_ORIGINS: "https://app.example.com" })).toBe("https://app.example.com");
+  });
+  it("accepts only well-formed codes", () => {
+    expect(isValidCode(code)).toBe(true);
+    for (const v of ["", "short", "a/b".padEnd(40, "a"), null, "x".repeat(70)]) expect(isValidCode(v)).toBe(false);
+  });
+  it("only lets the connect page be a post-login landing page", () => {
+    expect(isSafeAfterLogin(connectPath(code, "https://www.replykaro.com/dashboard/u/channels"))).toBe(true);
+    for (const v of ["/wa", "//evil.example", "https://evil.example/wa/unified/connect?x=1", "/wa/unified/connect?code=x//evil", "/wa/unified/connect?\\evil", undefined]) expect(isSafeAfterLogin(v)).toBe(false);
+  });
+});
