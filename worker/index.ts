@@ -6,6 +6,7 @@ import { JOBS, type JobDefinition } from "./jobs";
 import { startBroadcastQueue } from "./queue";
 import { startWebhookConsumer } from "./webhooks";
 import { startFlowTimers } from "./flow-timers";
+import { startBridgePusher } from "./bridge";
 
 /**
  * Railway worker: runs every scheduled and long-running job so the Vercel app
@@ -80,6 +81,7 @@ async function execute(job: JobDefinition) {
 const queue = startBroadcastQueue(supabase, () => shuttingDown);
 const webhooks = startWebhookConsumer(supabase, () => shuttingDown);
 const flowTimers = startFlowTimers(supabase, () => shuttingDown);
+const bridge = startBridgePusher(supabase, () => shuttingDown);
 
 const tasks = JOBS.map((job) =>
   cron.schedule(job.schedule, () => void execute(job), { timezone: "Asia/Kolkata" })
@@ -89,7 +91,7 @@ const tasks = JOBS.map((job) =>
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ ok: true, instance: instanceId, jobs: JOBS.map((j) => j.name), running: [...running], broadcastsSending: queue.running(), webhooksInFlight: webhooks.busy(), webhooksProcessed: webhooks.processed() }));
+    res.end(JSON.stringify({ ok: true, instance: instanceId, jobs: JOBS.map((j) => j.name), running: [...running], broadcastsSending: queue.running(), webhooksInFlight: webhooks.busy(), webhooksProcessed: webhooks.processed(), bridgeDelivered: bridge.delivered() }));
     return;
   }
   res.writeHead(404).end();
@@ -104,6 +106,7 @@ async function shutdown(signal: string) {
   queue.stop();
   webhooks.stop();
   flowTimers.stop();
+  bridge.stop();
   server.close();
   const deadline = Date.now() + 25_000;
   while ((running.size > 0 || queue.running() > 0 || webhooks.busy() > 0) && Date.now() < deadline) {

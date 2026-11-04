@@ -25,7 +25,7 @@ export interface SendInput {
  * free text outside the 24-hour window, opted-out contacts, unapproved or
  * missing templates, and OTP code spamming.
  */
-export async function sendApiMessage(db: any, userId: string, input: SendInput): Promise<OpResult<{ message_id: string | null; to: string }>> {
+export async function sendApiMessage(db: any, userId: string, input: SendInput, opts: { origin?: "bridge" | "dashboard" } = {}): Promise<OpResult<{ message_id: string | null; to: string }>> {
   // Customers with a WhatsApp username may only be reachable by a business-scoped user id.
   const bsuid = isBsuid(String(input.phone ?? ""));
   const digits = bsuid ? String(input.phone) : normalizePhone(input.phone);
@@ -111,11 +111,18 @@ export async function sendApiMessage(db: any, userId: string, input: SendInput):
   }
 
   const messageId: string | null = data?.messages?.[0]?.id ?? null;
-  await db.from("wa_messages").insert({
+  const row = {
     user_id: userId, wa_message_id: messageId, to_phone: digits, direction: "outbound",
     message_type: isText ? "text" : "template",
     content: isOtp ? "[Verification code sent]" : isText ? input.text : `[Template] ${input.template}`,
     status: "sent",
-  });
+  };
+  if (opts.origin) {
+    const { error: originErr } = await db.from("wa_messages").insert({ ...row, origin: opts.origin });
+    // The origin column exists only after supabase/unified-bridge.sql has run; never lose the message record over it.
+    if (originErr?.code === "42703" || originErr?.code === "PGRST204") await db.from("wa_messages").insert(row);
+  } else {
+    await db.from("wa_messages").insert(row);
+  }
   return { ok: true, data: { message_id: messageId, to: bsuid ? digits : `+${digits}` } };
 }

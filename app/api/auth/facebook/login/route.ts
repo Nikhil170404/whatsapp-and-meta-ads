@@ -1,5 +1,7 @@
 import { decryptSecret, encryptSecret } from "@/lib/crypto/secrets";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { AFTER_LOGIN_COOKIE, isSafeAfterLogin } from "@/lib/bridge/connect";
 import { createSession, setSessionCookie } from "@/lib/auth/session";
 import { getSupabaseAdmin } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
@@ -167,6 +169,14 @@ export async function GET(req: Request) {
     // 7. Create Session and Redirect to Dashboard
     const sessionToken = await createSession(user);
     await setSessionCookie(sessionToken);
+
+    // Someone who started "Connect WhatsApp" on ReplyKaro Unified lands back on that connect page after sign-in.
+    const after = (await cookies()).get(AFTER_LOGIN_COOKIE)?.value;
+    if (after && isSafeAfterLogin(after)) {
+      const back = NextResponse.redirect(`${appUrl}${after}`);
+      back.cookies.delete(AFTER_LOGIN_COOKIE);
+      return back;
+    }
 
     // Check if WhatsApp was auto-connected; if not, send user to connect page
     const [{ data: waConn }, { data: waAutomations }, { count: waContactCount }] = await Promise.all([

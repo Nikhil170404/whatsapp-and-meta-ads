@@ -16,6 +16,8 @@ import { refreshWaTokenIfNeeded } from "@/lib/whatsapp/token";
 import { recordConsent, recordMarketingPreference } from "@/lib/consent";
 import { describeInbound, extractInboundText, pickAutomation } from "@/lib/whatsapp/flow";
 import { DEFAULT_AWAY_MESSAGE, shouldSendAway } from "@/lib/whatsapp/hours";
+import { enqueueBridge, inboundEvent, CONSENT_PURPOSES_ALL } from "@/lib/bridge/events";
+import { isPausedNow } from "@/lib/bridge/pause";
 import { handleFlowInbound } from "@/lib/flows/runtime";
 import { whatsappFlowSender } from "@/lib/flows/sender";
 import { supabaseFlowStore } from "@/lib/flows/store";
@@ -353,6 +355,9 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
         source: "whatsapp_keyword",
         evidence: { keyword: content.slice(0, 40), wa_message_id: message.id },
       });
+      for (const purpose of CONSENT_PURPOSES_ALL) {
+        await enqueueBridge(supabase, connection.user_id, "consent.changed", `consent:${message.id}:${purpose}`, { wa_id: contact, purpose, granted: false, source: "stop" });
+      }
       try {
         await sendTextMessage(
           phoneNumberId,
@@ -417,19 +422,26 @@ async function handleMessagesChange(supabase: any, value: any, wabaId?: string) 
       if (insertErr.code === "23505") continue;
       console.error("Failed to save inbound message:", insertErr);
     }
+    await enqueueBridge(supabase, connection.user_id, "message.inbound", message.id, inboundEvent({ waId: contact, name: person?.profile?.name ?? null, text: content, at: messageTimestamp }));
 
     // ── Run automations on typed text and on button / list taps ──────────────
     // Location shares have no text but a flow can be waiting for one.
     if (!inbound && message.type !== "location") continue;
 
     // Skip if opted out
-    const { data: contactRow } = await supabase
+    let { data: contactRow, error: contactErr } = await supabase
       .from("wa_contacts")
-      .select("is_opted_in")
+      .select("is_opted_in, automation_paused_until")
       .eq("user_id", connection.user_id)
       .eq("phone_number", contact)
       .maybeSingle();
+    if (contactErr) {
+      // supabase/unified-bridge.sql has not been run yet: keep the opt-out check working without the pause column.
+      ({ data: contactRow } = await supabase.from("wa_contacts").select("is_opted_in").eq("user_id", connection.user_id).eq("phone_number", contact).maybeSingle());
+    }
     if (contactRow?.is_opted_in === false) continue;
+    // Take over from ReplyKaro Unified: a person is handling this chat, so no flow, automation or away message runs.
+    if (isPausedNow(contactRow?.automation_paused_until)) continue;
 
     // Skip automations entirely when phone number quality is LOW
     if (connection.quality_paused_at) continue;
